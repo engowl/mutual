@@ -1,0 +1,14 @@
+[package]
+name = "mutual_escrow"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+anchor-lang = "0.26.0"
+anchor-spl = "0.26.0"
+
+[features]
+no-entrypoint = []
+
+[scripts]
+test = "mocha -t 1000000 tests/**/*.js"
