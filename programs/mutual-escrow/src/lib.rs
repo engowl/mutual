@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
-declare_id!("4kDnBZPEXQ4xUgVMUKL1sAGNgurLdtiJFWUsGdcfCjc8");
+declare_id!("3XxsgvX6n4D1FPo2dLnek7TUnYpt31rBFeWhQGMvN2fJ");
 
 #[program]
 pub mod mutual_escrow {
@@ -22,6 +22,15 @@ pub mod mutual_escrow {
         pub project_owner: Pubkey,
         pub kol: Pubkey,
         pub amount: u64,
+    }
+
+    #[event]
+    pub struct DealStatusChanged {
+        pub order_id: [u8; 16],
+        pub deal: Pubkey,
+        pub project_owner: Pubkey,
+        pub kol: Pubkey,
+        pub status: DealStatus,
     }
 
     pub fn create_deal(
@@ -101,6 +110,14 @@ pub mod mutual_escrow {
         deal.status = DealStatus::Accepted;
         deal.accept_time = Clock::get()?.unix_timestamp;
 
+        emit!(DealStatusChanged {
+            order_id: deal.order_id,
+            deal: deal.key(),
+            project_owner: deal.project_owner,
+            kol: deal.kol,
+            status: deal.status.clone(),
+        });
+
         Ok(())
     }
 
@@ -136,9 +153,16 @@ pub mod mutual_escrow {
         // Update deal status
         deal.status = DealStatus::Rejected;
 
+        emit!(DealStatusChanged {
+            order_id: deal.order_id,
+            deal: deal.key(),
+            project_owner: deal.project_owner,
+            kol: deal.kol,
+            status: deal.status.clone(),
+        });
+
         Ok(())
     }
-
 }
 
 // Enums

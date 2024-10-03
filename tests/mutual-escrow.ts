@@ -134,7 +134,7 @@ describe("mutual_escrow", () => {
     );
 
     [vaultAuthorityPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("vault_authority"), mint.toBuffer()],
+      [Buffer.from("vault_authority")],
       program.programId
     );
 
@@ -239,7 +239,7 @@ describe("mutual_escrow", () => {
 
     // Fetch and display deal details
     const dealData = await program.account.deal.fetch(dealPda);
-    console.log("Deal Data:", dealData);
+    // console.log("Deal Data:", dealData);
 
     // Assertions on deal data
     assert.equal(
@@ -256,6 +256,150 @@ describe("mutual_escrow", () => {
       vestingDuration.toNumber()
     );
     // Add more assertions as needed
+  });
+
+  // TODO: Try to reject the deal, if it's rejected, the fund will be transferred back to the project owner
+  it("Should reject a deal and transfer funds back to the project owner", async () => {
+    console.log("\n=====================\n");
+
+    try {
+      // First, create the deal to be rejected
+      const amount = new anchor.BN(50 * 10 ** decimals); // 800 tokens
+      const vestingDuration = new anchor.BN(60); // 1 minute
+
+      orderIdBuffer = prepareOrderId("reject-order-id");
+
+      [dealPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("deal"),
+          orderIdBuffer,
+          projectOwnerKp.publicKey.toBuffer(),
+          kolKp.publicKey.toBuffer(),
+          mint.toBuffer(),
+        ],
+        program.programId
+      );
+
+      let txHash = await program.methods
+        .createDeal(
+          amount,
+          { time: {} }, // VestingType::Time
+          vestingDuration,
+          null,
+          Array.from(orderIdBuffer)
+        )
+        .accounts({
+          escrow: escrowPda,
+          deal: dealPda,
+          projectOwner: projectOwnerKp.publicKey,
+          kol: kolKp.publicKey,
+          mint: mint,
+          projectOwnerTokenAccount: projectOwnerTokenAccount.address,
+          vaultTokenAccount: vaultTokenAccountPda,
+          vaultAuthority: vaultAuthorityPda,
+          tokenProgram: splToken.TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        })
+        .signers([projectOwnerKp])
+        .rpc({
+          commitment: "confirmed",
+          skipPreflight: true,
+        });
+
+      console.log(`Deal created with txHash: ${txHash}`);
+
+      // Check initial balances
+      let projectOwnerTokenAccountInfo = await splToken.getAccount(
+        connection,
+        projectOwnerTokenAccount.address
+      );
+      console.log(
+        "Project Owner's token amount after deal creation: " +
+          Number(projectOwnerTokenAccountInfo.amount) / 10 ** decimals
+      );
+
+      let vaultTokenAccountInfo = await splToken.getAccount(
+        connection,
+        vaultTokenAccountPda
+      );
+      console.log(
+        "Vault token amount after deal creation: " +
+          Number(vaultTokenAccountInfo.amount) / 10 ** decimals
+      );
+
+      // Now, reject the deal
+      txHash = await program.methods
+        .rejectDeal()
+        .accounts({
+          deal: dealPda,
+          escrow: escrowPda,
+          signer: adminKp.publicKey, // Admin or KOL can sign
+          projectOwner: projectOwnerKp.publicKey,
+          vaultTokenAccount: vaultTokenAccountPda,
+          vaultAuthority: vaultAuthorityPda,
+          projectOwnerTokenAccount: projectOwnerTokenAccount.address,
+          mint: mint,
+          tokenProgram: splToken.TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        })
+        .signers([adminKp]) // Admin or KOL can sign
+        .rpc({ commitment: "confirmed" });
+
+      console.log(`Deal rejected with txHash: ${txHash}`);
+
+      // Confirm the transaction
+      const latestBlockHash = await connection.getLatestBlockhash();
+      await connection.confirmTransaction(
+        {
+          signature: txHash,
+          ...latestBlockHash,
+        },
+        "confirmed"
+      );
+
+      // Fetch token account balances after rejection
+      projectOwnerTokenAccountInfo = await splToken.getAccount(
+        connection,
+        projectOwnerTokenAccount.address
+      );
+      console.log(
+        "Project Owner's token amount after rejecting deal: " +
+          Number(projectOwnerTokenAccountInfo.amount) / 10 ** decimals
+      );
+
+      vaultTokenAccountInfo = await splToken.getAccount(
+        connection,
+        vaultTokenAccountPda
+      );
+      console.log(
+        "Vault token amount after rejecting deal: " +
+          Number(vaultTokenAccountInfo.amount) / 10 ** decimals
+      );
+
+      // Assertions to check the expected outcome
+      assert.equal(
+        Number(projectOwnerTokenAccountInfo.amount),
+        200 * 10 ** decimals,
+        "Project Owner should have all 1000 tokens after rejecting the deal"
+      );
+
+      assert.equal(
+        Number(vaultTokenAccountInfo.amount),
+        800 * 10 ** decimals,
+        "Vault should have 0 tokens after rejecting the deal"
+      );
+
+      // Check deal status to ensure it's marked as 'Rejected'
+      const dealData = (await program.account.deal.fetch(dealPda)) as any;
+      let isRejected = new Boolean(dealData.status.rejected);
+
+      assert.equal(isRejected, true, "Deal should be marked as 'Rejected'");
+    } catch (e) {
+      console.log("reject deal error", e);
+      throw e;
+    }
   });
 
   // Add more tests here, e.g., for releasing tokens, handling disputes, etc.
