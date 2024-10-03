@@ -9,8 +9,7 @@
     "@solana/spl-token": "0.4.3",
     "@solana/web3.js": "1.78.4",
     "bn.js": "*",
-    "assert": "*",
-    "borsh": "0.7.0"
+    "assert": "*"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.1",

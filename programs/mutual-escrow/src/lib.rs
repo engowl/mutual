@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
-declare_id!("G46UVzSzefgfZ6Yj43XYsNTxWYv6b3RVySt9CsYtm3mx");
+declare_id!("4kDnBZPEXQ4xUgVMUKL1sAGNgurLdtiJFWUsGdcfCjc8");
 
 #[program]
 pub mod mutual_escrow {
@@ -87,6 +87,58 @@ pub mod mutual_escrow {
 
         Ok(())
     }
+
+    pub fn accept_deal(ctx: Context<AcceptDeal>) -> Result<()> {
+        let deal = &mut ctx.accounts.deal;
+
+        // Ensure the deal is in the 'Created' status
+        require!(
+            deal.status == DealStatus::Created,
+            ErrorCode::InvalidDealStatus
+        );
+
+        // Update the deal status and accept_time
+        deal.status = DealStatus::Accepted;
+        deal.accept_time = Clock::get()?.unix_timestamp;
+
+        Ok(())
+    }
+
+    pub fn reject_deal(ctx: Context<RejectDeal>) -> Result<()> {
+        let deal = &mut ctx.accounts.deal;
+
+        // Ensure the deal is in the 'Created' status
+        require!(
+            deal.status == DealStatus::Created,
+            ErrorCode::InvalidDealStatus
+        );
+
+        // Access the bump seed directly
+        let vault_authority_bump = ctx.bumps.vault_authority;
+
+        // Create seeds for signing
+        let seeds = &[b"vault_authority".as_ref(), &[vault_authority_bump]];
+        let signer = &[&seeds[..]];
+
+        // Transfer tokens back to project owner
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.vault_token_account.to_account_info(),
+            to: ctx.accounts.project_owner_token_account.to_account_info(),
+            authority: ctx.accounts.vault_authority.to_account_info(),
+        };
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+
+        token::transfer(
+            CpiContext::new_with_signer(cpi_program, cpi_accounts, signer),
+            deal.amount,
+        )?;
+
+        // Update deal status
+        deal.status = DealStatus::Rejected;
+
+        Ok(())
+    }
+
 }
 
 // Enums
@@ -100,6 +152,7 @@ pub enum VestingType {
 pub enum DealStatus {
     Created,
     Accepted,
+    Rejected,
     Completed,
     Disputed,
     Resolved,
@@ -118,6 +171,8 @@ pub enum DisputeReason {
 pub enum ErrorCode {
     #[msg("Invalid deal status")]
     InvalidDealStatus,
+    #[msg("Unauthorized signer")]
+    UnauthorizedSigner,
     #[msg("Exceeds vested amount")]
     ExceedsVestedAmount,
     #[msg("Marketcap authorizer is missing")]
@@ -212,7 +267,7 @@ pub struct CreateDeal<'info> {
     pub project_owner_token_account: Account<'info, TokenAccount>,
 
     #[account(
-    init_if_needed,
+       init_if_needed,
     payer = project_owner,
     seeds = [b"vault_token_account", mint.key().as_ref()],
     bump,
@@ -223,12 +278,80 @@ pub struct CreateDeal<'info> {
 
     /// CHECK: This is the PDA acting as the vault authority
     #[account(
-        seeds = [b"vault_authority", mint.key().as_ref()],
+        seeds = [b"vault_authority"],
         bump
     )]
     pub vault_authority: AccountInfo<'info>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+pub struct AcceptDeal<'info> {
+    #[account(mut)]
+    pub deal: Account<'info, Deal>,
+
+    // Allow either the KOL or the admin to sign
+    #[account(
+        signer,
+        constraint = signer.key() == deal.kol || signer.key() == escrow.admin,
+    )]
+    /// CHECK: This is either the KOL or the admin
+    pub signer: AccountInfo<'info>,
+
+    // Fetch the escrow account to get the admin's public key
+    pub escrow: Account<'info, Escrow>,
+}
+
+#[derive(Accounts)]
+pub struct RejectDeal<'info> {
+    #[account(mut)]
+    pub deal: Account<'info, Deal>,
+
+    // Allow either the KOL or the admin to sign
+    #[account(
+        signer,
+        constraint = signer.key() == deal.kol || signer.key() == escrow.admin,
+    )]
+    /// CHECK: This is either the KOL or the admin
+    pub signer: AccountInfo<'info>,
+
+    // Fetch the escrow account to get the admin's public key
+    pub escrow: Account<'info, Escrow>,
+
+    #[account(mut)]
+    pub project_owner: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"vault_token_account", deal.mint.as_ref()],
+        bump,
+        token::mint = mint,
+        token::authority = vault_authority,
+    )]
+    pub vault_token_account: Account<'info, TokenAccount>,
+
+    /// CHECK: This is the PDA acting as the vault authority
+    #[account(
+        seeds = [b"vault_authority"],
+        bump
+    )]
+    pub vault_authority: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = project_owner,
+    )]
+    pub project_owner_token_account: Account<'info, TokenAccount>,
+
+    pub mint: Account<'info, Mint>,
+
+    pub token_program: Program<'info, Token>,
+
+    pub system_program: Program<'info, System>,
+
     pub rent: Sysvar<'info, Rent>,
 }
 

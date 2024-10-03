@@ -110,7 +110,7 @@ const program = anchor.workspace.MutualEscrow as anchor.Program<MutualEscrow>;
 
     const [vaultAuthorityPda, vaultAuthorityBump] =
       web3.PublicKey.findProgramAddressSync(
-        [Buffer.from("vault_authority"), mint.toBuffer()],
+        [Buffer.from("vault_authority")],
         program.programId
       );
 
@@ -294,11 +294,10 @@ const program = anchor.workspace.MutualEscrow as anchor.Program<MutualEscrow>;
 
       const dealAccounts = await program.account.deal.all();
       // Sort the dealAccounts from oldest to newest based on startTime using BN.cmp()
-      dealAccounts.sort((a, b) => {
-        return b.account.startTime.cmp(a.account.startTime);
+      const sorted = dealAccounts.sort((a, b) => {
+        return a.account.startTime.cmp(b.account.startTime);
       });
-
-      for (const account of dealAccounts) {
+      for (const account of sorted) {
         const [vaultTokenAccountPda] = web3.PublicKey.findProgramAddressSync(
           [Buffer.from("vault_token_account"), account.account.mint.toBuffer()],
           program.programId

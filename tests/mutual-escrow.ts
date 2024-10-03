@@ -1,240 +1,273 @@
-import * as anchor from "@coral-xyz/anchor";
-import * as borsh from "borsh";
 import BN from "bn.js";
 import assert from "assert";
 import * as web3 from "@solana/web3.js";
-
-/**
- * Mutual Escrow Contract Test using the latest @solana/spl-token npm package
- */
-
+import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@project-serum/anchor";
+import { Program } from "@project-serum/anchor";
+import { MutualEscrow } from "../target/types/mutual_escrow";
+import * as splToken from "@solana/spl-token";
 import {
+  Connection,
   PublicKey,
   Keypair,
-  Transaction,
   SystemProgram,
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
-import {
-  createMint,
-  getOrCreateAssociatedTokenAccount,
-  mintTo,
-  transfer,
-  getAccount,
-  createInitializeAccountInstruction,
-  TOKEN_PROGRAM_ID,
-  getMinimumBalanceForRentExemptMint,
-  getMinimumBalanceForRentExemptAccount,
-} from "@solana/spl-token";
-import assert from "assert";
-import BN from "bn.js";
 import type { MutualEscrow } from "../target/types/mutual_escrow";
 
-describe("Mutual Escrow Contract Tests", () => {
+describe("mutual_escrow", () => {
   // Configure the client to use the local cluster
   anchor.setProvider(anchor.AnchorProvider.env());
 
   const program = anchor.workspace.MutualEscrow as anchor.Program<MutualEscrow>;
   
-  it("Create Deal with SPL Token Transfer In", async () => {
-    // Initialize Keypairs
-    const adminKp = new Keypair();
-    const projectOwnerKp = new Keypair();
-    const kolKp = new Keypair();
+  // Set up the provider and program
+  const provider = anchor.Provider.env();
+  anchor.setProvider(provider);
+  const program = anchor.workspace.MutualEscrow as Program<MutualEscrow>;
+  const connection = provider.connection;
+  const wallet = provider.wallet;
 
-    await program.provider.connection.confirmTransaction(
-      await program.provider.connection.requestAirdrop(adminKp.publicKey, LAMPORTS_PER_SOL)
-    );
+  // Keypairs
+  const adminKp = program.provider.wallet.payer;
+  let projectOwnerKp: Keypair;
+  let kolKp: Keypair;
+
+  // Token mint and accounts
+  let mint: PublicKey;
+  let mintKeypair: Keypair;
+  let projectOwnerTokenAccount: splToken.Account;
+
+  // PDAs
+  let escrowPda: PublicKey;
+  let dealPda: PublicKey;
+  let vaultTokenAccountPda: PublicKey;
+  let vaultAuthorityPda: PublicKey;
+
+  // Other variables
+  const decimals = 9;
+  const orderId = "your-unique-order-id";
+  let orderIdBuffer: Buffer;
+
+  before(async () => {
+    // Initialize keypairs
+    projectOwnerKp = Keypair.generate();
+    kolKp = Keypair.generate();
 
     // Airdrop SOL to project owner and KOL
-    await program.provider.connection.confirmTransaction(
-      await program.provider.connection.requestAirdrop(
+    await connection.confirmTransaction(
+      await connection.requestAirdrop(
         projectOwnerKp.publicKey,
         LAMPORTS_PER_SOL
-      )
+      ),
+      "confirmed"
     );
-    await program.provider.connection.confirmTransaction(
-      await program.provider.connection.requestAirdrop(kolKp.publicKey, LAMPORTS_PER_SOL)
+    await connection.confirmTransaction(
+      await connection.requestAirdrop(kolKp.publicKey, LAMPORTS_PER_SOL),
+      "confirmed"
     );
-
-    console.log("=== Airdrop Completed");
-
-    // Create the Escrow account via 'initialize' instruction
-    const escrowSeed = Buffer.from("escrow");
-    const [escrowPda, escrowBump] = await PublicKey.findProgramAddress(
-      [escrowSeed],
-      program.programId
-    );
-
-    console.log("=== Escrow Account created");
-
-    // Build the 'initialize' instruction data
-    const initializeIx = new web3.TransactionInstruction({
-      keys: [
-        { pubkey: escrowPda, isSigner: false, isWritable: true },
-        { pubkey: adminKp.publicKey, isSigner: true, isWritable: true },
-        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-      ],
-      programId: program.programId,
-      data: Buffer.from([0]), // Instruction discriminator for 'initialize'
-    });
-
-        console.log("=== Airdrop Completed");
 
     // Create an SPL Token Mint
-    const mintKeypair = new Keypair();
-    const mintRent = await getMinimumBalanceForRentExemptMint(program.provider.connection);
-    const createMintAccountIx = SystemProgram.createAccount({
-      fromPubkey: adminKp.publicKey,
-      newAccountPubkey: mintKeypair.publicKey,
-      lamports: mintRent,
-      space: 82, // Mint account size
-      programId: TOKEN_PROGRAM_ID,
-    });
-
-    const initMintIx = createInitializeAccountInstruction(
-      mintKeypair.publicKey,
-      9, // Decimals
+    mintKeypair = Keypair.generate();
+    mint = await splToken.createMint(
+      connection,
+      adminKp,
       adminKp.publicKey,
       null,
-      TOKEN_PROGRAM_ID
+      decimals,
+      mintKeypair,
+      { commitment: "confirmed" }
     );
 
-    // Create the transaction to create and initialize the mint
-    let tx = new Transaction().add(createMintAccountIx, initMintIx);
-    await web3.sendAndConfirmTransaction(program.provider.connection, tx, [
-      adminKp,
-      mintKeypair,
-    ]);
+    console.log(`Mint created: ${mint.toBase58()}`);
 
-    // Create an associated token account for the project owner
-    const projectOwnerTokenAccount = await getOrCreateAssociatedTokenAccount(
-      program.provider.connection,
+    // Create Associated Token Account for the project owner
+    projectOwnerTokenAccount = await splToken.getOrCreateAssociatedTokenAccount(
+      connection,
       adminKp,
-      mintKeypair.publicKey,
+      mint,
       projectOwnerKp.publicKey
     );
 
-    // Mint tokens to the project owner's token account
-    await mintTo(
-      program.provider.connection,
-      adminKp,
-      mintKeypair.publicKey,
-      projectOwnerTokenAccount.address,
-      adminKp,
-      1000 * 10 ** 9 // Mint 1000 tokens (assuming 9 decimals)
+    console.log(
+      `Project Owner's Token Account: ${projectOwnerTokenAccount.address.toBase58()}`
     );
 
-    // Prepare 'create_deal' instruction
-    const dealSeed = Buffer.from("deal");
-    const [dealPda, dealBump] = await PublicKey.findProgramAddress(
+    // Mint tokens to the project owner's token account
+    const mintAmount = BigInt(1000 * 10 ** decimals);
+    await splToken.mintTo(
+      connection,
+      adminKp,
+      mint,
+      projectOwnerTokenAccount.address,
+      adminKp,
+      Number(mintAmount)
+    );
+
+    console.log(`Minted ${mintAmount} tokens to project owner's account`);
+
+    // Prepare order ID buffer
+    orderIdBuffer = prepareOrderId(orderId);
+
+    console.log("orderIdBuffer", orderIdBuffer);
+
+    // Prepare PDAs
+    [escrowPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("escrow")],
+      program.programId
+    );
+
+    [dealPda] = PublicKey.findProgramAddressSync(
       [
-        dealSeed,
+        Buffer.from("deal"),
+        orderIdBuffer,
         projectOwnerKp.publicKey.toBuffer(),
         kolKp.publicKey.toBuffer(),
-        mintKeypair.publicKey.toBuffer(),
+        mint.toBuffer(),
       ],
       program.programId
     );
 
-    // Vault Token Account
-    const vaultTokenAccountSeed = Buffer.from("vault_token_account");
-    const [vaultTokenAccountPda, vaultTokenAccountBump] =
-      await PublicKey.findProgramAddress(
-        [vaultTokenAccountSeed, mintKeypair.publicKey.toBuffer()],
-        program.programId
-      );
-
-    // Vault Authority PDA
-    const vaultAuthoritySeed = Buffer.from("vault_authority");
-    const [vaultAuthorityPda, vaultAuthorityBump] =
-      await PublicKey.findProgramAddress(
-        [vaultAuthoritySeed, mintKeypair.publicKey.toBuffer()],
-        program.programId
-      );
-
-    // Build the 'create_deal' instruction data
-    const amount = new BN(500 * 10 ** 9); // 500 tokens
-    const vestingDuration = new BN(60 * 60 * 24 * 30); // 30 days
-    const vestingTypeTime = 0; // Enum value for VestingType::Time
-
-    // Serialize instruction data using borsh
-    const createDealInstructionLayout = borsh.struct([
-      borsh.u8("instruction"),
-      borsh.u64("amount"),
-      borsh.u8("vestingType"),
-      borsh.i64("vestingDuration"),
-      borsh.option(borsh.array(borsh.u8(), 32), "marketcapAuthorizer"),
-    ]);
-
-    const createDealData = Buffer.alloc(1000); // Allocate sufficient buffer
-    const createDealInstructionData = {
-      instruction: 1, // Instruction discriminator for 'create_deal'
-      amount: amount,
-      vestingType: vestingTypeTime,
-      vestingDuration: vestingDuration,
-      marketcapAuthorizer: null, // None for VestingType::Time
-    };
-    const length = createDealInstructionLayout.encode(
-      createDealInstructionData,
-      createDealData
+    [vaultTokenAccountPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("vault_token_account"), mint.toBuffer()],
+      program.programId
     );
-    const createDealDataTrimmed = createDealData.slice(0, length);
 
-    const createDealIx = new web3.TransactionInstruction({
-      keys: [
-        { pubkey: escrowPda, isSigner: false, isWritable: true },
-        { pubkey: dealPda, isSigner: false, isWritable: true },
-        { pubkey: projectOwnerKp.publicKey, isSigner: true, isWritable: true },
-        { pubkey: kolKp.publicKey, isSigner: false, isWritable: false },
-        { pubkey: mintKeypair.publicKey, isSigner: false, isWritable: false },
-        {
-          pubkey: projectOwnerTokenAccount.address,
-          isSigner: false,
-          isWritable: true,
-        },
-        { pubkey: vaultTokenAccountPda, isSigner: false, isWritable: true },
-        { pubkey: vaultAuthorityPda, isSigner: false, isWritable: false },
-        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-        { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-        { pubkey: web3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
-      ],
-      programId: program.programId,
-      data: createDealDataTrimmed,
+    [vaultAuthorityPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("vault_authority"), mint.toBuffer()],
+      program.programId
+    );
+
+    console.log("Prepared PDAs", {
+      escrowPda: escrowPda.toBase58(),
+      dealPda: dealPda.toBase58(),
+      vaultTokenAccountPda: vaultTokenAccountPda.toBase58(),
+      vaultAuthorityPda: vaultAuthorityPda.toBase58(),
     });
 
-    // Create transaction and add the instructions
-    tx = new Transaction().add(initializeIx, createDealIx);
+    // Initialize the Escrow if not already initialized
+    const escrowAccountInfo = await connection.getAccountInfo(escrowPda);
+    if (escrowAccountInfo === null) {
+      await program.methods
+        .initialize()
+        .accounts({
+          escrow: escrowPda,
+          admin: adminKp.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([])
+        .rpc({ commitment: "confirmed" });
+      console.log(`Escrow initialized at ${escrowPda.toBase58()}`);
+    } else {
+      console.log(`Escrow account already exists at ${escrowPda.toBase58()}`);
+    }
+  });
 
-    // Send and confirm the transaction
-    await web3.sendAndConfirmTransaction(
-      program.provider.connection,
-      tx,
-      [adminKp, projectOwnerKp],
-      { skipPreflight: false, commitment: "confirmed" }
+  it("Should create a deal", async () => {
+    const amount = new anchor.BN(800 * 10 ** decimals);
+    const vestingDuration = new anchor.BN(60);
+
+    const txHash = await program.methods
+      .createDeal(
+        amount,
+        { time: {} },
+        vestingDuration,
+        null,
+        Array.from(orderIdBuffer)
+      )
+      .accounts({
+        escrow: escrowPda,
+        deal: dealPda,
+        projectOwner: projectOwnerKp.publicKey,
+        kol: kolKp.publicKey,
+        mint: mint,
+        projectOwnerTokenAccount: projectOwnerTokenAccount.address,
+        vaultTokenAccount: vaultTokenAccountPda,
+        vaultAuthority: vaultAuthorityPda,
+        tokenProgram: splToken.TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      })
+      .signers([projectOwnerKp])
+      .rpc({ commitment: "confirmed" });
+
+    console.log(`CreateDeal transaction signature: ${txHash}`);
+
+    // Confirm transaction
+    const latestBlockHash = await connection.getLatestBlockhash();
+    await connection.confirmTransaction(
+      {
+        signature: txHash,
+        ...latestBlockHash,
+      },
+      "confirmed"
     );
 
-    // Fetch the token accounts and verify the balances
-    const projectOwnerTokenAccountInfo = await getAccount(
-      program.provider.connection,
+    // Fetch and display token account balances
+    const projectOwnerTokenAccountInfo = await splToken.getAccount(
+      connection,
       projectOwnerTokenAccount.address
     );
-    const vaultTokenAccountInfo = await getAccount(
-      program.provider.connection,
+
+    console.log(
+      "Project Owner's token amount: " +
+        Number(projectOwnerTokenAccountInfo.amount) / 10 ** decimals
+    );
+
+    const vaultTokenAccountInfo = await splToken.getAccount(
+      connection,
       vaultTokenAccountPda
     );
 
-    // The project owner should have 500 tokens left
+    console.log(
+      "Vault token amount: " +
+        Number(vaultTokenAccountInfo.amount) / 10 ** decimals
+    );
+
+    // Assertions
     assert.equal(
       Number(projectOwnerTokenAccountInfo.amount),
-      500 * 10 ** 9,
-      "Project owner's token account should have 500 tokens"
+      200 * 10 ** decimals,
+      "Project Owner should have 200 tokens after transferring 800 tokens to the vault"
     );
-    // The vault should have received 500 tokens
+
     assert.equal(
       Number(vaultTokenAccountInfo.amount),
-      500 * 10 ** 9,
-      "Vault token account should have 500 tokens"
+      800 * 10 ** decimals,
+      "Vault should have 800 tokens after deal creation"
     );
+
+    // Fetch and display deal details
+    const dealData = await program.account.deal.fetch(dealPda);
+    console.log("Deal Data:", dealData);
+
+    // Assertions on deal data
+    assert.equal(
+      dealData.projectOwner.toBase58(),
+      projectOwnerKp.publicKey.toBase58()
+    );
+    assert.equal(dealData.kol.toBase58(), kolKp.publicKey.toBase58());
+    assert.equal(dealData.mint.toBase58(), mint.toBase58());
+    assert.equal(dealData.amount.toString(), amount.toString());
+    assert.equal(dealData.releasedAmount.toNumber(), 0);
+    assert.equal(Object.keys(dealData.vestingType)[0], "time");
+    assert.equal(
+      dealData.vestingDuration.toNumber(),
+      vestingDuration.toNumber()
+    );
+    // Add more assertions as needed
   });
+
+  // Add more tests here, e.g., for releasing tokens, handling disputes, etc.
+
+  function prepareOrderId(orderId: string): Buffer {
+    let orderIdBuffer = Buffer.from(orderId, "utf-8");
+    if (orderIdBuffer.length > 16) {
+      orderIdBuffer = orderIdBuffer.slice(0, 16);
+    } else if (orderIdBuffer.length < 16) {
+      const padding = Buffer.alloc(16 - orderIdBuffer.length);
+      orderIdBuffer = Buffer.concat([orderIdBuffer, padding], 16);
+    }
+    return orderIdBuffer;
+  }
 });
