@@ -1,14 +1,13 @@
-[package]
-name = "mutual_escrow"
-version = "0.1.0"
-edition = "2018"
+[workspace]
+members = [
+    "programs/*"
+]
 
-[dependencies]
-anchor-lang = "0.26.0"
-anchor-spl = "0.26.0"
-
-[features]
-no-entrypoint = []
-
-[scripts]
-test = "mocha -t 1000000 tests/**/*.js"
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1

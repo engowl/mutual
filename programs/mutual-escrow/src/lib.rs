@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
-declare_id!("7w1nj8HEw1j8vkQVPo7gwTcY9ayUA9L3bZhZXbM5Y9jE");
+declare_id!("G46UVzSzefgfZ6Yj43XYsNTxWYv6b3RVySt9CsYtm3mx");
 
 #[program]
 pub mod mutual_escrow {
@@ -15,30 +15,43 @@ pub mod mutual_escrow {
         Ok(())
     }
 
+    #[event]
+    pub struct DealCreated {
+        pub order_id: [u8; 16],
+        pub deal: Pubkey,
+        pub project_owner: Pubkey,
+        pub kol: Pubkey,
+        pub amount: u64,
+    }
+
     pub fn create_deal(
         ctx: Context<CreateDeal>,
         amount: u64,
         vesting_type: VestingType,
         vesting_duration: i64,
         marketcap_authorizer: Option<Pubkey>,
+        order_id: [u8; 16],
     ) -> Result<()> {
         let deal = &mut ctx.accounts.deal;
         let deal_bump: u8 = ctx.bumps.deal; // Accessing bump directly for the 'deal' account
-        let project_owner_key = ctx.accounts.project_owner.key(); // This returns a Pubkey
 
+        deal.order_id = order_id.clone();
+        deal.project_owner = ctx.accounts.project_owner.key();
         deal.kol = ctx.accounts.kol.key();
         deal.mint = ctx.accounts.mint.key();
         deal.amount = amount;
+        deal.released_amount = 0;
         deal.vesting_type = vesting_type.clone();
         deal.vesting_duration = vesting_duration;
         deal.start_time = Clock::get()?.unix_timestamp;
+        deal.accept_time = 0;
         deal.status = DealStatus::Created;
-        deal.deal_bump = deal_bump;
+        deal.dispute_reason = DisputeReason::None;
         deal.marketcap_authorizer = marketcap_authorizer;
-        deal.released_amount = 0;
+        deal.deal_bump = deal_bump;
 
         // Validate marketcap_authorizer based on vesting type
-        match vesting_type {
+        match vesting_type.clone() {
             VestingType::Time => {
                 require!(
                     marketcap_authorizer.is_none(),
@@ -64,6 +77,14 @@ pub mod mutual_escrow {
 
         token::transfer(CpiContext::new(cpi_program, cpi_accounts), amount)?;
 
+        emit!(DealCreated {
+            order_id: order_id.clone(),
+            deal: ctx.accounts.deal.key(),
+            project_owner: ctx.accounts.project_owner.key(),
+            kol: ctx.accounts.kol.key(),
+            amount: amount
+        });
+
         Ok(())
     }
 }
@@ -82,6 +103,14 @@ pub enum DealStatus {
     Completed,
     Disputed,
     Resolved,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+pub enum DisputeReason {
+    None,
+    Unresolved,
+    Other,
+    // Add more variants as needed
 }
 
 // Error codes
@@ -110,19 +139,20 @@ pub struct Escrow {
 
 #[account]
 pub struct Deal {
-    pub project_owner: Pubkey,
-    pub kol: Pubkey,
-    pub mint: Pubkey,
-    pub amount: u64,
-    pub released_amount: u64,
-    pub vesting_type: VestingType,
-    pub vesting_duration: i64,
-    pub start_time: i64,
-    pub accept_time: i64,
-    pub status: DealStatus,
-    pub dispute_reason: String,
-    pub marketcap_authorizer: Option<Pubkey>,
-    pub deal_bump: u8,
+    pub order_id: [u8; 16],                   // Fixed-size array
+    pub project_owner: Pubkey,                // 32 bytes
+    pub kol: Pubkey,                          // 32 bytes
+    pub mint: Pubkey,                         // 32 bytes
+    pub amount: u64,                          // 8 bytes
+    pub released_amount: u64,                 // 8 bytes
+    pub vesting_type: VestingType,            // Assuming fits in u8
+    pub vesting_duration: i64,                // 8 bytes
+    pub start_time: i64,                      // 8 bytes
+    pub accept_time: i64,                     // 8 bytes
+    pub status: DealStatus,                   // Assuming fits in u8
+    pub dispute_reason: DisputeReason,        // Assuming fits in u8
+    pub marketcap_authorizer: Option<Pubkey>, // 1-byte tag + 32 bytes
+    pub deal_bump: u8,                        // 1 byte
 }
 
 // ACCOUNTS
@@ -142,38 +172,55 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(amount: u64, vesting_type: VestingType, vesting_duration: i64)]
+#[instruction(
+    amount: u64,
+    vesting_type: VestingType,
+    vesting_duration: i64,
+    marketcap_authorizer: Option<Pubkey>,
+    order_id: [u8; 16],
+)]
 pub struct CreateDeal<'info> {
     #[account(mut)]
     pub escrow: Account<'info, Escrow>,
+
     #[account(
         init,
         payer = project_owner,
         space = 8 + std::mem::size_of::<Deal>(),
-        seeds = [b"deal", project_owner.key().as_ref(), kol.key().as_ref(), mint.key().as_ref()],
+        seeds = [
+            b"deal",
+            order_id.as_ref(), 
+            project_owner.key().as_ref(),
+            kol.key().as_ref(),
+            mint.key().as_ref(),
+        ],
         bump,
     )]
     pub deal: Account<'info, Deal>,
+
     #[account(mut)]
     pub project_owner: Signer<'info>,
     /// CHECK: This is safe; we only read the public key
     pub kol: AccountInfo<'info>,
     pub mint: Account<'info, Mint>,
+
     #[account(
         mut,
         constraint = project_owner_token_account.owner == project_owner.key(),
         constraint = project_owner_token_account.mint == mint.key()
     )]
     pub project_owner_token_account: Account<'info, TokenAccount>,
+
     #[account(
-        init_if_needed,
-        payer = project_owner,
-        seeds = [b"vault_token_account", mint.key().as_ref()],
-        bump,
-        token::mint = mint,
-        token::authority = vault_authority,
+    init_if_needed,
+    payer = project_owner,
+    seeds = [b"vault_token_account", mint.key().as_ref()],
+    bump,
+    token::mint = mint,
+    token::authority = vault_authority,
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
+
     /// CHECK: This is the PDA acting as the vault authority
     #[account(
         seeds = [b"vault_authority", mint.key().as_ref()],
