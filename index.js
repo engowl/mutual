@@ -5,12 +5,14 @@ import FastifyCors from "@fastify/cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import fastifyMultipart from "@fastify/multipart";
+import { authRoutes } from "./app/routes/authRoutes.js";
+import { userRoutes } from "./app/routes/userRoutes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const fastify = Fastify({
-  logger: false
+  logger: false,
 });
 
 fastify.register(FastifyCors, {
@@ -35,6 +37,8 @@ fastify.get("/", async (request, reply) => {
 
 /* --------------------------------- Routes --------------------------------- */
 
+fastify.register(authRoutes, { prefix: "/auth" });
+fastify.register(userRoutes, { prefix: "/users" });
 
 /* --------------------------------- Workers -------------------------------- */
 
