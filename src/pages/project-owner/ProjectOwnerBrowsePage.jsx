@@ -190,9 +190,20 @@ function OffersTokenDealsModal({ influencerData }) {
               >
                 <X className="size-5 text-neutral-400 stroke-2 hover:text-neutral-600" />
               </button>
-              <ModalHeader className="pt-4">
+              <ModalHeader className="pt-6">
                 <div>
-                  <p className="text-xl font-medium">Offer Token Deals</p>
+                  <div className="shrink-0 size-16 rounded-full bg-neutral-200 overflow-hidden">
+                    <img
+                      className="w-full h-full object-cover"
+                      alt="demo"
+                      src="/assets/demo/angga.png"
+                      width={80}
+                      height={80}
+                    />
+                  </div>
+                  <p className="text-xl font-medium mt-2">
+                    Offer Token Deals to @{influencerData.username}
+                  </p>
                   <p className="text-base font-normal text-neutral-500">
                     Engage Influencers with Fair, Incentive-Based Vesting
                   </p>
@@ -200,12 +211,6 @@ function OffersTokenDealsModal({ influencerData }) {
               </ModalHeader>
               <ModalBody className="w-full pb-6">
                 <div>
-                  <div className="flex items-center gap-3">
-                    <p>KOL Username: </p>
-                    <p className="text-sm font-medium bg-neutral-100 rounded-full px-5 py-2">
-                      @{influencerData.username}
-                    </p>
-                  </div>
                   <div className="w-full flex gap-3 mt-3">
                     <Link
                       to={`/project-owner/market-cap-vesting/${1298124892}`}

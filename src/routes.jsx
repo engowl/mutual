@@ -14,6 +14,7 @@ import ProjectOwnerOffersPage from "./pages/project-owner/offers/ProjectOwnerOff
 import ProjectOwnerMessagePage from "./pages/project-owner/ProjectOwnerMessagePage";
 import OfferSubmittedSuccessPage from "./pages/success/OfferSubmittedSuccessPage";
 import ProjectOwnerMarketCapVestingPage from "./pages/project-owner/vesting/ProjectOwnerMarketCapVestingPage";
+import ProjectOwnerTimeVestingPage from "./pages/project-owner/vesting/ProjectOwnerTimeVesting";
 
 export const router = createBrowserRouter([
   {
@@ -83,6 +84,10 @@ export const router = createBrowserRouter([
           {
             path: "market-cap-vesting/:influencerId",
             element: <ProjectOwnerMarketCapVestingPage />,
+          },
+          {
+            path: "time-vesting/:influencerId",
+            element: <ProjectOwnerTimeVestingPage />,
           },
         ],
       },

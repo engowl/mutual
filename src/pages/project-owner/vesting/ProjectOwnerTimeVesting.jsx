@@ -9,7 +9,30 @@ import {
   TimeInput,
 } from "@nextui-org/react";
 
-export default function ProjectOwnerMarketCapVestingPage() {
+const vestingPeriods = [
+  {
+    label: "1 Month",
+    value: "1m",
+  },
+  {
+    label: "2 Months",
+    value: "2m",
+  },
+  {
+    label: "3 Months",
+    value: "3m",
+  },
+  {
+    label: "6 Months",
+    value: "6m",
+  },
+  {
+    label: "1 Year",
+    value: "1y",
+  },
+];
+
+export default function ProjectOwnerTimeVestingPage() {
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center">
       <div className="w-full max-w-2xl flex flex-col py-20">
@@ -17,13 +40,14 @@ export default function ProjectOwnerMarketCapVestingPage() {
           <Link to="/project-owner/browse">
             <ArrowLeft className="size-8" />
           </Link>
-          <h1 className="text-4xl font-medium">Marketcap Vesting</h1>
+          <h1 className="text-4xl font-medium">Time Vesting</h1>
         </div>
         <div className="mt-6">
           <p>
-            Unlock 20% of tokens right after the promotion is live. The
-            remaining 80% will vest once your project reaches the agreed market
-            cap milestones
+            Influencers receive 20% of their tokens upfront after completing
+            their promotional tasks. The remaining 80% is vested over a set
+            period (e.g., 30 days) and can be claimed daily, proportionate to
+            the days passed.
           </p>
           <div className="mt-4 p-4 rounded-xl bg-white border">
             <div className="w-full flex items-center justify-between">
@@ -97,18 +121,16 @@ export default function ProjectOwnerMarketCapVestingPage() {
 
           {/* Market cap milestone */}
           <div className="w-full flex flex-col mt-4 gap-2">
-            <p>Market Cap Milestone</p>
+            <p>Vesting Period</p>
             <div className="w-full flex flex-wrap gap-1">
-              {[500000, 1000000, 5000000, 10000000, 200000].map(
-                (marketCap, idx) => (
-                  <Button
-                    key={idx}
-                    className="bg-white rounded-xl border p-2 h-14 flex items-center gap-2 flex-1 justify-center"
-                  >
-                    <p>${marketCap.toLocaleString("en-US")}</p>
-                  </Button>
-                )
-              )}
+              {vestingPeriods.map((period, idx) => (
+                <Button
+                  key={idx}
+                  className="bg-white rounded-xl border p-2 h-14 flex items-center gap-2 flex-1 justify-center"
+                >
+                  <p>{period.label}</p>
+                </Button>
+              ))}
             </div>
           </div>
 
