@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import fastifyMultipart from "@fastify/multipart";
 import { authRoutes } from "./app/routes/authRoutes.js";
 import { userRoutes } from "./app/routes/userRoutes.js";
+import { campaignRoutes } from './app/routes/campaignRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,6 +40,7 @@ fastify.get("/", async (request, reply) => {
 
 fastify.register(authRoutes, { prefix: "/auth" });
 fastify.register(userRoutes, { prefix: "/users" });
+fastify.register(campaignRoutes, { prefix: '/campaign' });
 
 /* --------------------------------- Workers -------------------------------- */
 
