@@ -1,5 +1,5 @@
+import { prismaClient } from "../db/prisma.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
-
 /**
  *
  * @param {import("fastify").FastifyInstance} app
@@ -20,15 +20,108 @@ export const userRoutes = (app, _, done) => {
     }
   );
 
-  app.post("/register", async (request, reply) => {
-    try {
-      return reply
-        .status(200)
-        .send({ message: "User registered successfully" });
-    } catch (error) {
-      return reply.status(500).send({ message: "Error registering user" });
+  app.get(
+    "/me",
+    {
+      preHandler: [authMiddleware],
+    },
+    async (req, reply) => {
+      const user = req.user;
+
+      try {
+        const userData = await prismaClient.user.findFirst({
+          where: {
+            wallet: {
+              address: user.address,
+            },
+          },
+          include: {
+            wallet: true,
+          },
+        });
+
+        console.log({ userData });
+        return reply.send({
+          message: "User found",
+          error: null,
+          data: {
+            user: userData,
+          },
+        });
+      } catch (error) {
+        console.log({ error });
+        return reply.status(500).send({
+          message: "Error fetching user",
+          error: error.message,
+          data: null,
+        });
+      }
     }
-  });
+  );
+
+  app.post(
+    "/update",
+    {
+      preHandler: [authMiddleware],
+    },
+    async (req, reply) => {
+      const user = req.user;
+      const { role, influencer, projectOwner } = req.body;
+
+      try {
+        const updateData = {};
+
+        if (role) {
+          if (!["PROJECT_OWNER", "INFLUENCER"].includes(role)) {
+            return reply.status(400).send({ message: "Invalid role" });
+          }
+          updateData.role = role;
+        }
+
+        if (influencer) {
+          updateData.influencer = {
+            update: influencer,
+          };
+        }
+
+        if (projectOwner) {
+          updateData.projectOwner = {
+            update: projectOwner,
+          };
+        }
+
+        const currentUser = await prismaClient.user.findFirst({
+          where: {
+            wallet: {
+              address: user.address,
+            },
+          },
+        });
+
+        const updatedUser = await prismaClient.user.update({
+          where: {
+            id: currentUser.id,
+          },
+          data: updateData,
+        });
+
+        return reply.send({
+          message: "Successfuly update user",
+          error: null,
+          data: {
+            user: updatedUser,
+          },
+        });
+      } catch (error) {
+        console.log({ error });
+        return reply.status(500).send({
+          message: "Error update user",
+          error: error.message,
+          data: null,
+        });
+      }
+    }
+  );
 
   done();
 };
