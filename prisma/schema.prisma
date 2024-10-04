@@ -81,6 +81,8 @@ model Influencer {
   telegramUsername String
   projectCriteria  ProjectCriteria[]
   offers           Offer[]
+
+  orders CampaignOrder[]
 }
 
 // Project Criteria for Influencers (KOL)
@@ -108,4 +110,57 @@ model Offer {
 enum UserWalletType {
   MPC
   EOA
+}
+
+// Campaign Order
+enum CampaignOrderVestingType {
+  TIME
+  MARKETCAP
+  NONE
+}
+
+enum CampaignOrderStatus {
+  CREATED
+  ACCEPTED
+  REJECTED
+  PARTIALCOMPLETED
+  COMPLETED
+  DISPUTED
+  RESOLVED
+}
+
+enum CampaignOrderEligibilityStatus {
+  NOTELIGIBLE
+  PARTIALLYELIGIBLE
+  FULLYELIGIBLE
+}
+
+model CampaignOrder {
+  id String @id
+
+  influencerId Int
+  influencer   Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+
+  // TODO: token mint
+
+  vestingType CampaignOrderVestingType
+  status      CampaignOrderStatus
+  eligibility CampaignOrderEligibilityStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EscrowEventLog {
+  id String @id @default(cuid())
+  chainId         String
+  programId       String
+
+  campaignOrderId String
+  eventName       String
+  signature       String
+  data            Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

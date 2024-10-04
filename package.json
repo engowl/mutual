@@ -19,13 +19,17 @@
     "ngrok": "ngrok http 3400"
   },
   "dependencies": {
+    "@coral-xyz/anchor": "^0.29.0",
     "@fastify/cors": "^10.0.0",
     "@fastify/multipart": "^9.0.0",
     "@prisma/client": "^5.19.1",
+    "@project-serum/anchor": "^0.26.0",
+    "@solana/spl-token": "^0.4.8",
     "@solana/wallet-standard-util": "^1.1.1",
     "@solana/web3.js": "^1.95.3",
     "@web3auth/sign-in-with-solana": "^4.0.0",
     "axios": "^1.7.7",
+    "base58": "^2.0.1",
     "bs58": "^6.0.0",
     "canvas": "^2.11.2",
     "cloudinary": "^2.5.0",
