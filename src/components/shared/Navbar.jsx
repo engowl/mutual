@@ -1,19 +1,21 @@
 import { Link, NavLink } from "react-router-dom";
 import SignInButton from "./SignInButton";
 import { cnm } from "../../utils/style";
+import { useMCAuth } from "../../lib/mconnect/hooks/useMcAuth.jsx";
 
 export default function Navbar() {
-  const role = "project-owner";
+  const { user, isLoggedIn } = useMCAuth();
+
   return (
-    <nav className="h-12 flex items-center px-8 justify-between border-b border-black/20">
+    <nav className="flex items-center px-8 py-2 justify-between border-b border-black/20">
       <div className="flex h-full items-center">
         <Link to={"/"} className="text-xl font-medium">
           MUTUAL
         </Link>
 
-        {role === "project-owner" ? (
+        {user && isLoggedIn && user.role === "project-owner" ? (
           <ProjectOwnerNav />
-        ) : role === "influencer" ? (
+        ) : user && isLoggedIn && user.role === "influencer" ? (
           <InfluencerNav />
         ) : null}
       </div>
