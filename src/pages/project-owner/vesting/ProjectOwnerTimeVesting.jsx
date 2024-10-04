@@ -8,6 +8,8 @@ import {
   Textarea,
   TimeInput,
 } from "@nextui-org/react";
+import { useState } from "react";
+import IconicButton from "../../../components/ui/IconicButton";
 
 const vestingPeriods = [
   {
@@ -33,6 +35,112 @@ const vestingPeriods = [
 ];
 
 export default function ProjectOwnerTimeVestingPage() {
+  const [step, setStep] = useState(1);
+  switch (step) {
+    case 1:
+      return <TimeVestingForm setStep={setStep} />;
+    case 2:
+      return <TimeVestingConfirmation />;
+  }
+}
+
+function TimeVestingConfirmation() {
+  return (
+    <div className="h-full overflow-y-auto w-full flex flex-col items-center">
+      <div className="w-full max-w-2xl flex flex-col py-20">
+        <h1 className="text-4xl font-medium">Confirm Deal Offer</h1>
+        <div className="mt-3">
+          <p>
+            Unlock 20% of tokens right after the promotion is live. The
+            remaining 80% will vest once your project reaches the agreed market
+            cap milestones
+          </p>
+        </div>
+        <div className="mt-4 p-4 rounded-xl bg-white border">
+          <div className="w-full flex items-center justify-between">
+            <p className="text-2xl font-medium">MICHI ($MICHI)</p>
+            <div className="font-medium">DexScreener</div>
+          </div>
+          <div className="flex gap-7 mt-3">
+            <div>
+              <p className="text-orangy font-medium">$150M</p>
+              <p className="text-sm text-neutral-500">Market Cap</p>
+            </div>
+            <div>
+              <p className="text-orangy font-medium">
+                {shortenAddress("0x8ad8asfha8f8iaf")}
+              </p>
+              <p className="text-sm text-neutral-500">Contract Address</p>
+            </div>
+            <div>
+              <p className="text-orangy font-medium">821,893,121</p>
+              <p className="text-sm text-neutral-500">Total Supply</p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 py-5 px-4 rounded-xl bg-white border flex items-center justify-between">
+          <div>
+            <div className="flex flex-col gap-3 text-sm">
+              <div className="flex items-center">
+                <p className="w-48 text-neutral-400">Offer Amount</p>
+                <p className="font-medium">20 SOL</p>
+              </div>
+              <div className="flex items-center">
+                <p className="w-48 text-neutral-400">Payment Terms</p>
+                <p className="font-medium">Time Vesting</p>
+              </div>
+              <div className="flex items-center">
+                <p className="w-48 text-neutral-400">Total Payment</p>
+                <p className="font-medium">1,000,000 MICHI</p>
+              </div>
+              <div className="flex items-center">
+                <p className="w-48 text-neutral-400">First Unlock</p>
+                <p className="font-medium">200,000 MICHI</p>
+              </div>
+              <div className="flex items-center">
+                <p className="w-48 text-neutral-400">Second Unlock</p>
+                <p className="font-medium">800,000 MICHI</p>
+              </div>
+              <div className="flex items-center">
+                <p className="w-48 text-neutral-400">
+                  Second Unlock to Trigger
+                </p>
+                <p className="font-medium">$MICHI reached $200M Marketcap</p>
+              </div>
+              <div className="flex items-center">
+                <p className="w-48 text-neutral-400">Marketing Channel</p>
+                <p className="font-medium">Twitter Post</p>
+              </div>
+              <div className="flex items-center">
+                <p className="w-48 text-neutral-400">Schedule</p>
+                <p className="font-medium">15 October 2024 : 18:00 UTC</p>
+              </div>
+            </div>
+            <p className="font-medium mt-8">Promotional post text</p>
+            <p className="mt-4">
+              🚀 $Michi is ready to take over the crypto space!🔥 Join the
+              $Michi revolution and be part of the most exciting meme coin of
+              the year! 📈 Strong community, rapid growth, and big plans ahead!
+            </p>
+          </div>
+        </div>
+
+        <div className="w-full flex justify-end mt-8">
+          <IconicButton
+            className={"rounded-full border-orangy"}
+            arrowBoxClassName={"rounded-full bg-orangy"}
+          >
+            <p className="group-hover:text-white transition-colors text-orangy pl-3 pr-4">
+              Send Offer
+            </p>
+          </IconicButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimeVestingForm({ setStep }) {
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center">
       <div className="w-full max-w-2xl flex flex-col py-20">
@@ -205,6 +313,7 @@ export default function ProjectOwnerTimeVestingPage() {
           <div className="w-full flex justify-end mt-8">
             <Button
               size="lg"
+              onClick={() => setStep(2)}
               className="bg-orangy text-white px-8 rounded-full"
             >
               Continue

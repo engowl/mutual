@@ -11,7 +11,7 @@ export default function IndexPage() {
   const { isSignedIn } = useSession();
 
   return (
-    <div className="w-full flex items-center justify-center min-h-screen bg-creamy">
+    <div className="w-full flex items-center justify-center min-h-screen bg-creamy px-5 py-12">
       <>
         {isSignedIn ? (
           <ChooseRole />
@@ -26,10 +26,10 @@ export default function IndexPage() {
 function ChooseRole() {
   return (
     <div className="w-full max-w-2xl">
-      <h1 className="text-4xl font-medium text-center">
+      <h1 className="text-3xl md:text-4xl font-medium text-center">
         Get Started by Choosing Your Role
       </h1>
-      <div className="mt-7 flex items-center gap-8">
+      <div className="mt-7 flex items-center gap-8 flex-col md:flex-row">
         <Link
           to={"/register/influencer"}
           className="bg-white rounded-2xl p-6 flex flex-col items-center gap-2 hover:bg-neutral-50 max-w-[300px] overflow-hidden"

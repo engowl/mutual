@@ -15,6 +15,7 @@ import ProjectOwnerMessagePage from "./pages/project-owner/ProjectOwnerMessagePa
 import OfferSubmittedSuccessPage from "./pages/success/OfferSubmittedSuccessPage";
 import ProjectOwnerMarketCapVestingPage from "./pages/project-owner/vesting/ProjectOwnerMarketCapVestingPage";
 import ProjectOwnerTimeVestingPage from "./pages/project-owner/vesting/ProjectOwnerTimeVesting";
+import ProjectOwnerOffersDetailPage from "./pages/project-owner/offers/ProjectOwnerOffersDetailsPage";
 
 export const router = createBrowserRouter([
   {
@@ -76,6 +77,10 @@ export const router = createBrowserRouter([
           {
             path: "offers",
             element: <ProjectOwnerOffersPage />,
+          },
+          {
+            path: "offers/:id",
+            element: <ProjectOwnerOffersDetailPage />,
           },
           {
             path: "message",

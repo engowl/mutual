@@ -10,11 +10,11 @@ export default function ProjectOwnerRegisterPage() {
   }
 
   return (
-    <div className="w-full h-full flex items-center justify-center overflow-hidden">
-      <div className="w-full flex h-full">
+    <div className="w-full lg:h-full flex items-center justify-center lg:overflow-hidden">
+      <div className="w-full flex flex-col lg:flex-row lg:h-full">
         {/* Banner */}
 
-        <div className="h-full w-[610px] overflow-hidden relative">
+        <div className="h-64 w-full lg:h-full lg:w-[610px] overflow-hidden relative">
           <img
             src="/assets/register-page/project-owner-banner.png"
             alt="project-owner-banner"
@@ -22,7 +22,7 @@ export default function ProjectOwnerRegisterPage() {
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 lg:overflow-y-auto">
           <div className="w-full max-w-3xl flex flex-col items-start px-8 py-12">
             <h1 className="text-4xl font-medium">Your Project Details</h1>
             <div className="mt-8 w-full flex flex-col gap-7">
@@ -109,11 +109,12 @@ export default function ProjectOwnerRegisterPage() {
 
 function OnProcessBanner() {
   return (
-    <div className="w-full min-h-screen flex items-center justify-center">
+    <div className="w-full min-h-screen flex items-center justify-center px-5">
       <div className="flex flex-col items-center">
         <div className="size-14 rounded-full bg-neutral-200"></div>
-        <p className="text-2xl font-medium mt-4">
-          Hang tight, we’re reviewing your project! 😉
+        <p className="text-2xl font-medium mt-4 text-center">
+          Hang tight, we’re reviewing <br className="inline md:hidden" /> your
+          project! 😉
         </p>
         <p className="text-neutral-500 mt-8">Need help?</p>
         <Button

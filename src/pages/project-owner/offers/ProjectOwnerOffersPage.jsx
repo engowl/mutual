@@ -1,5 +1,5 @@
 import { Button } from "@nextui-org/react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 export default function ProjectOwnerOffersPage() {
   return (
@@ -14,7 +14,7 @@ export default function ProjectOwnerOffersPage() {
 
 function OffersList() {
   const [searchParams, setSearchParams] = useSearchParams({
-    status: "new",
+    status: "sent",
   });
 
   const status = searchParams.get("status");
@@ -24,14 +24,14 @@ function OffersList() {
       {/* tabs */}
       <div className="flex items-center">
         <button
-          onClick={() => setSearchParams({ status: "new" })}
+          onClick={() => setSearchParams({ status: "sent" })}
           className={`py-2 flex justify-center rounded-lg ${
-            searchParams.get("status") === "new"
+            searchParams.get("status") === "sent"
               ? "text-black"
               : "text-neutral-500"
           }`}
         >
-          New
+          Sent
         </button>
         <button
           onClick={() => setSearchParams({ status: "active" })}
@@ -44,32 +44,39 @@ function OffersList() {
           Active
         </button>
         <button
-          onClick={() => setSearchParams({ status: "completed" })}
+          onClick={() => setSearchParams({ status: "past" })}
           className={`py-2 rounded-lg ml-8 ${
-            searchParams.get("status") === "completed"
+            searchParams.get("status") === "past"
               ? "text-black"
               : "text-neutral-500"
           }`}
         >
-          Completed
+          Past
         </button>
       </div>
       <div className="w-full mt-1 bg-white rounded-2xl border p-4 h-[447px] overflow-y-auto">
-        <OfferCard />
+        <OfferCard
+          data={{
+            id: 1,
+          }}
+        />
       </div>
     </div>
   );
 }
 
-function OfferCard() {
+function OfferCard({ data }) {
   return (
-    <div className="flex items-center gap-4 p-3 border rounded-lg justify-between">
+    <Link
+      to={`/project-owner/offers/${data.id}`}
+      className="flex items-center gap-4 p-3 border rounded-lg justify-between"
+    >
       <div>
         <div className="flex items-center">
           <p className="font-medium">MICHI ($MICHI)</p>
           {/* Offers status pill */}
           <span className="ml-3 px-2 py-1 rounded-full bg-orangy/10 border border-orangy text-orangy text-xs">
-            Waiting to Confirm
+            Waiting for confirmation
           </span>
         </div>
 
@@ -86,18 +93,6 @@ function OfferCard() {
           </div>
         </div>
       </div>
-      {/* action buttons */}
-      <div className="flex flex-col items-center">
-        <div className="flex gap-2">
-          <Button color="default" className="text-xs rounded-full font-medium">
-            Decline
-          </Button>
-          <Button className="text-xs bg-orangy text-white rounded-full font-medium">
-            Accept
-          </Button>
-        </div>
-        <p className="text-xs mt-3 text-neutral-500">Respond in 20:20:21</p>
-      </div>
-    </div>
+    </Link>
   );
 }

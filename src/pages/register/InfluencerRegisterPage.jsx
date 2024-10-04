@@ -8,10 +8,10 @@ import { useNavigate } from "react-router-dom";
 export default function InfluencerRegisterPage() {
   const [step, setStep] = useAtom(influencerRegisterStepAtom);
   return (
-    <div className="w-full h-full flex items-center justify-center">
-      <div className="w-full flex items-center max-w-7xl h-full">
+    <div className="w-full h-full flex items-center justify-center px-5 xl:px-0">
+      <div className="w-full flex items-center max-w-7xl h-full flex-col xl:flex-row">
         {/* Register steps indicator */}
-        <div className="flex flex-col gap-3.5 h-full justify-center">
+        <div className="flex flex-row xl:flex-col gap-3.5 pt-12 xl:pt-0 xl:h-full justify-center items-center xl:items-start text-[10px] md:text-sm xl:text-sm">
           <button
             onClick={() => setStep(1)}
             className={cnm(
@@ -19,13 +19,15 @@ export default function InfluencerRegisterPage() {
               step >= 1 ? "text-orangy" : "text-neutral-400"
             )}
           >
-            <UserCircle size={24} />
-            <p className="font-medium ml-4">Connect Social Media</p>
+            <UserCircle className="size-5 xl:size-6" />
+            <p className="font-medium ml-3 xl:ml-4 text-center">
+              Connect <br className="inline xl:hidden" /> Social Media
+            </p>
           </button>
-          <div className="w-6 flex justify-center">
+          <div className="w-5 xl:w-6 flex justify-center items-center">
             <div
               className={cnm(
-                "w-[1px] rounded-full h-10",
+                "w-full h-[1px] xl:w-[1px] rounded-full xl:h-10",
                 step >= 2 ? "bg-orangy" : "bg-neutral-400"
               )}
             ></div>
@@ -37,14 +39,16 @@ export default function InfluencerRegisterPage() {
               step >= 2 ? "text-orangy" : "text-neutral-400"
             )}
           >
-            <Newspaper size={24} />
-            <p className="font-medium ml-4">Project Criteria</p>
+            <Newspaper className="size-5 xl:size-6" />
+            <p className="font-medium ml-3 xl:ml-4">
+              Project <br className="inline xl:hidden" /> Criteria
+            </p>
           </button>
-          <div className="w-6 flex justify-center">
+          <div className="w-5 xl:w-6 flex justify-center items-center">
             <div
               className={cnm(
-                "w-[1px] rounded-full h-10",
-                step >= 3 ? "bg-orangy" : "bg-neutral-400"
+                "w-full h-[1px] xl:w-[1px] rounded-full xl:h-10",
+                step >= 2 ? "bg-orangy" : "bg-neutral-400"
               )}
             ></div>
           </div>
@@ -55,12 +59,14 @@ export default function InfluencerRegisterPage() {
               step >= 3 ? "text-orangy" : "text-neutral-400"
             )}
           >
-            <Package size={24} />
-            <p className="font-medium ml-4">Package and Pricing</p>
+            <Package className="size-5 xl:size-6" />
+            <p className="font-medium ml-3 xl:ml-4">
+              Package <br className="inline xl:hidden" /> and Pricing
+            </p>
           </button>
         </div>
-        <div className="ml-32 h-full overflow-y-auto flex-1">
-          <div className="py-20 w-full flex flex-col items-start">
+        <div className="xl:ml-32 xl:h-full xl:overflow-y-auto xl:flex-1">
+          <div className="py-12 xl:py-20 w-full flex flex-col items-start">
             <RegisterStep />
           </div>
         </div>
@@ -86,7 +92,7 @@ function ConnectSocialMedia() {
 
   return (
     <div className="flex flex-col">
-      <h1 className="text-4xl font-medium">Connect Your Socials</h1>
+      <h1 className="text-3xl xl:text-4xl font-medium">Connect Your Socials</h1>
       <div className="mt-14 flex flex-col gap-6">
         <div>
           <p className="text-lg font-medium">Twitter</p>
@@ -95,7 +101,7 @@ function ConnectSocialMedia() {
               Connect with Twitter
             </Button>
             <p>or</p>
-            <Input placeholder="Enter Twitter link" className="min-w-96" />
+            <Input placeholder="Enter Twitter link" className="xl:min-w-96" />
           </div>
         </div>
         <div>
@@ -105,7 +111,7 @@ function ConnectSocialMedia() {
               Connect with Telegram
             </Button>
             <p>or</p>
-            <Input placeholder="Enter Telegram link" className="min-w-96" />
+            <Input placeholder="Enter Telegram link" className="xl:min-w-96" />
           </div>
         </div>
       </div>
@@ -125,15 +131,17 @@ function ProjectCriteria() {
   return (
     <div className="w-full max-w-2xl">
       <div>
-        <h1 className="text-4xl font-medium">Set Your Risk Profile</h1>
-        <p className="mt-5 text-neutral-500">
+        <h1 className="text-3xl xl:text-4xl font-medium">
+          Set Your Risk Profile
+        </h1>
+        <p className="mt-5 text-neutral-500 text-sm xl:text-base">
           Define your risk preferences so that your profile and pricing are only
           shown to projects that meet your criteria. This will ensure that
           you&apos;re matched with projects that align with your requirements.
         </p>
         <div className="w-full mt-6">
           <p>Risk Preference</p>
-          <div className="mt-2 bg-white rounded-full p-1 flex w-full">
+          <div className="mt-2 bg-white rounded-full p-1 flex w-full text-xs xl:text-base">
             <div className="flex-1 flex justify-center py-1.5 bg-orangy/20 rounded-full">
               🐢 Low Risk
             </div>
@@ -248,9 +256,9 @@ function PackageAndPricing() {
   return (
     <div className="w-full max-w-3xl">
       <div className="w-full">
-        <h1 className="text-4xl font-medium">Set Your Package</h1>
+        <h1 className="text-3xl xl:text-4xl font-medium">Set Your Package</h1>
 
-        <div className="mt-12 flex gap-6 w-full">
+        <div className="mt-12 flex flex-col xl:flex-row gap-6 w-full">
           {/* Tweet post package input*/}
           <div className="bg-white rounded-2xl border p-6 flex-1">
             <p className="font-medium">Tweet Post</p>

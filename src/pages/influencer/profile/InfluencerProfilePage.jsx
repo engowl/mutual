@@ -1,6 +1,6 @@
 export default function InfluencerProfilePage() {
   return (
-    <div className="h-full overflow-y-auto w-full flex flex-col items-center">
+    <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
       <div className="w-full max-w-3xl flex flex-col py-20">
         <div className="size-24 rounded-full bg-neutral-200 overflow-hidden">
           <img
@@ -15,7 +15,7 @@ export default function InfluencerProfilePage() {
           <p className="text-[2.5rem] leading-tight">Angga Andinata</p>
           <p className="font-medium text-neutral-600">@anggaandinata</p>
         </div>
-        <div className="w-full flex items-center justify-between mt-8">
+        <div className="w-full flex flex-col items-start gap-4 xl:flex-row xl:items-center justify-between mt-8">
           {/* Account stats */}
           <div className="flex items-center gap-8">
             <div>
@@ -51,7 +51,7 @@ export default function InfluencerProfilePage() {
           Bitcoin Dengan Cara HORRA UMUM - Bangun mesin ATM via Bitcoin
         </p>
 
-        <div className="mt-12 flex w-full gap-6">
+        <div className="mt-12 flex w-full flex-col md:flex-row gap-6">
           <div className="bg-white rounded-2xl border p-6 flex-1">
             <p className="font-medium">Tweet Post</p>
             <p className="text-neutral-500 mt-1 text-sm">
