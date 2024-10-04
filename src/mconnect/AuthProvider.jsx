@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useCallback,
   useContext,
@@ -11,6 +11,8 @@ import axios from "axios";
 import { useCookies } from "react-cookie";
 import { jwtDecode } from "jwt-decode";
 import { useWallet } from "@solana/wallet-adapter-react";
+import base58 from "bs58";
+import { createSolanaMessage } from "../lib/solana.js";
 
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
 

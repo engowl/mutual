@@ -1,8 +1,8 @@
-import { ClipLoader } from "react-spinners";
 import { useAuth } from "../AuthProvider.jsx";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { GoogleIcon, WalletIcon } from "./ui/Icons.jsx";
+import { Spinner } from "@nextui-org/react";
 
 export default function MCWidget() {
   const { isLoggedIn, loginWithGoogle, isWalletLoading, isGoogleLoading } =
@@ -43,9 +43,9 @@ export default function MCWidget() {
 const LoginContent = ({ loginWithGoogle, handleConnect }) => {
   return (
     <div className="flex flex-col gap-12 items-center justify-center w-full">
-      <div className="flex flex-col gap-1 items-start w-full">
-        <h1 className="text-xl font-semibold">Hi! 👋</h1>
-        <h2 className="text-lg font-medium">Welcome to Mutual</h2>
+      <div className="flex flex-col items-start w-full">
+        <h1 className="text-[32px] font-medium">Hi! 👋</h1>
+        <h2 className="text-2xl font-medium">Welcome to Mutual</h2>
       </div>
 
       <div className="flex flex-col w-full">
@@ -94,7 +94,11 @@ const LoginContent = ({ loginWithGoogle, handleConnect }) => {
 const Loading = () => {
   return (
     <div className="flex flex-col gap-5 items-center justify-center w-full">
-      <ClipLoader size={40} color="#FF4D06" />
+      <Spinner
+        size="xl"
+        color="primary"
+        className="flex items-center justify-center w-full"
+      />
 
       <h1 className="text-sm text-[#575757]">Logging you in...</h1>
     </div>
