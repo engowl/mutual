@@ -1,12 +1,74 @@
 import { Button, Input } from "@nextui-org/react";
 import IconicButton from "../../components/ui/IconicButton";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useMCAuth } from "../../lib/mconnect/hooks/useMcAuth.jsx";
+import { useNavigate } from "react-router-dom";
+import { mutualAPI } from "../../api/mutual.js";
+import Lottie from "react-lottie";
+
+import animationData from "../../assets/lottie-loading.json";
 
 export default function ProjectOwnerRegisterPage() {
   const [onProcess, setOnProcess] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { isLoggedIn, user, getUser } = useMCAuth();
+
+  const navigate = useNavigate();
+
+  const [name, setName] = useState("");
+  const [tw, setTw] = useState("");
+  const [ca, setCa] = useState("");
+  const [tl, setTl] = useState("");
+  const [group, setGroup] = useState("");
+
+  useEffect(() => {
+    if (user && user.projectOwner) {
+      if (user.projectOwner.status === "APPROVED") {
+        navigate("/success");
+      } else {
+        setOnProcess(true);
+      }
+    }
+  }, [navigate, onProcess, user]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      getUser();
+    }
+
+    if (onProcess) {
+      const interval = setInterval(() => {
+        getUser();
+      }, 8000);
+
+      return () => clearInterval(interval);
+    }
+  }, [getUser, isLoggedIn, onProcess]);
 
   if (onProcess) {
     return <OnProcessBanner />;
+  }
+
+  async function submit() {
+    setLoading(true);
+    try {
+      await mutualAPI.post("/users/update", {
+        projectOwner: {
+          telegramAdmin: tl,
+          projectDetail: {
+            projectName: name,
+            contractAddress: ca,
+            twitterLink: tw,
+            telegramGroupLink: group,
+          },
+        },
+      });
+      getUser();
+    } catch (error) {
+      console.log("ERROR_UPDATE_ROLE: ", error);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -14,7 +76,7 @@ export default function ProjectOwnerRegisterPage() {
       <div className="w-full flex flex-col lg:flex-row lg:h-full">
         {/* Banner */}
 
-        <div className="h-64 w-full lg:h-full lg:w-[610px] overflow-hidden relative">
+        <div className="hidden lg:flex h-full w-[610px] overflow-hidden relative">
           <img
             src="/assets/register-page/project-owner-banner.png"
             alt="project-owner-banner"
@@ -30,6 +92,8 @@ export default function ProjectOwnerRegisterPage() {
               <div className="flex flex-col gap-1 w-full">
                 <label>Project Name</label>
                 <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   placeholder="Enter Project Name"
                   variant="bordered"
                   classNames={{
@@ -42,6 +106,8 @@ export default function ProjectOwnerRegisterPage() {
               <div className="flex flex-col gap-1 w-full">
                 <label>Project Twitter Link</label>
                 <Input
+                  value={tw}
+                  onChange={(e) => setTw(e.target.value)}
                   placeholder="e.g https://twitter.com/johndoe"
                   variant="bordered"
                   classNames={{
@@ -54,6 +120,8 @@ export default function ProjectOwnerRegisterPage() {
               <div className="flex flex-col gap-1 w-full">
                 <label>Project Contract Address</label>
                 <Input
+                  value={ca}
+                  onChange={(e) => setCa(e.target.value)}
                   placeholder="Enter contract address"
                   variant="bordered"
                   classNames={{
@@ -66,6 +134,8 @@ export default function ProjectOwnerRegisterPage() {
               <div className="flex flex-col gap-1 w-full">
                 <label>Telegram Admin Username</label>
                 <Input
+                  value={tl}
+                  onChange={(e) => setTl(e.target.value)}
                   placeholder="Enter admin username"
                   variant="bordered"
                   classNames={{
@@ -78,6 +148,8 @@ export default function ProjectOwnerRegisterPage() {
               <div className="flex flex-col gap-1 w-full">
                 <label>Project Telegram Group Link</label>
                 <Input
+                  value={group}
+                  onChange={(e) => setGroup(e.target.value)}
                   placeholder="Enter Group Link"
                   variant="bordered"
                   classNames={{
@@ -93,7 +165,8 @@ export default function ProjectOwnerRegisterPage() {
               <IconicButton
                 className={"rounded-full border-orangy"}
                 arrowBoxClassName={"rounded-full bg-orangy"}
-                onClick={() => setOnProcess(true)}
+                onClick={submit}
+                isLoading={loading}
               >
                 <p className="group-hover:text-white transition-colors text-orangy px-4">
                   Continue
@@ -108,13 +181,24 @@ export default function ProjectOwnerRegisterPage() {
 }
 
 function OnProcessBanner() {
+  const defaultOptions = {
+    loop: true,
+    autoplay: true,
+    animationData: animationData,
+    rendererSettings: {
+      preserveAspectRatio: "xMidYMid slice",
+    },
+  };
+
   return (
-    <div className="w-full min-h-screen flex items-center justify-center px-5">
+    <div className="w-full min-h-screen flex items-center justify-center text-center px-5 md:px-10">
       <div className="flex flex-col items-center">
-        <div className="size-14 rounded-full bg-neutral-200"></div>
-        <p className="text-2xl font-medium mt-4 text-center">
-          Hang tight, we’re reviewing <br className="inline md:hidden" /> your
-          project! 😉
+        <div className="size-[16rem] md:size-[20rem]">
+          <Lottie options={defaultOptions} height={"100%"} width={"100%"} />
+        </div>
+
+        <p className="text-2xl font-medium mt-4">
+          Hang tight, we’re reviewing your project! 😉
         </p>
         <p className="text-neutral-500 mt-8">Need help?</p>
         <Button
