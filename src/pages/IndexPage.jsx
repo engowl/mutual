@@ -1,129 +1,82 @@
-import { Button } from "@nextui-org/react";
 import { WalletReadyState } from "@solana/wallet-adapter-base";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useCallback, useMemo } from "react";
-import { createSolanaMessage } from "../lib/solana";
-import toast from "react-hot-toast";
-import base58 from "bs58";
-import { mutualPublicAPI } from "../api/mutual";
-import { useCookies } from "react-cookie";
 import { useSession } from "../providers/SessionProvider";
+import { Link } from "react-router-dom";
 
 export default function IndexPage() {
-  const { connected, connecting } = useWallet();
-  const { session, signOut } = useSession();
-  console.log({ session });
+  const { connecting } = useWallet();
+  const { isSignedIn } = useSession();
 
   return (
     <div className="w-full flex items-center justify-center min-h-screen bg-creamy">
       <>
-        {session ? (
-          <div>
-            <h1 className="text-4xl font-medium">Welcome back</h1>
-            <p>{JSON.stringify(session)}</p>
-            <Button onClick={signOut}>Sign out</Button>
-          </div>
+        {isSignedIn ? (
+          <ChooseRole />
         ) : (
-          <>
-            {connecting ? (
-              <>Connecting...</>
-            ) : (
-              <>{connected ? <SignInCard /> : <RegisterCard />}</>
-            )}
-          </>
+          <>{connecting ? <>Connecting...</> : <RegisterCard />}</>
         )}
       </>
     </div>
   );
 }
 
-function SignInCard() {
-  const { disconnect, wallet, signMessage, signIn: walletSignIn } = useWallet();
-  const [, setCookie] = useCookies(["session_token"]);
-
-  async function signIn() {
-    if (!wallet) {
-      return toast.error("Please connect your wallet first");
-    }
-
-    try {
-      const walletSignInData = {
-        chainId: "devnet",
-        address: wallet.adapter.publicKey
-          ? wallet.adapter.publicKey.toBase58()
-          : "",
-        domain: window.location.host,
-        statement: `Sign in to Mutual`,
-      };
-
-      let siwsData = null;
-      let _type = "";
-
-      console.log({ walletSignIn });
-
-      if (walletSignIn) {
-        // Sign in with solana - phantom wallet compliant
-        const signInWalletRes = await walletSignIn(walletSignInData);
-        const output = signInWalletRes;
-
-        siwsData = JSON.stringify({
-          input: walletSignInData,
-          output: output,
-          publicKey: wallet.adapter.publicKey.toBase58(),
-        });
-
-        _type = "siws";
-      } else {
-        // Sign in with solana - custom message
-        const message = createSolanaMessage(
-          wallet.adapter.publicKey,
-          "Sign in to Mutual"
-        );
-        console.log(message);
-
-        const encodedMessage = new TextEncoder().encode(message);
-
-        const signature = await signMessage(encodedMessage);
-
-        siwsData = JSON.stringify({
-          signature: base58.encode(signature),
-          encodedMessage: base58.encode(encodedMessage),
-          publicKey: wallet.adapter.publicKey.toBase58(),
-        });
-
-        _type = "message";
-      }
-
-      const { data } = await mutualPublicAPI.post("/auth/sign-in", {
-        siwsData,
-        type: _type,
-      });
-
-      console.log({ data });
-
-      setCookie("session_token", data.data.session_token);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to sign in");
-    }
-  }
-
+function ChooseRole() {
   return (
-    <div>
-      <h1 className="text-4xl font-medium">
-        Please sign in first before continue
+    <div className="w-full max-w-2xl">
+      <h1 className="text-4xl font-medium text-center">
+        Get Started by Choosing Your Role
       </h1>
-      <div className="bg-white p-6 rounded-xl mt-7">
-        <div className="flex items-center gap-3 mt-8">
-          <Button onClick={disconnect}>Disconnect</Button>
-          <Button color="primary" onClick={signIn}>
-            Sign in with Solana
-          </Button>
-        </div>
+      <div className="mt-7 flex items-center gap-8">
+        <Link
+          to={"/register/influencer"}
+          className="bg-white rounded-2xl p-6 flex flex-col items-center gap-2 hover:bg-neutral-50"
+        >
+          <div className="size-32 rounded-full bg-neutral-200"></div>
+          <h3 className="text-2xl font-medium mt-4">Influencer</h3>
+          <p className="text-sm text-neutral-400 text-center">
+            Set your price and add details for promotional posts on Twitter or
+            Telegram.
+          </p>
+        </Link>
+        <Link
+          to={"/register/project-owner"}
+          className="bg-white rounded-2xl p-6 flex flex-col items-center gap-2 hover:bg-neutral-50"
+        >
+          <div className="size-32 rounded-full bg-neutral-200"></div>
+          <h3 className="text-2xl font-medium mt-4">Project Owner</h3>
+          <p className="text-sm text-neutral-400 text-center">
+            Create your campaign and define your budget for influencer
+            partnerships.
+          </p>
+        </Link>
       </div>
     </div>
   );
 }
+
+// function SignInCard() {
+
+//   return (
+//     <div className="flex flex-col items-center">
+//       <h1 className="text-4xl font-medium">
+//         Please sign in first before continue
+//       </h1>
+//       <div className="flex items-center gap-3 mt-7">
+//         {/* <Button onClick={disconnect}>Disconnect</Button> */}
+//         <IconicButton
+//           onClick={signIn}
+//           className={"rounded-full"}
+//           arrowBoxClassName={"rounded-full"}
+//         >
+//           <p className="text-black group-hover:text-white transition-colors pl-3 pr-5">
+//             Sign In
+//           </p>
+//         </IconicButton>
+//       </div>
+//     </div>
+//   );
+// }
 
 const ommitedWallets = ["MetaMask"];
 

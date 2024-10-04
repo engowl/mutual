@@ -1,13 +1,26 @@
 // Sign in with solana custom button
 
 import { Button } from "@nextui-org/react";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { shortenAddress } from "../../utils/string";
+import { useSession } from "../../providers/SessionProvider";
 
 export default function SignInButton() {
-  const { setVisible } = useWalletModal();
-  function handleSignIn() {
-    setVisible(true);
-    console.log("Sign in");
+  const { wallet, disconnect } = useWallet();
+  const { signOut } = useSession();
+
+  function handleSignOut() {
+    signOut();
+    disconnect();
   }
-  return <Button onClick={handleSignIn}>Sign In</Button>;
+
+  if (!wallet) {
+    return null;
+  }
+
+  return (
+    <Button onClick={handleSignOut}>
+      {shortenAddress(wallet.adapter.publicKey?.toBase58() || "")}
+    </Button>
+  );
 }
