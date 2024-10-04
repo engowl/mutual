@@ -1,37 +1,31 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../AuthProvider.jsx";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useMCAuth } from "./useMcAuth.jsx";
 
 export default function useMCWallet() {
-  const { portal, isLoggedIn, addressType } = useAuth();
+  const { portal, isLoggedIn, walletType } = useMCAuth();
   const [address, setAddress] = useState(null);
   const [wallet, setWallet] = useState(null);
 
-  const {
-    disconnect,
-    wallet: walletAdapter,
-    signMessage,
-    connected,
-    publicKey,
-  } = useWallet();
+  const { wallet: walletAdapter, connected, publicKey } = useWallet();
 
   useEffect(() => {
     const fetchWalletAddress = async () => {
-      if (addressType === "MPC" && portal && isLoggedIn) {
+      if (walletType === "MPC" && portal && isLoggedIn) {
         try {
           const solAddress = await portal.getSolanaAddress();
           setAddress(solAddress);
         } catch (error) {
           console.error("Failed to fetch Solana address:", error);
         }
-      } else if (addressType === "WALLET" && isLoggedIn && connected) {
+      } else if (walletType === "EOA" && isLoggedIn && connected) {
         setAddress(publicKey.toBase58());
         setWallet(walletAdapter);
       }
     };
 
     fetchWalletAddress();
-  }, [portal, isLoggedIn, addressType]);
+  }, [portal, isLoggedIn, walletType, connected, publicKey, walletAdapter]);
 
   async function signSolanaTxWithPortal({
     messageToSign,

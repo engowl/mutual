@@ -1,13 +1,13 @@
-import { useAuth } from "../AuthProvider.jsx";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { GoogleIcon, WalletIcon } from "./ui/Icons.jsx";
 import { Spinner } from "@nextui-org/react";
+import { useMCAuth } from "../hooks/useMcAuth.jsx";
 
 export default function MCWidget() {
   const { isLoggedIn, loginWithGoogle, isWalletLoading, isGoogleLoading } =
-    useAuth();
-  const { connect, connecting, connected, wallet, autoConnect } = useWallet();
+    useMCAuth();
+  const { connect, connected, wallet } = useWallet();
   const { setVisible: setWalletModalOpen } = useWalletModal();
 
   async function handleConnect() {
