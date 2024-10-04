@@ -99,12 +99,18 @@ export default function MCWalletWidget() {
       </Transition>
     </Menu>
   ) : (
-    <div className="flex items-center justify-center rounded-full bg-white h-11 w-36 border-[1px] border-[#C9C9C9]">
-      <Spinner
-        size="sm"
-        color="primary"
-        className="flex items-center justify-center w-full h-72"
-      />
+    <div className="py-2">
+      <div className="flex items-center justify-center rounded-full bg-white h-8 w-36 border-[1px] border-[#C9C9C9]">
+        <Spinner
+          size="sm"
+          color="primary"
+          classNames={{
+            wrapper: "flex items-center justify-center",
+            circle1: "h-4 w-4",
+            circle2: "h-4 w-4",
+          }}
+        />
+      </div>
     </div>
   );
 }

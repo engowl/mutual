@@ -22,7 +22,7 @@ export default function IndexPage() {
   }, [navigate, user]);
 
   return (
-    <div className="w-full flex items-center justify-center min-h-full bg-creamy px-5 py-12">
+    <div className="w-full flex items-center justify-center min-h-full bg-creamy px-5 md:px-10 py-12">
       <>
         {isLoggedIn && user ? (
           <ChooseRole user={user} getUser={getUser} />
@@ -53,8 +53,8 @@ function ChooseRole({ getUser }) {
   };
 
   return (
-    <div className="w-full max-w-2xl px-5 md:px-10">
-      <h1 className="text-4xl font-medium text-center">
+    <div className="w-full max-w-2xl flex flex-col items-center">
+      <h1 className="text-3xl lg:text-4xl font-medium text-center">
         Get Started by Choosing Your Role
       </h1>
       {loading ? (

@@ -8,6 +8,8 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import base58 from "bs58";
 import { createSolanaMessage } from "../solana.js";
 import { useNavigate } from "react-router-dom";
+import { WalletSignInError } from "@solana/wallet-adapter-base";
+import toast from "react-hot-toast";
 
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -49,7 +51,7 @@ export const AuthProvider = ({ children }) => {
       setUser(res.data.data.user);
       setWalletType(res.data.data.user.wallet.type);
 
-      if (walletType === "MPC") {
+      if (res.data.data.user.wallet.type === "MPC") {
         const portalInstance = new Portal({
           apiKey: res.data.data.user.portalClientApiKey,
           autoApprove: true,
@@ -61,7 +63,7 @@ export const AuthProvider = ({ children }) => {
           },
         });
 
-        await new Promise((resolve, _) => {
+        await new Promise((resolve) => {
           portalInstance.onReady(async () => {
             setPortal(portalInstance);
             resolve();
@@ -72,7 +74,7 @@ export const AuthProvider = ({ children }) => {
       console.log("FAILED_GET_USER: ", error);
       return;
     }
-  }, [token, walletType]);
+  }, [token]);
 
   // Google login handler
   const googleLogin = useGoogleLogin({
@@ -276,6 +278,11 @@ export const AuthProvider = ({ children }) => {
       setIsLoggedIn(true);
     } catch (error) {
       disconnect();
+      if (error instanceof WalletSignInError) {
+        if (error.message.includes("rejected")) {
+          return toast.error("Sign in rejected");
+        }
+      }
       console.error("FAILED_LOGIN: ", error);
       return;
     } finally {
@@ -285,6 +292,7 @@ export const AuthProvider = ({ children }) => {
 
   // Logout and clear the session
   const logout = useCallback(() => {
+    console.log("logout called");
     disconnect();
     googleLogout();
     removeCookie("session_token");
@@ -295,7 +303,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (walletType === "EOA") {
-      if (isLoggedIn || connecting || disconnecting || autoConnect) return;
+      if (connecting || disconnecting || autoConnect) return;
       if (!connected && token) {
         logout();
       }
@@ -335,15 +343,18 @@ export const AuthProvider = ({ children }) => {
         const currentTime = Math.floor(Date.now() / 1000);
 
         if (exp > currentTime) {
-          const tokenRemainingTime = exp - currentTime;
-          if (tokenRemainingTime > 5 * 60) {
-            setIsLoggedIn(true);
-            getUser();
-          } else {
-            const expires = new Date(exp * 1000);
-            setCookie("session_token", token, { expires });
-            setIsLoggedIn(true);
-          }
+          // const tokenRemainingTime = exp - currentTime;
+          getUser();
+          console.log("get user called");
+          setIsLoggedIn(true);
+
+          // if (tokenRemainingTime > 5 * 60) {
+          //   setIsLoggedIn(true);
+          // } else {
+          //   const expires = new Date(exp * 1000);
+          //   setCookie("session_token", token, { expires });
+          //   setIsLoggedIn(true);
+          // }
         } else {
           logout();
         }

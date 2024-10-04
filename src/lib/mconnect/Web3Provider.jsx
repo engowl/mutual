@@ -21,10 +21,7 @@ function SolanaProvider({ children }) {
 
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
 
-  const wallets = useMemo(
-    () => [new SolflareWalletAdapter(), new PhantomWalletAdapter()],
-    []
-  );
+  const wallets = useMemo(() => [], []);
 
   return (
     <ConnectionProvider endpoint={endpoint}>
