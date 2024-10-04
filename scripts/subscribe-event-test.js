@@ -5,7 +5,7 @@ const { MUTUAL_ESCROW_IDL } = require('../idl/mutual-escrow');
 
 dotenv.config();
 
-const PROGRAM_ID = "3XxsgvX6n4D1FPo2dLnek7TUnYpt31rBFeWhQGMvN2fJ";
+const PROGRAM_ID = process.env.PROGRAM_ID;
 const RPC_URL = process.env.RPC_URL || "https://api.mainnet-beta.solana.com";
 
 // Create a connection to the Solana network

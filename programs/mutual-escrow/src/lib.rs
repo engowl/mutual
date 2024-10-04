@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
-declare_id!("9vMkoQXTBUk5trejv9REm8wEN3UMxBWqXATpF9tDZ9V4");
+declare_id!("mutvCELMcCmXrHetrFYpDTydeBcowm9gneVVgUQ179f");
 
 #[program]
 pub mod mutual_escrow {
@@ -40,6 +40,24 @@ pub mod mutual_escrow {
     pub struct MaxClaimablePercentageUpdated {
         pub old_percentage: u8,
         pub new_percentage: u8,
+    }
+
+    #[event]
+    pub struct DealResolved {
+        pub order_id: [u8; 16],
+        pub deal: Pubkey,
+        pub project_owner: Pubkey,
+        pub kol: Pubkey,
+        pub released_amount: u64,
+        pub status: DealStatus,
+    }
+
+    #[event]
+    pub struct EligibilityStatusUpdated {
+        pub order_id: [u8; 16],
+        pub deal: Pubkey,
+        pub kol: Pubkey,
+        pub new_status: EligibilityStatus,
     }
 
     pub fn create_deal(
@@ -169,6 +187,11 @@ pub mod mutual_escrow {
             ctx.accounts.escrow.max_claimable_after_obligation, // Handles the partial claim logic
         )?;
 
+        // Debugging output using `msg!()`
+        msg!("Calculated claimable amount: {}", claimable_amount);
+        msg!("Current time: {}", current_time);
+        msg!("Released amount before claim: {}", deal.released_amount);
+
         // Ensure they are claiming at least some amount
         require!(claimable_amount > 0, ErrorCode::ExceedsVestedAmount);
 
@@ -190,11 +213,16 @@ pub mod mutual_escrow {
         // Update the released amount after the claim
         deal.released_amount = deal.released_amount.checked_add(claimable_amount).unwrap();
 
+        // Log the updated released amount for debugging
+        msg!("Released amount after claim: {}", deal.released_amount);
+
         // If full amount has been released, mark deal as completed
         if deal.released_amount >= deal.amount {
             deal.status = DealStatus::Completed;
+            msg!("Deal status: Completed");
         } else {
             deal.status = DealStatus::PartialCompleted;
+            msg!("Deal status: PartialCompleted");
         }
 
         emit!(DealStatusChanged {
@@ -202,6 +230,15 @@ pub mod mutual_escrow {
             deal: deal.key(),
             project_owner: deal.project_owner,
             kol: deal.kol,
+            status: deal.status.clone(),
+        });
+
+        emit!(DealResolved {
+            order_id: deal.order_id,
+            deal: deal.key(),
+            project_owner: deal.project_owner,
+            kol: deal.kol,
+            released_amount: deal.released_amount,
             status: deal.status.clone(),
         });
 
@@ -219,7 +256,20 @@ pub mod mutual_escrow {
             ErrorCode::UnauthorizedSigner
         );
 
-        deal.eligibility_status = new_status;
+        // Set the done_obligation_time when eligibility changes to PartiallyEligible (the status when KOL finished the obligation)
+        if new_status == EligibilityStatus::PartiallyEligible {
+            deal.done_obligation_time = Clock::get()?.unix_timestamp;
+            msg!("done_obligation_time set to: {}", deal.done_obligation_time);
+        }
+
+        deal.eligibility_status = new_status.clone();
+
+        emit!(EligibilityStatusUpdated {
+            order_id: deal.order_id,
+            deal: deal.key(),
+            kol: deal.kol,
+            new_status: new_status.clone(),
+        });
 
         Ok(())
     }
@@ -250,8 +300,9 @@ pub mod mutual_escrow {
 // Enums
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum VestingType {
-    Time,
-    Marketcap,
+    Time,      // Vesting based on time
+    Marketcap, // Vesting based on market cap reaching a target
+    None,      // No vesting, the KOL can claim all tokens immediately
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
@@ -315,6 +366,7 @@ pub struct Deal {
     pub vesting_duration: i64,
     pub start_time: i64,
     pub accept_time: i64,
+    pub done_obligation_time: i64,
     pub status: DealStatus,
     pub dispute_reason: DisputeReason,
     pub deal_bump: u8,
@@ -534,42 +586,112 @@ fn calculate_vested_amount(
     max_claimable_after_obligation: u8, // Updated parameter name
 ) -> Result<u64> {
     match deal.vesting_type {
-        VestingType::Time => {
-            let elapsed_time = current_time.checked_sub(deal.accept_time).unwrap();
-
-            // Check if fully vested
-            if elapsed_time >= deal.vesting_duration {
-                Ok(deal.amount.checked_sub(deal.released_amount).unwrap()) // Full amount minus already released
-            } else {
-                // Calculate how much is vested proportionally over time
-                let vested_portion =
-                    (deal.amount as u128 * elapsed_time as u128) / deal.vesting_duration as u128;
-                let vested_portion = vested_portion as u64; // Convert to u64
-
-                match deal.eligibility_status {
-                    EligibilityStatus::PartiallyEligible => {
-                        // Calculate the maximum claimable amount before full vesting
-                        let max_claimable =
-                            (deal.amount as u128 * max_claimable_after_obligation as u128) / 100;
-                        let max_claimable = max_claimable as u64;
-
-                        // Return the lesser of the vested portion or the maximum allowed
-                        let claimable = std::cmp::min(vested_portion, max_claimable);
-
-                        // Subtract the already released amount
-                        Ok(claimable.checked_sub(deal.released_amount).unwrap())
-                    }
-                    EligibilityStatus::FullyEligible => {
-                        // Fully eligible, so return the vested portion minus already released
-                        Ok(vested_portion.checked_sub(deal.released_amount).unwrap())
-                    }
-                    _ => {
-                        // Not eligible to claim yet
-                        Ok(0)
-                    }
+        // No vesting: Allow the KOL to claim the entire remaining amount only if FullyEligible
+        VestingType::None => {
+            match deal.eligibility_status {
+                EligibilityStatus::FullyEligible => {
+                    msg!("Vesting type is None, and KOL is FullyEligible. Claiming all remaining tokens.");
+                    Ok(deal.amount.checked_sub(deal.released_amount).unwrap())
+                }
+                _ => {
+                    msg!("Vesting type is None, but KOL is not FullyEligible. No tokens can be claimed.");
+                    Ok(0)
                 }
             }
         }
+
+        VestingType::Time => {
+            // Use `done_obligation_time` instead of `accept_time`
+            let elapsed_time = current_time.checked_sub(deal.done_obligation_time).unwrap();
+            msg!("Elapsed time since done_obligation_time: {}", elapsed_time);
+            msg!("Vesting duration: {}", deal.vesting_duration);
+
+            // Ensure that the claimable amount never exceeds the total deal amount
+            let total_amount = deal.amount;
+
+            // Calculate the max claimable portion based on `max_claimable_after_obligation`
+            let max_claimable =
+                (total_amount as u128 * max_claimable_after_obligation as u128) / 100;
+            let max_claimable = max_claimable as u64;
+            msg!(
+                "Max claimable based on max_claimable_after_obligation: {}",
+                max_claimable
+            );
+
+            match deal.eligibility_status {
+                // Partially eligible scenario
+                EligibilityStatus::PartiallyEligible => {
+                    msg!("Partially eligible claim.");
+
+                    // If the KOL has not claimed the max claimable yet, allow them to claim it
+                    if deal.released_amount < max_claimable {
+                        // Allow claiming the difference between max claimable and already released
+                        let claimable =
+                            max_claimable.checked_sub(deal.released_amount).unwrap_or(0);
+                        msg!("Claimable under partial eligibility: {}", claimable);
+
+                        // Ensure the claimable amount doesn't exceed the total deal amount
+                        return Ok(std::cmp::min(claimable, total_amount));
+                    } else {
+                        // Already claimed the max claimable, no more tokens can be claimed under partial eligibility
+                        msg!("Max claimable has already been claimed. No more tokens can be claimed in partial eligibility.");
+                        return Ok(0);
+                    }
+                }
+
+                // Fully eligible scenario
+                EligibilityStatus::FullyEligible => {
+                    msg!("Fully eligible claim.");
+
+                    // If the KOL has not claimed the max claimable during partial eligibility,
+                    // allow them to claim it here first.
+                    let mut claimable = if deal.released_amount < max_claimable {
+                        max_claimable.checked_sub(deal.released_amount).unwrap_or(0)
+                    } else {
+                        0
+                    };
+
+                    // Now calculate the additional claimable based on time passed
+                    // Remaining amount after max claimable (i.e., 100% - max_claimable_after_obligation%)
+                    let remaining_amount = total_amount.checked_sub(max_claimable).unwrap_or(0);
+
+                    // Calculate how much of the remaining amount is vested proportional to time
+                    let vested_remaining = (remaining_amount as u128 * elapsed_time as u128)
+                        / deal.vesting_duration as u128;
+                    let vested_remaining = vested_remaining as u64;
+                    msg!("Vested portion of remaining amount: {}", vested_remaining);
+
+                    // Ensure the vested remaining does not exceed the remaining amount
+                    let vested_remaining = std::cmp::min(vested_remaining, remaining_amount);
+
+                    // Allow claiming additional vested amount minus what has already been claimed
+                    let additional_claimable = vested_remaining
+                        .checked_sub(deal.released_amount.checked_sub(max_claimable).unwrap_or(0))
+                        .unwrap_or(0);
+
+                    msg!(
+                        "Additional claimable after time vesting: {}",
+                        additional_claimable
+                    );
+
+                    claimable += additional_claimable;
+                    msg!("Total claimable under full eligibility: {}", claimable);
+
+                    // Ensure the claimable amount does not exceed the total deal amount
+                    return Ok(std::cmp::min(
+                        claimable,
+                        total_amount.checked_sub(deal.released_amount).unwrap_or(0),
+                    ));
+                }
+
+                _ => {
+                    // Not eligible to claim yet
+                    msg!("Not eligible to claim yet.");
+                    Ok(0)
+                }
+            }
+        }
+
         VestingType::Marketcap => {
             // For Marketcap, check eligibility status
             match deal.eligibility_status {

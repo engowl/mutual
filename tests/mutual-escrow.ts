@@ -56,18 +56,62 @@ describe("mutual_escrow", () => {
     projectOwnerKp = Keypair.generate();
     kolKp = Keypair.generate();
 
-    // Airdrop SOL to project owner and KOL
-    await connection.confirmTransaction(
-      await connection.requestAirdrop(
-        projectOwnerKp.publicKey,
-        LAMPORTS_PER_SOL
-      ),
-      "confirmed"
+    // Give a bit of SOL to each wallet:
+    // Define the smaller SOL amount (0.05 SOL)
+    const smallAmount = 0.05 * LAMPORTS_PER_SOL;
+
+    // Prepare the transaction to send SOL from 'wallet' to projectOwnerKp and kolKp
+    const transaction = new web3.Transaction();
+
+    // Fetch recent blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+
+    // Set the payer (wallet) for the transaction
+    transaction.feePayer = wallet.publicKey;
+
+    // Instruction to send SOL to the project owner
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: wallet.publicKey, // wallet that will send the SOL
+        toPubkey: projectOwnerKp.publicKey,
+        lamports: smallAmount, // 0.05 SOL
+      })
     );
-    await connection.confirmTransaction(
-      await connection.requestAirdrop(kolKp.publicKey, LAMPORTS_PER_SOL),
-      "confirmed"
+
+    // Instruction to send SOL to the KOL
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: wallet.publicKey,
+        toPubkey: kolKp.publicKey,
+        lamports: smallAmount, // 0.05 SOL
+      })
     );
+
+    // Sign the transaction
+    const signedTransaction = await wallet.signTransaction(transaction);
+
+    // Send the transaction
+    const tx = await connection.sendRawTransaction(
+      signedTransaction.serialize()
+    );
+
+    // Confirm the transaction
+    await connection.confirmTransaction(tx, "confirmed");
+    console.log("transferred SOL", tx);
+
+    // // Airdrop SOL to project owner and KOL
+    // await connection.confirmTransaction(
+    //   await connection.requestAirdrop(
+    //     projectOwnerKp.publicKey,
+    //     LAMPORTS_PER_SOL
+    //   ),
+    //   "confirmed"
+    // );
+    // await connection.confirmTransaction(
+    //   await connection.requestAirdrop(kolKp.publicKey, LAMPORTS_PER_SOL),
+    //   "confirmed"
+    // );
 
     // Create an SPL Token Mint
     mintKeypair = Keypair.generate();
@@ -451,6 +495,25 @@ describe("mutual_escrow", () => {
     assert.equal(isCreated, true, "Deal should be marked as 'Created'");
     console.log("Deal become 'Created'");
 
+    // KOL accept the deal
+    txHash = await program.methods
+      .acceptDeal()
+      .accounts({
+        deal: dealPda,
+        escrow: escrowPda,
+        signer: kolKp.publicKey, // KOL signs the transaction
+      })
+      .signers([kolKp])
+      .rpc({ commitment: "confirmed", skipPreflight: true });
+
+    console.log(`Deal accepted by KOL: ${txHash}`);
+
+    // Fetch the updated deal data after the KOL accepts it
+    const updatedDealData = (await program.account.deal.fetch(dealPda)) as any;
+    let isAccepted = new Boolean(updatedDealData.status.accepted);
+    assert.equal(isAccepted, true, "Deal should be marked as 'Accepted'");
+    console.log("Deal status updated to 'Accepted'");
+
     // KOL becomes partially eligible
     txHash = await program.methods
       .setEligibilityStatus({ partiallyEligible: {} })
@@ -473,28 +536,6 @@ describe("mutual_escrow", () => {
     );
 
     console.log("KOL is now partially eligible.");
-
-    // // Eligibility Checking
-    // const dealData_2 = (await program.account.deal.fetch(dealPda)) as any;
-    // console.log(dealData_2);
-    // let isPartiallyEligible = new Boolean(
-    //   dealData_2.eligibilityStatus.partiallyEligible
-    // );
-    // assert.equal(
-    //   isPartiallyEligible,
-    //   true,
-    //   "Deal should be marked as 'PartiallyEligible'"
-    // );
-    // console.log("Deal become 'PartiallyEligible'");
-
-    // const dealData_3 = await program.account.deal.fetch(dealPda);
-    // const currentTime = Math.floor(Date.now() / 1000); // current UNIX timestamp in seconds
-    // const vestedAmount = calculateExpectedVestedAmount(
-    //   dealData_3,
-    //   currentTime,
-    //   20
-    // );
-    // console.log(`Expected claimable amount: ${vestedAmount} tokens`);
 
     // KOL claims 20%
     let kolTokenAccount = await splToken.getOrCreateAssociatedTokenAccount(
@@ -554,6 +595,174 @@ describe("mutual_escrow", () => {
       `KOL claimed ${
         100 - max_claimable_after_obligation
       }% of the tokens. txHash: ${txHash}`
+    );
+  });
+
+  it("Should create a time vesting deal, KOL claims over time", async () => {
+    const amount = new anchor.BN(1000 * 10 ** decimals);
+    const vestingDuration = new anchor.BN(10); // 10 seconds vesting duration for easier testing
+    const firstClaimDelay = 1000; // 1 second delay
+    const secondClaimDelay = 10000; // 9 second delay
+    const max_claimable_after_obligation = 25; // 25% for partial eligibility
+    orderIdBuffer = prepareOrderId("time-order-id-hehe");
+
+    // Create time vesting deal
+    [dealPda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("deal"),
+        orderIdBuffer,
+        projectOwnerKp.publicKey.toBuffer(),
+        kolKp.publicKey.toBuffer(),
+        mint.toBuffer(),
+      ],
+      program.programId
+    );
+
+    let txHash = await program.methods
+      .createDeal(
+        amount,
+        { time: {} }, // VestingType::Time
+        vestingDuration,
+        Array.from(orderIdBuffer)
+      )
+      .accounts({
+        escrow: escrowPda,
+        deal: dealPda,
+        projectOwner: projectOwnerKp.publicKey,
+        kol: kolKp.publicKey,
+        mint: mint,
+        projectOwnerTokenAccount: projectOwnerTokenAccount.address,
+        vaultTokenAccount: vaultTokenAccountPda,
+        vaultAuthority: vaultAuthorityPda,
+        tokenProgram: splToken.TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      })
+      .signers([projectOwnerKp])
+      .rpc({ commitment: "confirmed" });
+
+    console.log(`Time vesting deal created with txHash: ${txHash}`);
+
+    // KOL accepts the deal
+    txHash = await program.methods
+      .acceptDeal()
+      .accounts({
+        deal: dealPda,
+        escrow: escrowPda,
+        signer: kolKp.publicKey, // KOL signs the transaction
+      })
+      .signers([kolKp])
+      .rpc({ commitment: "confirmed", skipPreflight: true });
+
+    console.log(`Deal accepted by KOL with txHash: ${txHash}`);
+
+    // KOL becomes partially eligible (based on max_claimable_after_obligation)
+    await program.methods
+      .setEligibilityStatus({ partiallyEligible: {} })
+      .accounts({
+        deal: dealPda,
+        escrow: escrowPda,
+        signer: adminKp.publicKey,
+      })
+      .signers([adminKp])
+      .rpc({ commitment: "confirmed" });
+
+    console.log(
+      `KOL is now partially eligible (${max_claimable_after_obligation}%).`
+    );
+
+    // KOL claims the partial eligibility amount
+    let kolTokenAccount = await splToken.getOrCreateAssociatedTokenAccount(
+      connection,
+      adminKp,
+      mint,
+      kolKp.publicKey
+    );
+
+    txHash = await program.methods
+      .resolveDeal()
+      .accounts({
+        deal: dealPda,
+        escrow: escrowPda,
+        signer: kolKp.publicKey,
+        vaultTokenAccount: vaultTokenAccountPda,
+        vaultAuthority: vaultAuthorityPda,
+        kolTokenAccount: kolTokenAccount.address,
+        tokenProgram: splToken.TOKEN_PROGRAM_ID,
+      })
+      .signers([kolKp])
+      .rpc({ commitment: "confirmed" });
+
+    console.log(
+      `KOL claimed ${max_claimable_after_obligation}% of the tokens. txHash: ${txHash}`
+    );
+
+    // KOL becomes fully eligible
+    await program.methods
+      .setEligibilityStatus({ fullyEligible: {} })
+      .accounts({
+        deal: dealPda,
+        escrow: escrowPda,
+        signer: adminKp.publicKey,
+      })
+      .signers([adminKp])
+      .rpc({ commitment: "confirmed" });
+
+    console.log("KOL is now fully eligible.");
+
+    // Wait for the first delay (simulate time passage)
+    console.log(`Waiting for ${firstClaimDelay / 1000} seconds...`);
+    await sleep(firstClaimDelay);
+
+    // KOL claims again after some time
+    try {
+      txHash = await program.methods
+        .resolveDeal()
+        .accounts({
+          deal: dealPda,
+          escrow: escrowPda,
+          signer: kolKp.publicKey,
+          vaultTokenAccount: vaultTokenAccountPda,
+          vaultAuthority: vaultAuthorityPda,
+          kolTokenAccount: kolTokenAccount.address,
+          tokenProgram: splToken.TOKEN_PROGRAM_ID,
+        })
+        .signers([kolKp])
+        .rpc({ commitment: "confirmed", skipPreflight: true });
+    } catch (e) {
+      console.log("Error while KOL claiming after first delay", e);
+      throw e;
+    }
+
+    console.log(
+      `KOL claimed more tokens after ${
+        firstClaimDelay / 1000
+      } seconds. txHash: ${txHash}`
+    );
+
+    // Wait for the second delay (simulate more time passing)
+    console.log(`Waiting for ${secondClaimDelay / 1000} seconds...`);
+    await sleep(secondClaimDelay);
+
+    // KOL claims remaining tokens
+    txHash = await program.methods
+      .resolveDeal()
+      .accounts({
+        deal: dealPda,
+        escrow: escrowPda,
+        signer: kolKp.publicKey,
+        vaultTokenAccount: vaultTokenAccountPda,
+        vaultAuthority: vaultAuthorityPda,
+        kolTokenAccount: kolTokenAccount.address,
+        tokenProgram: splToken.TOKEN_PROGRAM_ID,
+      })
+      .signers([kolKp])
+      .rpc({ commitment: "confirmed" });
+
+    console.log(
+      `KOL claimed all remaining tokens after ${
+        secondClaimDelay / 1000
+      } seconds. txHash: ${txHash}`
     );
   });
 
