@@ -7,6 +7,7 @@ import { jwtDecode } from "jwt-decode";
 import { useWallet } from "@solana/wallet-adapter-react";
 import base58 from "bs58";
 import { createSolanaMessage } from "../solana.js";
+import { useNavigate } from "react-router-dom";
 
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 

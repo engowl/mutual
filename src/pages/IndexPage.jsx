@@ -2,7 +2,8 @@ import { useNavigate } from "react-router-dom";
 import MCWidget from "../lib/mconnect/components/MCWidget.jsx";
 import { useMCAuth } from "../lib/mconnect/hooks/useMcAuth.jsx";
 import { useEffect, useState } from "react";
-
+import influencerSvg from "../assets/register-page/influencer.svg";
+import projectOwnerSvg from "../assets/register-page/project-owner.svg";
 import { mutualAPI } from "../api/mutual.js";
 import { Spinner } from "@nextui-org/react";
 
@@ -71,7 +72,7 @@ function ChooseRole({ getUser }) {
             className="bg-white rounded-2xl p-6 flex flex-col items-center gap-2 hover:bg-neutral-50 h-full"
           >
             <img
-              src="/assets/img-influencer.png"
+              src={influencerSvg}
               className="object-contain w-full h-full max-w-[8rem] mb-4"
             />
             <h3 className="text-2xl font-medium mt-auto">Influencer</h3>
@@ -86,7 +87,7 @@ function ChooseRole({ getUser }) {
             className="bg-white rounded-2xl p-6 flex flex-col items-center gap-2 hover:bg-neutral-50 h-full"
           >
             <img
-              src="/assets/img-project-owner.png"
+              src={projectOwnerSvg}
               className="object-contain w-full h-full max-w-[10rem] mb-4"
             />
             <h3 className="text-2xl font-medium mt-auto">Project Owner</h3>
