@@ -26,7 +26,7 @@ export default function MCWalletWidget() {
           ) : (
             <img
               src={wallet.adapter.icon}
-              className="w-10 h-10 rounded-full p-[2px]"
+              className="size-8 rounded-full p-[2px]"
             />
           )}
           <div className="flex gap-2 pr-4 items-center">
