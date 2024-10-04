@@ -1,10 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
 import { googleLogout, useGoogleLogin } from "@react-oauth/google";
 import Portal from "@portal-hq/web";
 import axios from "axios";
@@ -12,11 +6,11 @@ import { useCookies } from "react-cookie";
 import { jwtDecode } from "jwt-decode";
 import { useWallet } from "@solana/wallet-adapter-react";
 import base58 from "bs58";
-import { createSolanaMessage } from "../lib/solana.js";
+import { createSolanaMessage } from "../solana.js";
 
-const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
+const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   // Google setup
@@ -26,7 +20,7 @@ export const AuthProvider = ({ children }) => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [cookies, setCookie, removeCookie] = useCookies(["session_token"]);
 
-  const [addressType, setAddressType] = useState(null);
+  const [walletType, setWalletType] = useState(null);
 
   // Adapter setup
   const {
@@ -44,53 +38,17 @@ export const AuthProvider = ({ children }) => {
 
   const token = cookies.session_token;
 
-  // Handle Session
-  useEffect(() => {
-    if (token) {
-      try {
-        const decodedToken = jwtDecode(token);
-        const exp = decodedToken.exp;
-        const currentTime = Math.floor(Date.now() / 1000);
-
-        if (exp > currentTime) {
-          const tokenRemainingTime = exp - currentTime;
-          if (tokenRemainingTime > 5 * 60) {
-            setIsLoggedIn(true);
-            getUser(token);
-          } else {
-            const expires = new Date(exp * 1000);
-            setCookie("session_token", token, { expires });
-            setIsLoggedIn(true);
-          }
-        } else {
-          logout();
-        }
-      } catch (error) {
-        console.error("Invalid token", error);
-        removeCookie("session_token");
-        logout();
-      }
-    }
-  }, [
-    cookies.session_token,
-    setCookie,
-    removeCookie,
-    isLoggedIn,
-    token,
-    addressType,
-  ]);
-
   // Get User
-  const getUser = async (token) => {
+  const getUser = useCallback(async () => {
     try {
       const res = await axios.get(`${BACKEND_BASE_URL}/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       setUser(res.data.data.user);
-      setAddressType(res.data.data.user.wallet.type);
+      setWalletType(res.data.data.user.wallet.type);
 
-      if (addressType === "MPC") {
+      if (walletType === "MPC") {
         const portalInstance = new Portal({
           apiKey: res.data.data.user.portalClientApiKey,
           autoApprove: true,
@@ -102,7 +60,7 @@ export const AuthProvider = ({ children }) => {
           },
         });
 
-        await new Promise((resolve, reject) => {
+        await new Promise((resolve, _) => {
           portalInstance.onReady(async () => {
             setPortal(portalInstance);
             resolve();
@@ -113,7 +71,7 @@ export const AuthProvider = ({ children }) => {
       console.log("FAILED_GET_USER: ", error);
       return;
     }
-  };
+  }, [token, walletType]);
 
   // Google login handler
   const googleLogin = useGoogleLogin({
@@ -133,7 +91,6 @@ export const AuthProvider = ({ children }) => {
           `${BACKEND_BASE_URL}/auth/sign-in/check`,
           {
             email: userInfo.data.email,
-            googleIdToken: tokenResponse.id_token, // Assuming the token ID is used here
           }
         );
 
@@ -238,7 +195,7 @@ export const AuthProvider = ({ children }) => {
             setPortal(portalInstance);
             setIsLoggedIn(true);
             setUser(registerResponse.data.data.user);
-            setAddressType(registerResponse.data.data.user.wallet.type);
+            setWalletType(registerResponse.data.data.user.wallet.type);
 
             resolve();
           } catch (error) {
@@ -326,17 +283,17 @@ export const AuthProvider = ({ children }) => {
   }, [wallet, walletSignIn, setCookie, signMessage, disconnect]);
 
   // Logout and clear the session
-  const logout = () => {
+  const logout = useCallback(() => {
     disconnect();
     googleLogout();
     removeCookie("session_token");
     setUser(null);
     setPortal(null);
     setIsLoggedIn(false);
-  };
+  }, [disconnect, removeCookie]);
 
   useEffect(() => {
-    if (addressType === "WALLET") {
+    if (walletType === "EOA") {
       if (isLoggedIn || connecting || disconnecting || autoConnect) return;
       if (!connected && token) {
         logout();
@@ -350,13 +307,13 @@ export const AuthProvider = ({ children }) => {
     token,
     logout,
     autoConnect,
-    addressType,
+    walletType,
   ]);
 
   useEffect(() => {
     if (isLoggedIn || connecting || disconnecting) return;
     if (connected && !token) {
-      setAddressType("WALLET");
+      setWalletType("EOA");
       loginWithWallet();
     }
   }, [
@@ -368,22 +325,59 @@ export const AuthProvider = ({ children }) => {
     token,
   ]);
 
+  // Handle Session
+  useEffect(() => {
+    if (token) {
+      try {
+        const decodedToken = jwtDecode(token);
+        const exp = decodedToken.exp;
+        const currentTime = Math.floor(Date.now() / 1000);
+
+        if (exp > currentTime) {
+          const tokenRemainingTime = exp - currentTime;
+          if (tokenRemainingTime > 5 * 60) {
+            setIsLoggedIn(true);
+            getUser();
+          } else {
+            const expires = new Date(exp * 1000);
+            setCookie("session_token", token, { expires });
+            setIsLoggedIn(true);
+          }
+        } else {
+          logout();
+        }
+      } catch (error) {
+        console.error("Invalid token", error);
+        removeCookie("session_token");
+        logout();
+      }
+    }
+  }, [
+    cookies.session_token,
+    setCookie,
+    removeCookie,
+    isLoggedIn,
+    token,
+    walletType,
+    getUser,
+    logout,
+  ]);
+
   return (
     <AuthContext.Provider
       value={{
         user,
+        getUser,
         portal,
         isLoggedIn,
         loginWithGoogle,
         isGoogleLoading,
         isWalletLoading,
         logout,
-        addressType,
+        walletType,
       }}
     >
       {children}
     </AuthContext.Provider>
   );
 };
-
-export const useAuth = () => useContext(AuthContext);

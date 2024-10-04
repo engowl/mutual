@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@nextui-org/react": "^2.4.8",
     "@headlessui/react": "^2.1.9",
+    "@nextui-org/react": "^2.4.8",
     "@portal-hq/web": "^3.2.1",
     "@react-oauth/google": "^0.12.1",
     "@solana/wallet-adapter-base": "^0.9.23",
@@ -35,6 +35,7 @@
     "react-helmet": "^6.1.0",
     "react-hot-toast": "^2.4.1",
     "react-router-dom": "^6.26.2",
+    "swr": "^2.2.5",
     "tailwind-merge": "^2.5.3"
   },
   "devDependencies": {

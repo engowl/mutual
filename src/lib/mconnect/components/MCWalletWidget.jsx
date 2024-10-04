@@ -1,14 +1,14 @@
-import { useAuth } from "../AuthProvider.jsx";
-import useMCWallet from "../hooks/useMcWallet.jsx";
+import useMCWallet from "../hooks/useMCWallet.jsx";
 import { shortenId } from "../utils/formattingUtils.js";
 import { DropdownIcon, GoogleIcon } from "./ui/Icons.jsx";
 import { Menu, MenuButton, MenuItems, Transition } from "@headlessui/react";
 import { Fragment, useState } from "react";
 import { Spinner } from "@nextui-org/react";
+import { useMCAuth } from "../hooks/useMcAuth.jsx";
 
 export default function MCWalletWidget() {
   const { address, wallet } = useMCWallet();
-  const { addressType, logout } = useAuth();
+  const { walletType, logout } = useMCAuth();
   const [copied, setCopied] = useState(false);
 
   async function handleCopyAddress() {
@@ -21,7 +21,7 @@ export default function MCWalletWidget() {
     <Menu as="div" className="relative w-fit pt-2">
       <MenuButton>
         <div className="flex items-center justify-center gap-2 rounded-full bg-white border-[1px] border-[#C9C9C9]">
-          {addressType == "MPC" ? (
+          {walletType == "MPC" ? (
             <GoogleIcon className="w-10 h-10 p-[2px]" />
           ) : (
             <img
