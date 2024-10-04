@@ -1,4 +1,4 @@
-import { authMiddleware } from "../middleware/authMiddleware";
+import { authMiddleware } from "../middleware/authMiddleware.js";
 
 /**
  *
@@ -19,4 +19,16 @@ export const userRoutes = (app, _, done) => {
       }
     }
   );
+
+  app.post("/register", async (request, reply) => {
+    try {
+      return reply
+        .status(200)
+        .send({ message: "User registered successfully" });
+    } catch (error) {
+      return reply.status(500).send({ message: "Error registering user" });
+    }
+  });
+
+  done();
 };

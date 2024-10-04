@@ -14,10 +14,24 @@ datasource db {
 }
 
 model User {
-  id    String     @id @default(cuid())
+  id    String  @id @default(cuid())
   email String  @unique
   name  String?
+
+  role UserRole
+
   wallet UserWallet?
+
+  projectOwner ProjectOwner?
+  influencer  Influencer?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum UserRole {
+  PROJECT_OWNER
+  INFLUENCER
 }
 
 model UserWallet {
@@ -29,4 +43,60 @@ model UserWallet {
   user   User    @relation(fields: [userId], references: [id])
 
   amount Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProjectOwner {
+  id        String      @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  telegramAdmin String
+  projectDetails ProjectDetails[]
+}
+
+model ProjectDetails {
+  id               String      @id @default(cuid())
+  contractAddress  String
+  twitterLink      String
+  telegramGroupLink String
+  marketCap        Float?   
+  age              Int?    
+  holders          Int?
+  projectOwnerId   String @unique
+  projectOwner     ProjectOwner @relation(fields: [projectOwnerId], references: [id])
+}
+
+// Influencer (KOL) Model
+model Influencer {
+  id               Int      @id @default(autoincrement())
+  user             User     @relation(fields: [userId], references: [id])
+  userId           String @unique
+  twitterLink      String
+  telegramUsername String
+  projectCriteria  ProjectCriteria[]
+  offers           Offer[]
+}
+
+// Project Criteria for Influencers (KOL)
+model ProjectCriteria {
+  id                 Int     @id @default(autoincrement())
+  influencer         Influencer @relation(fields: [influencerId], references: [id])
+  influencerId       Int
+  minMarketCap       Float
+  maxMarketCap       Float
+  minAge             Int
+  maxAge             Int
+  min24hVolume       Float
+  minTokenHolders    Int
+  liquidityRequired  Float
+}
+
+model Offer {
+  id                Int      @id @default(autoincrement())
+  influencer        Influencer @relation(fields: [influencerId], references: [id])
+  influencerId      Int
+  tweetPrice        Float
+  telegramPostPrice Float
 }
