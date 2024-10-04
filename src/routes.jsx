@@ -4,6 +4,16 @@ import RootLayout from "./layouts/RootLayout";
 import ProfilePage from "./pages/ProfilePage";
 import InfluencerRegisterPage from "./pages/register/InfluencerRegisterPage";
 import ProjectOwnerRegisterPage from "./pages/register/ProjectOwnerRegisterPage";
+import InfluencerProfilePage from "./pages/influencer/profile/InfluencerProfilePage";
+import InfluencerProfilePublicPage from "./pages/influencer/profile/InfluencerProfilePublicPage";
+import InfluencerMessagePage from "./pages/influencer/InfluencerMessagePage";
+import InfluencerOffersPage from "./pages/influencer/offers/InfluencerOffersPage";
+import InfluencerOffersDetailPage from "./pages/influencer/offers/InfluencerOffersDetailPage";
+import ProjectOwnerBrowsePage from "./pages/project-owner/ProjectOwnerBrowsePage";
+import ProjectOwnerOffersPage from "./pages/project-owner/offers/ProjectOwnerOffersPage";
+import ProjectOwnerMessagePage from "./pages/project-owner/ProjectOwnerMessagePage";
+import OfferSubmittedSuccessPage from "./pages/success/OfferSubmittedSuccessPage";
+import ProjectOwnerMarketCapVestingPage from "./pages/project-owner/vesting/ProjectOwnerMarketCapVestingPage";
 
 export const router = createBrowserRouter([
   {
@@ -27,6 +37,61 @@ export const router = createBrowserRouter([
           {
             path: "project-owner",
             element: <ProjectOwnerRegisterPage />,
+          },
+        ],
+      },
+      {
+        path: "/influencer",
+        children: [
+          {
+            path: "offers",
+            element: <InfluencerOffersPage />,
+          },
+          {
+            path: "offers/:id",
+            element: <InfluencerOffersDetailPage />,
+          },
+          {
+            path: "profile",
+            element: <InfluencerProfilePage />,
+          },
+          {
+            path: "profile/:id",
+            element: <InfluencerProfilePublicPage />,
+          },
+          {
+            path: "message",
+            element: <InfluencerMessagePage />,
+          },
+        ],
+      },
+      {
+        path: "/project-owner",
+        children: [
+          {
+            path: "browse",
+            element: <ProjectOwnerBrowsePage />,
+          },
+          {
+            path: "offers",
+            element: <ProjectOwnerOffersPage />,
+          },
+          {
+            path: "message",
+            element: <ProjectOwnerMessagePage />,
+          },
+          {
+            path: "market-cap-vesting/:influencerId",
+            element: <ProjectOwnerMarketCapVestingPage />,
+          },
+        ],
+      },
+      {
+        path: "/success",
+        children: [
+          {
+            path: "offer-submit",
+            element: <OfferSubmittedSuccessPage />,
           },
         ],
       },

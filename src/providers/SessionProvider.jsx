@@ -1,39 +1,21 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import { jwtDecode } from "jwt-decode";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
-import { useCookies } from "react-cookie";
+import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { createSolanaMessage } from "../lib/solana";
 import base58 from "bs58";
 import { mutualPublicAPI } from "../api/mutual";
 import { WalletSignInError } from "@solana/wallet-adapter-base";
-
-const sessionContext = createContext({
-  session: null,
-  signOut: () => {},
-  signIn: () => {},
-  isSigningIn: false,
-  isSignedIn: false,
-});
-
-export const useSession = () => {
-  const context = useContext(sessionContext);
-  if (context === undefined) {
-    throw new Error("useSession must be used within a SessionProvider");
-  }
-  return context;
-};
+import { sessionContext } from "../contexts/SessionContext";
+import { useLocalStorage } from "@uidotdev/usehooks";
 
 export default function SessionProvider({ children }) {
-  const [cookies, setCookie, removeCookie] = useCookies(["session_key"]);
+  // const [cookies, setCookie, removeCookie] = useCookies(["session_key"]);
+  const [sessionKey, saveSessionKey] = useLocalStorage("session_key", null);
   const [session, setSession] = useState(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
+
+  console.log({ session });
 
   const {
     disconnect,
@@ -46,13 +28,11 @@ export default function SessionProvider({ children }) {
     autoConnect,
   } = useWallet();
 
-  const token = cookies.session_key;
-
   const signOut = useCallback(() => {
     disconnect();
-    removeCookie("session_key");
+    localStorage.removeItem("session_key");
     setSession(null);
-  }, [disconnect, removeCookie]);
+  }, [disconnect]);
 
   const signIn = useCallback(async () => {
     console.log("sign in called");
@@ -118,9 +98,9 @@ export default function SessionProvider({ children }) {
         type: _type,
       });
 
-      setCookie("session_key", data.data.session_token);
+      console.log({ data }, "FROM BACKEND");
 
-      console.log({ data });
+      saveSessionKey(data.data.session_token);
 
       toast.success("Signed in successfully");
     } catch (error) {
@@ -134,11 +114,11 @@ export default function SessionProvider({ children }) {
       toast.dismiss(loadingToast);
       setIsSigningIn(false);
     }
-  }, [wallet, walletSignIn, setCookie, signMessage, disconnect]);
+  }, [wallet, walletSignIn, saveSessionKey, signMessage, disconnect]);
 
   useEffect(() => {
     if (isSigningIn || connecting || disconnecting || autoConnect) return;
-    if (!connected && token) {
+    if (!connected && sessionKey) {
       signOut();
     }
   }, [
@@ -147,21 +127,29 @@ export default function SessionProvider({ children }) {
     disconnecting,
     isSigningIn,
     signOut,
-    token,
+    sessionKey,
     autoConnect,
   ]);
 
   useEffect(() => {
     if (isSigningIn || connecting || disconnecting) return;
-    if (connected && !token) {
+    if (connected && wallet && !sessionKey) {
       signIn();
     }
-  }, [connected, connecting, isSigningIn, signIn, disconnecting, token]);
+  }, [
+    connected,
+    connecting,
+    wallet,
+    isSigningIn,
+    signIn,
+    disconnecting,
+    sessionKey,
+  ]);
 
   useEffect(() => {
-    if (token) {
+    if (sessionKey) {
       try {
-        const decodedToken = jwtDecode(token);
+        const decodedToken = jwtDecode(sessionKey);
 
         // console.log({ decodedToken });
 
@@ -172,18 +160,20 @@ export default function SessionProvider({ children }) {
         if (exp > currentTime) {
           setSession(decodedToken);
         } else {
-          removeCookie("session_key");
+          saveSessionKey(null);
+          localStorage.removeItem("session_key");
           setSession(null);
         }
       } catch (error) {
         console.error("Invalid token", error);
-        removeCookie("session_key");
+        localStorage.removeItem("session_key");
         setSession(null);
       }
     } else {
+      localStorage.removeItem("session_key");
       setSession(null);
     }
-  }, [token, setCookie, removeCookie]);
+  }, [saveSessionKey, sessionKey]);
 
   return (
     <sessionContext.Provider

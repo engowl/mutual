@@ -1,8 +1,10 @@
 import { WalletReadyState } from "@solana/wallet-adapter-base";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useCallback, useMemo } from "react";
-import { useSession } from "../providers/SessionProvider";
 import { Link } from "react-router-dom";
+import influencerSvg from "../assets/register-page/influencer.svg";
+import projectOwnerSvg from "../assets/register-page/project-owner.svg";
+import { useSession } from "../hooks/use-session";
 
 export default function IndexPage() {
   const { connecting } = useWallet();
@@ -30,9 +32,15 @@ function ChooseRole() {
       <div className="mt-7 flex items-center gap-8">
         <Link
           to={"/register/influencer"}
-          className="bg-white rounded-2xl p-6 flex flex-col items-center gap-2 hover:bg-neutral-50"
+          className="bg-white rounded-2xl p-6 flex flex-col items-center gap-2 hover:bg-neutral-50 max-w-[300px] overflow-hidden"
         >
-          <div className="size-32 rounded-full bg-neutral-200"></div>
+          <div className="w-64 h-56">
+            <img
+              src={influencerSvg}
+              alt="influencer-svg"
+              className="w-full h-full object-contain"
+            />
+          </div>
           <h3 className="text-2xl font-medium mt-4">Influencer</h3>
           <p className="text-sm text-neutral-400 text-center">
             Set your price and add details for promotional posts on Twitter or
@@ -41,9 +49,15 @@ function ChooseRole() {
         </Link>
         <Link
           to={"/register/project-owner"}
-          className="bg-white rounded-2xl p-6 flex flex-col items-center gap-2 hover:bg-neutral-50"
+          className="bg-white rounded-2xl p-6 flex flex-col items-center gap-2 hover:bg-neutral-50 max-w-[300px] overflow-hidden"
         >
-          <div className="size-32 rounded-full bg-neutral-200"></div>
+          <div className="w-56 h-56">
+            <img
+              src={projectOwnerSvg}
+              alt="project-owner-svg"
+              className="w-full h-full object-contain"
+            />
+          </div>
           <h3 className="text-2xl font-medium mt-4">Project Owner</h3>
           <p className="text-sm text-neutral-400 text-center">
             Create your campaign and define your budget for influencer
@@ -55,35 +69,12 @@ function ChooseRole() {
   );
 }
 
-// function SignInCard() {
-
-//   return (
-//     <div className="flex flex-col items-center">
-//       <h1 className="text-4xl font-medium">
-//         Please sign in first before continue
-//       </h1>
-//       <div className="flex items-center gap-3 mt-7">
-//         {/* <Button onClick={disconnect}>Disconnect</Button> */}
-//         <IconicButton
-//           onClick={signIn}
-//           className={"rounded-full"}
-//           arrowBoxClassName={"rounded-full"}
-//         >
-//           <p className="text-black group-hover:text-white transition-colors pl-3 pr-5">
-//             Sign In
-//           </p>
-//         </IconicButton>
-//       </div>
-//     </div>
-//   );
-// }
-
 const ommitedWallets = ["MetaMask"];
 
 function RegisterCard() {
   const { wallets, select } = useWallet();
 
-  const [listedWallets, collapsedWallets] = useMemo(() => {
+  const [listedWallets] = useMemo(() => {
     const installed = [];
     const notInstalled = [];
 
@@ -107,8 +98,6 @@ function RegisterCard() {
     },
     [select]
   );
-
-  console.log({ listedWallets, collapsedWallets });
 
   return (
     <div className="bg-white rounded-2xl p-6 w-full max-w-[461px]">

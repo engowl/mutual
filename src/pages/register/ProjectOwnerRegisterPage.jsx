@@ -10,78 +10,97 @@ export default function ProjectOwnerRegisterPage() {
   }
 
   return (
-    <div className="w-full min-h-full flex items-center justify-center">
-      <div className="w-full max-w-xl flex flex-col items-center">
-        <h1 className="text-4xl font-medium">Your Project Details</h1>
-        <div className="mt-8 w-full flex flex-col gap-7">
-          {/* Project name */}
-          <div className="flex flex-col gap-1 w-full">
-            <label>Project Name</label>
-            <Input
-              placeholder="Enter Project Name"
-              variant="bordered"
-              classNames={{
-                inputWrapper: "border rounded-lg h-12",
-                input: "placeholder:opacity-50",
-              }}
-            />
-          </div>
-          <div className="flex flex-col gap-1 w-full">
-            <label>Project Twitter Link</label>
-            <Input
-              placeholder="e.g https://twitter.com/johndoe"
-              variant="bordered"
-              classNames={{
-                inputWrapper: "border rounded-lg h-12",
-                input: "placeholder:opacity-50",
-              }}
-            />
-          </div>
-          <div className="flex flex-col gap-1 w-full">
-            <label>Project Contract Address</label>
-            <Input
-              placeholder="Enter contract address"
-              variant="bordered"
-              classNames={{
-                inputWrapper: "border rounded-lg h-12",
-                input: "placeholder:opacity-50",
-              }}
-            />
-          </div>
-          <div className="flex flex-col gap-1 w-full">
-            <label>Telegram Admin Username</label>
-            <Input
-              placeholder="Enter admin username"
-              variant="bordered"
-              classNames={{
-                inputWrapper: "border rounded-lg h-12",
-                input: "placeholder:opacity-50",
-              }}
-            />
-          </div>
-          <div className="flex flex-col gap-1 w-full">
-            <label>Project Telegram Group Link</label>
-            <Input
-              placeholder="Enter Group Link"
-              variant="bordered"
-              classNames={{
-                inputWrapper: "border rounded-lg h-12",
-                input: "placeholder:opacity-50",
-              }}
-            />
-          </div>
+    <div className="w-full h-full flex items-center justify-center overflow-hidden">
+      <div className="w-full flex h-full">
+        {/* Banner */}
+
+        <div className="h-full w-[610px] overflow-hidden relative">
+          <img
+            src="/assets/register-page/project-owner-banner.png"
+            alt="project-owner-banner"
+            className="w-full h-full object-cover"
+          />
         </div>
 
-        <div className="mt-7 w-full flex justify-end">
-          <IconicButton
-            className={"rounded-full border-orangy"}
-            arrowBoxClassName={"rounded-full bg-orangy"}
-            onClick={() => setOnProcess(true)}
-          >
-            <p className="group-hover:text-white transition-colors text-orangy px-4">
-              Continue
-            </p>
-          </IconicButton>
+        <div className="flex-1 overflow-y-auto">
+          <div className="w-full max-w-3xl flex flex-col items-start px-8 py-12">
+            <h1 className="text-4xl font-medium">Your Project Details</h1>
+            <div className="mt-8 w-full flex flex-col gap-7">
+              {/* Project name */}
+              <div className="flex flex-col gap-1 w-full">
+                <label>Project Name</label>
+                <Input
+                  placeholder="Enter Project Name"
+                  variant="bordered"
+                  classNames={{
+                    inputWrapper:
+                      "border rounded-lg h-12 border-black/10 shadow-none",
+                    input: "placeholder:opacity-50",
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-1 w-full">
+                <label>Project Twitter Link</label>
+                <Input
+                  placeholder="e.g https://twitter.com/johndoe"
+                  variant="bordered"
+                  classNames={{
+                    inputWrapper:
+                      "border rounded-lg h-12 border-black/10 shadow-none",
+                    input: "placeholder:opacity-50",
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-1 w-full">
+                <label>Project Contract Address</label>
+                <Input
+                  placeholder="Enter contract address"
+                  variant="bordered"
+                  classNames={{
+                    inputWrapper:
+                      "border rounded-lg h-12 border-black/10 shadow-none",
+                    input: "placeholder:opacity-50",
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-1 w-full">
+                <label>Telegram Admin Username</label>
+                <Input
+                  placeholder="Enter admin username"
+                  variant="bordered"
+                  classNames={{
+                    inputWrapper:
+                      "border rounded-lg h-12 border-black/10 shadow-none",
+                    input: "placeholder:opacity-50",
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-1 w-full">
+                <label>Project Telegram Group Link</label>
+                <Input
+                  placeholder="Enter Group Link"
+                  variant="bordered"
+                  classNames={{
+                    inputWrapper:
+                      "border rounded-lg h-12 border-black/10 shadow-none",
+                    input: "placeholder:opacity-50",
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-7 w-full flex justify-end">
+              <IconicButton
+                className={"rounded-full border-orangy"}
+                arrowBoxClassName={"rounded-full bg-orangy"}
+                onClick={() => setOnProcess(true)}
+              >
+                <p className="group-hover:text-white transition-colors text-orangy px-4">
+                  Continue
+                </p>
+              </IconicButton>
+            </div>
+          </div>
         </div>
       </div>
     </div>

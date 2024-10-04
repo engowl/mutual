@@ -1,8 +1,9 @@
-import { Button, Checkbox, Input } from "@nextui-org/react";
+import { Button, Checkbox, Input, Textarea } from "@nextui-org/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Newspaper, Package, UserCircle } from "lucide-react";
 import { influencerRegisterStepAtom } from "../../store/register-page-store";
 import { cnm } from "../../utils/style";
+import { useNavigate } from "react-router-dom";
 
 export default function InfluencerRegisterPage() {
   const [step, setStep] = useAtom(influencerRegisterStepAtom);
@@ -242,12 +243,87 @@ function ProjectCriteria() {
 }
 
 function PackageAndPricing() {
+  const setStep = useSetAtom(influencerRegisterStepAtom);
+  const navigate = useNavigate();
   return (
-    <div className="w-full max-w-xl">
-      <div>
+    <div className="w-full max-w-3xl">
+      <div className="w-full">
         <h1 className="text-4xl font-medium">Set Your Package</h1>
 
-        <div className="mt-12 flex gap-8"></div>
+        <div className="mt-12 flex gap-6 w-full">
+          {/* Tweet post package input*/}
+          <div className="bg-white rounded-2xl border p-6 flex-1">
+            <p className="font-medium">Tweet Post</p>
+            <p className="text-xs text-neutral-500">
+              Add price and details for one posting on Twitter
+            </p>
+            <div className="w-full flex items-center justify-between mt-8">
+              <input
+                className="text-4xl font-medium outline-none placeholder:text-neutral-300 max-w-64 text-orangy"
+                placeholder="0.00"
+              />
+              <p className="text-3xl font-medium">SOL</p>
+            </div>
+            <div className="mt-6">
+              <p>Description</p>
+              <Textarea
+                placeholder="Enter your description"
+                variant="bordered"
+                className="mt-2"
+                classNames={{
+                  inputWrapper:
+                    "bg-creamy-50 border-black/10 border p-4 rounded-lg",
+                  input: "placeholder:text-neutral-400",
+                }}
+              />
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border p-6 flex-1">
+            <p className="font-medium">Tweet Post</p>
+            <p className="text-xs text-neutral-500">
+              Add price and details for one posting on Twitter
+            </p>
+            <div className="w-full flex items-center justify-between mt-8">
+              <input
+                className="text-4xl font-medium outline-none placeholder:text-neutral-300 max-w-64 text-orangy"
+                placeholder="0.00"
+              />
+              <p className="text-3xl font-medium">SOL</p>
+            </div>
+            <div className="mt-6">
+              <p>Description</p>
+              <Textarea
+                placeholder="Enter your description"
+                variant="bordered"
+                className="mt-2"
+                classNames={{
+                  inputWrapper:
+                    "bg-creamy-50 border-black/10 border p-4 rounded-lg",
+                  input: "placeholder:text-neutral-400",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-6 justify-end">
+          <Button
+            onClick={() => setStep(2)}
+            color="default"
+            className="rounded-full"
+          >
+            Back
+          </Button>
+          <Button
+            onClick={() => {
+              // TODO confirm button and process the data
+              navigate("/influencer/profile");
+            }}
+            className="bg-orangy text-white rounded-full px-8"
+          >
+            Continue
+          </Button>
+        </div>
       </div>
     </div>
   );

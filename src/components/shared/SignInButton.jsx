@@ -3,7 +3,7 @@
 import { Button } from "@nextui-org/react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { shortenAddress } from "../../utils/string";
-import { useSession } from "../../providers/SessionProvider";
+import { useSession } from "../../hooks/use-session";
 
 export default function SignInButton() {
   const { wallet, disconnect } = useWallet();
@@ -19,7 +19,7 @@ export default function SignInButton() {
   }
 
   return (
-    <Button onClick={handleSignOut}>
+    <Button onClick={handleSignOut} className="h-7 text-sm">
       {shortenAddress(wallet.adapter.publicKey?.toBase58() || "")}
     </Button>
   );
