@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
       setUser(res.data.data.user);
       setWalletType(res.data.data.user.wallet.type);
 
-      if (walletType === "MPC") {
+      if (res.data.data.user.wallet.type === "MPC") {
         const portalInstance = new Portal({
           apiKey: res.data.data.user.portalClientApiKey,
           autoApprove: true,
@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }) => {
       console.log("FAILED_GET_USER: ", error);
       return;
     }
-  }, [token, walletType]);
+  }, [token]);
 
   // Google login handler
   const googleLogin = useGoogleLogin({
@@ -194,8 +194,7 @@ export const AuthProvider = ({ children }) => {
             // Set state
             setPortal(portalInstance);
             setIsLoggedIn(true);
-            setUser(registerResponse.data.data.user);
-            setWalletType(registerResponse.data.data.user.wallet.type);
+            setWalletType("MPC");
 
             resolve();
           } catch (error) {
