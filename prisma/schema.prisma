@@ -58,10 +58,13 @@ model ProjectOwner {
   user           User             @relation(fields: [userId], references: [id])
   telegramAdmin  String
   projectDetails ProjectDetails[]
+
+  status ProjectOwnerStatus @default(PENDING)
 }
 
 model ProjectDetails {
   id                String       @id @default(cuid())
+  projectName       String
   contractAddress   String
   twitterLink       String
   telegramGroupLink String
@@ -108,4 +111,9 @@ model Offer {
 enum UserWalletType {
   MPC
   EOA
+}
+
+enum ProjectOwnerStatus {
+  PENDING
+  APPROVED
 }

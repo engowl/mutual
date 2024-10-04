@@ -24,7 +24,7 @@ export const authRoutes = (app, _, done) => {
           },
           {
             headers: {
-              Authorization: `Bearer 0b2f1f0a-886d-4d6a-a015-91393ff1e1c5`,
+              Authorization: `Bearer ${process.env.CUSTODIAN_API_KEY}`,
               "Content-Type": "application/json",
             },
           }

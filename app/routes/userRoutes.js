@@ -37,6 +37,16 @@ export const userRoutes = (app, _, done) => {
           },
           include: {
             wallet: true,
+            projectOwner: {
+              include: {
+                projectDetails: true,
+              },
+            },
+            influencer: {
+              include: {
+                projectCriteria: true,
+              },
+            },
           },
         });
 
@@ -85,8 +95,16 @@ export const userRoutes = (app, _, done) => {
         }
 
         if (projectOwner) {
+          const { telegramAdmin, projectDetail } = projectOwner;
+
           updateData.projectOwner = {
-            update: projectOwner,
+            create: {
+              telegramAdmin: telegramAdmin || "",
+              status: "PENDING",
+              projectDetails: {
+                create: projectDetail,
+              },
+            },
           };
         }
 
