@@ -7,7 +7,6 @@ import { jwtDecode } from "jwt-decode";
 import { useWallet } from "@solana/wallet-adapter-react";
 import base58 from "bs58";
 import { createSolanaMessage } from "../solana.js";
-import { useNavigate } from "react-router-dom";
 import { WalletSignInError } from "@solana/wallet-adapter-base";
 import toast from "react-hot-toast";
 
@@ -197,8 +196,7 @@ export const AuthProvider = ({ children }) => {
             // Set state
             setPortal(portalInstance);
             setIsLoggedIn(true);
-            setUser(registerResponse.data.data.user);
-            setWalletType(registerResponse.data.data.user.wallet.type);
+            setWalletType("MPC");
 
             resolve();
           } catch (error) {
