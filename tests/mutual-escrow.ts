@@ -49,6 +49,8 @@ describe("mutual_escrow", () => {
   const orderId = "your-unique-order-id";
   let orderIdBuffer: Buffer;
 
+  const max_claimable_after_obligation = 25;
+
   before(async () => {
     // Initialize keypairs
     projectOwnerKp = Keypair.generate();
@@ -94,7 +96,7 @@ describe("mutual_escrow", () => {
     );
 
     // Mint tokens to the project owner's token account
-    const mintAmount = BigInt(1000 * 10 ** decimals);
+    const mintAmount = BigInt(10000 * 10 ** decimals);
     await splToken.mintTo(
       connection,
       adminKp,
@@ -149,7 +151,7 @@ describe("mutual_escrow", () => {
     const escrowAccountInfo = await connection.getAccountInfo(escrowPda);
     if (escrowAccountInfo === null) {
       await program.methods
-        .initialize()
+        .initialize(max_claimable_after_obligation)
         .accounts({
           escrow: escrowPda,
           admin: adminKp.publicKey,
@@ -164,7 +166,7 @@ describe("mutual_escrow", () => {
   });
 
   it("Should create a deal", async () => {
-    const amount = new anchor.BN(800 * 10 ** decimals);
+    const amount = new anchor.BN(1000 * 10 ** decimals);
     const vestingDuration = new anchor.BN(60);
 
     const txHash = await program.methods
@@ -172,7 +174,6 @@ describe("mutual_escrow", () => {
         amount,
         { time: {} },
         vestingDuration,
-        null,
         Array.from(orderIdBuffer)
       )
       .accounts({
@@ -227,14 +228,14 @@ describe("mutual_escrow", () => {
     // Assertions
     assert.equal(
       Number(projectOwnerTokenAccountInfo.amount),
-      200 * 10 ** decimals,
-      "Project Owner should have 200 tokens after transferring 800 tokens to the vault"
+      9000 * 10 ** decimals,
+      "Project Owner should have 9000 tokens after transferring 1000 tokens to the vault"
     );
 
     assert.equal(
       Number(vaultTokenAccountInfo.amount),
-      800 * 10 ** decimals,
-      "Vault should have 800 tokens after deal creation"
+      1000 * 10 ** decimals,
+      "Vault should have 1000 tokens after deal creation"
     );
 
     // Fetch and display deal details
@@ -264,7 +265,7 @@ describe("mutual_escrow", () => {
 
     try {
       // First, create the deal to be rejected
-      const amount = new anchor.BN(50 * 10 ** decimals); // 800 tokens
+      const amount = new anchor.BN(1000 * 10 ** decimals); // 1000 tokens
       const vestingDuration = new anchor.BN(60); // 1 minute
 
       orderIdBuffer = prepareOrderId("reject-order-id");
@@ -285,7 +286,6 @@ describe("mutual_escrow", () => {
           amount,
           { time: {} }, // VestingType::Time
           vestingDuration,
-          null,
           Array.from(orderIdBuffer)
         )
         .accounts({
@@ -381,14 +381,14 @@ describe("mutual_escrow", () => {
       // Assertions to check the expected outcome
       assert.equal(
         Number(projectOwnerTokenAccountInfo.amount),
-        200 * 10 ** decimals,
-        "Project Owner should have all 1000 tokens after rejecting the deal"
+        9_000 * 10 ** decimals,
+        "Project Owner should have 9000 tokens after rejecting the deal"
       );
 
       assert.equal(
         Number(vaultTokenAccountInfo.amount),
-        800 * 10 ** decimals,
-        "Vault should have 0 tokens after rejecting the deal"
+        1_000 * 10 ** decimals,
+        "Vault should have 1000 tokens after rejecting the deal"
       );
 
       // Check deal status to ensure it's marked as 'Rejected'
@@ -403,6 +403,159 @@ describe("mutual_escrow", () => {
   });
 
   // Add more tests here, e.g., for releasing tokens, handling disputes, etc.
+  it("Should create a market cap vesting deal, KOL claim partially and fully", async () => {
+    const amount = new anchor.BN(1000 * 10 ** decimals); // 1000 tokens
+    orderIdBuffer = prepareOrderId("marketcap-order-id");
+
+    const vestingDuration = new anchor.BN(0); // 0 minute
+
+    // Create market cap vesting deal
+    [dealPda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("deal"),
+        orderIdBuffer,
+        projectOwnerKp.publicKey.toBuffer(),
+        kolKp.publicKey.toBuffer(),
+        mint.toBuffer(),
+      ],
+      program.programId
+    );
+
+    let txHash = await program.methods
+      .createDeal(
+        amount,
+        { marketcap: {} }, // VestingType::Marketcap
+        vestingDuration, // No duration needed for market cap vesting
+        Array.from(orderIdBuffer)
+      )
+      .accounts({
+        escrow: escrowPda,
+        deal: dealPda,
+        projectOwner: projectOwnerKp.publicKey,
+        kol: kolKp.publicKey,
+        mint: mint,
+        projectOwnerTokenAccount: projectOwnerTokenAccount.address,
+        vaultTokenAccount: vaultTokenAccountPda,
+        vaultAuthority: vaultAuthorityPda,
+        tokenProgram: splToken.TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([projectOwnerKp])
+      .rpc({ commitment: "confirmed", skipPreflight: true });
+
+    console.log(`Market cap vesting deal created: ${txHash}`);
+
+    // Status Checking
+    const dealData = (await program.account.deal.fetch(dealPda)) as any;
+    let isCreated = new Boolean(dealData.status.created);
+    assert.equal(isCreated, true, "Deal should be marked as 'Created'");
+    console.log("Deal become 'Created'");
+
+    // KOL becomes partially eligible
+    txHash = await program.methods
+      .setEligibilityStatus({ partiallyEligible: {} })
+      .accounts({
+        deal: dealPda,
+        escrow: escrowPda,
+        signer: adminKp.publicKey,
+      })
+      .signers([adminKp])
+      .rpc({ commitment: "confirmed" });
+
+    // Confirm transaction
+    const latestBlockHash = await connection.getLatestBlockhash();
+    await connection.confirmTransaction(
+      {
+        signature: txHash,
+        ...latestBlockHash,
+      },
+      "confirmed"
+    );
+
+    console.log("KOL is now partially eligible.");
+
+    // // Eligibility Checking
+    // const dealData_2 = (await program.account.deal.fetch(dealPda)) as any;
+    // console.log(dealData_2);
+    // let isPartiallyEligible = new Boolean(
+    //   dealData_2.eligibilityStatus.partiallyEligible
+    // );
+    // assert.equal(
+    //   isPartiallyEligible,
+    //   true,
+    //   "Deal should be marked as 'PartiallyEligible'"
+    // );
+    // console.log("Deal become 'PartiallyEligible'");
+
+    // const dealData_3 = await program.account.deal.fetch(dealPda);
+    // const currentTime = Math.floor(Date.now() / 1000); // current UNIX timestamp in seconds
+    // const vestedAmount = calculateExpectedVestedAmount(
+    //   dealData_3,
+    //   currentTime,
+    //   20
+    // );
+    // console.log(`Expected claimable amount: ${vestedAmount} tokens`);
+
+    // KOL claims 20%
+    let kolTokenAccount = await splToken.getOrCreateAssociatedTokenAccount(
+      connection,
+      adminKp,
+      mint,
+      kolKp.publicKey
+    );
+
+    txHash = await program.methods
+      .resolveDeal()
+      .accounts({
+        deal: dealPda,
+        vaultTokenAccount: vaultTokenAccountPda,
+        vaultAuthority: vaultAuthorityPda,
+        kolTokenAccount: kolTokenAccount.address,
+        tokenProgram: splToken.TOKEN_PROGRAM_ID,
+        escrow: escrowPda,
+        signer: kolKp.publicKey,
+      })
+      .signers([kolKp])
+      .rpc({ commitment: "confirmed" });
+
+    console.log(
+      `KOL claimed ${max_claimable_after_obligation}% of the tokens. txHash: ${txHash}`
+    );
+
+    // Admin sets fully eligible after market cap reached
+    await program.methods
+      .setEligibilityStatus({ fullyEligible: {} })
+      .accounts({
+        deal: dealPda,
+        escrow: escrowPda,
+        signer: adminKp.publicKey,
+      })
+      .signers([adminKp])
+      .rpc({ commitment: "confirmed" });
+
+    console.log("KOL is now fully eligible.");
+
+    // KOL claims remaining 80%
+    txHash = await program.methods
+      .resolveDeal()
+      .accounts({
+        deal: dealPda,
+        vaultTokenAccount: vaultTokenAccountPda,
+        vaultAuthority: vaultAuthorityPda,
+        kolTokenAccount: kolTokenAccount.address,
+        tokenProgram: splToken.TOKEN_PROGRAM_ID,
+        escrow: escrowPda,
+        signer: kolKp.publicKey,
+      })
+      .signers([kolKp])
+      .rpc({ commitment: "confirmed" });
+
+    console.log(
+      `KOL claimed ${
+        100 - max_claimable_after_obligation
+      }% of the tokens. txHash: ${txHash}`
+    );
+  });
 
   function prepareOrderId(orderId: string): Buffer {
     let orderIdBuffer = Buffer.from(orderId, "utf-8");
