@@ -1,26 +1,12 @@
-// Sign in with solana custom button
-
-import { Button } from "@nextui-org/react";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { shortenAddress } from "../../utils/string";
-import { useSession } from "../../hooks/use-session";
+import MCWalletWidget from "../../lib/mconnect/components/MCWalletWidget.jsx";
+import { useMCAuth } from "../../lib/mconnect/hooks/useMcAuth.jsx";
 
 export default function SignInButton() {
-  const { wallet, disconnect } = useWallet();
-  const { signOut } = useSession();
+  const { isLoggedIn } = useMCAuth();
 
-  function handleSignOut() {
-    signOut();
-    disconnect();
-  }
-
-  if (!wallet) {
+  if (!isLoggedIn) {
     return null;
   }
 
-  return (
-    <Button onClick={handleSignOut} className="h-7 text-sm">
-      {shortenAddress(wallet.adapter.publicKey?.toBase58() || "")}
-    </Button>
-  );
+  return <MCWalletWidget />;
 }
