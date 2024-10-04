@@ -1,16 +1,13 @@
 import { NextUIProvider } from "@nextui-org/react";
-import Web3Provider from "./Web3Provider";
-import SessionProvider from "./SessionProvider";
 import ComponentProvider from "./ComponentProvider";
+import MCProvider from "../mconnect/MCProvider.jsx";
 
 export default function RootProvider({ children }) {
   return (
-    <Web3Provider>
-      <SessionProvider>
-        <NextUIProvider>
-          <ComponentProvider>{children}</ComponentProvider>
-        </NextUIProvider>
-      </SessionProvider>
-    </Web3Provider>
+    <MCProvider>
+      <NextUIProvider>
+        <ComponentProvider>{children}</ComponentProvider>
+      </NextUIProvider>
+    </MCProvider>
   );
 }

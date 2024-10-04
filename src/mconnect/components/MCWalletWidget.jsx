@@ -1,16 +1,10 @@
-import { ClipLoader } from "react-spinners";
 import { useAuth } from "../AuthProvider.jsx";
 import useMCWallet from "../hooks/useMcWallet.jsx";
 import { shortenId } from "../utils/formattingUtils.js";
 import { DropdownIcon, GoogleIcon } from "./ui/Icons.jsx";
-import {
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
-  Transition,
-} from "@headlessui/react";
+import { Menu, MenuButton, MenuItems, Transition } from "@headlessui/react";
 import { Fragment, useState } from "react";
+import { Spinner } from "@nextui-org/react";
 
 export default function MCWalletWidget() {
   const { address, wallet } = useMCWallet();
@@ -24,7 +18,7 @@ export default function MCWalletWidget() {
   }
 
   return address ? (
-    <Menu as="div" className="w-fit h-full">
+    <Menu as="div" className="relative w-fit pt-2">
       <MenuButton>
         <div className="flex items-center justify-center gap-2 rounded-full bg-white border-[1px] border-[#C9C9C9]">
           {addressType == "MPC" ? (
@@ -51,7 +45,7 @@ export default function MCWalletWidget() {
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
-        <MenuItems className="absolute right-5 mt-4 w-56 origin-top-right rounded-xl p-4 backdrop-blur-xl z-50 bg-white border-[1px] border-[#C9C9C9]">
+        <MenuItems className="absolute right-0 mt-4 w-56 origin-top-right rounded-xl p-4 backdrop-blur-xl z-50 bg-white border-[1px] border-[#C9C9C9]">
           <div className="flex flex-col items-start text-[#131523]">
             <button
               onClick={handleCopyAddress}
@@ -106,7 +100,11 @@ export default function MCWalletWidget() {
     </Menu>
   ) : (
     <div className="flex items-center justify-center rounded-full bg-white h-11 w-36 border-[1px] border-[#C9C9C9]">
-      <ClipLoader size={20} color="#FF4D06" />
+      <Spinner
+        size="sm"
+        color="primary"
+        className="flex items-center justify-center w-full h-72"
+      />
     </div>
   );
 }
