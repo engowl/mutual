@@ -8,7 +8,7 @@ export default function RootLayout() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn && isLoggedIn === false) {
       navigate("/");
     }
   }, [isLoggedIn, navigate]);
