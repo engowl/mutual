@@ -91,6 +91,10 @@ export const campaignWorkers = (app, _, done) => {
     }
   };
 
+  // TODO: Scans for MC Threshold reached or not. For the devnet, just make it reached after 1 minute
+
+  // TODO: Scans for Token price updates. For the devnet, just make everything $1 for the price
+
   // Graceful Shutdown: Ensure proper cleanup on exit
   const handleExit = () => {
     console.log('\nGracefully shutting down the event listeners...');

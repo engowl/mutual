@@ -1,5 +1,6 @@
 import { PublicKey } from '@solana/web3.js';
 import { BN } from 'bn.js';
+import { Buffer as Buffer2 } from 'buffer';
 
 /**
  * 
@@ -136,6 +137,17 @@ export function prepareOrderId(orderId) {
   } else if (orderIdBuffer.length < 16) {
     const padding = Buffer.alloc(16 - orderIdBuffer.length);
     orderIdBuffer = Buffer.concat([orderIdBuffer, padding], 16);
+  }
+  return orderIdBuffer;
+}
+
+export function prepareOrderId_2(orderId) {
+  let orderIdBuffer = Buffer2.from(orderId, 'utf-8');
+  if (orderIdBuffer.length > 16) {
+    orderIdBuffer = orderIdBuffer.slice(0, 16);
+  } else if (orderIdBuffer.length < 16) {
+    const padding = Buffer2.alloc(16 - orderIdBuffer.length);
+    orderIdBuffer = Buffer2.concat([orderIdBuffer, padding], 16);
   }
   return orderIdBuffer;
 }

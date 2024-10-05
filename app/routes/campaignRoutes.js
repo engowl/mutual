@@ -4,6 +4,8 @@ import { authMiddleware } from "../middleware/authMiddleware.js"
 import { validateOfferData, validateVestingCondition } from "../utils/campaignUtils.js"
 import { getCreateDealTxDetails } from "../lib/contract/mutualEscrowContract.js"
 import { prepareOrderId, validateTokenAmount } from "../utils/contractUtils.js"
+import { adminKp, MUTUAL_ESCROW_PROGRAM } from "../lib/contract/contracts.js"
+import { PublicKey } from "@solana/web3.js"
 /**
  *
  * @param {import("fastify").FastifyInstance} app
@@ -20,12 +22,12 @@ export const campaignRoutes = (app, _, done) => {
     const validationResult = await validateOfferData(req, reply);
 
     if (!validationResult.success) {
-      return reply.status(400).send({ 
-        message: validationResult.message 
+      return reply.status(400).send({
+        message: validationResult.message
       })
-    }else{
-      return reply.status(200).send({ 
-        message: 'Offer data is valid' 
+    } else {
+      return reply.status(200).send({
+        message: 'Offer data is valid'
       })
     }
   });
@@ -98,11 +100,24 @@ export const campaignRoutes = (app, _, done) => {
         return reply.status(400).send({ message: validateAmount.message });
       }
 
+      const projectOwner = await prismaClient.projectOwner.findUnique({
+        where: {
+          userId: user.id
+        }
+      });
+      if (!projectOwner) {
+        return reply.status(400).send({ message: 'Project owner not found' });
+      }
+
+      console.log('Project Owner:', projectOwner);
+
       // Insert the offer to the database
       const offer = await prismaClient.campaignOrder.create({
         data: {
           id: orderId,
           influencerId: influencerId,
+          projectOwnerId: projectOwner.id,
+          chainId: chain.dbChainId,
           tokenId: token.id,
           tokenAmount: tokenAmount,
           channel: campaignChannel.toUpperCase(),
@@ -121,9 +136,116 @@ export const campaignRoutes = (app, _, done) => {
   })
 
   // KOL accepts the deal
-  app.post('/accept-deal', { preHandler: [authMiddleware] }, async (request, reply) => {
-    // KOL accepts the deal
-    reply.send('OK');
+  app.post('/accept-offer', { preHandler: [authMiddleware] }, async (request, reply) => {
+    try {
+      const { user } = request;
+      const { orderId } = request.body;
+
+      const kol = await prismaClient.influencer.findUnique({
+        where: {
+          userId: user.id
+        },
+        include: {
+          user: {
+            include: {
+              wallet: true
+            }
+          }
+        }
+      });
+      if (!kol) {
+        return reply.status(400).send({ message: 'KOL not found' });
+      }
+
+      const order = await prismaClient.campaignOrder.findUnique({
+        where: {
+          id: orderId,
+          influencerId: kol.id
+        },
+        include: {
+          projectOwner: {
+            include: {
+              user: {
+                include: {
+                  wallet: true
+                }
+              }
+            }
+          },
+          token: true
+        }
+      });
+
+      if (!order) {
+        return reply.status(400).send({ message: 'Order not found' });
+      }
+
+      // TODO: Call the contract to accept the deal
+      const orderChain = CHAINS.find(c => c.dbChainId === order.chainId);
+      const program = MUTUAL_ESCROW_PROGRAM(orderChain.id);
+
+      const orderIdBuffer = prepareOrderId(order.id);
+      const kolPublicKey = new PublicKey(kol.user.wallet.address);
+      const projectOwnerPublicKey = new PublicKey(order.projectOwner.user.wallet.address);
+      const mintPublicKey = new PublicKey(order.token.mintAddress);
+
+
+      console.log({
+        orderIdBuffer,
+        kolPublicKey,
+        projectOwnerPublicKey,
+        mintPublicKey
+      })
+
+      const [dealPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('deal'),
+          orderIdBuffer,
+          projectOwnerPublicKey.toBuffer(),
+          kolPublicKey.toBuffer(),
+          mintPublicKey.toBuffer()
+        ],
+        program.programId
+      );
+      const [escrowPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("escrow")
+        ],
+        program.programId
+      );
+
+      console.log('dealPda:', dealPda.toBase58());
+      console.log('escrowPda:', escrowPda.toBase58());
+
+      // Call the accept deal function on the contract
+      const txHash = await program.methods
+        .acceptDeal()
+        .accounts({
+          deal: dealPda,
+          escrow: escrowPda,
+          signer: adminKp.publicKey
+        })
+        .signers(adminKp)
+        .rpc({
+          commitment: 'confirmed'
+        })
+      console.log('accept deal txHash:', txHash);
+
+      // Update the order status to accepted
+      const acceptedOrder = await prismaClient.campaignOrder.update({
+        where: {
+          id: order.id
+        },
+        data: {
+          status: 'ACCEPTED'
+        }
+      })
+
+      reply.send(acceptedOrder);
+    } catch (error) {
+      console.error('Error accepting offer:', error)
+      return reply.status(500).send({ message: error?.message || 'Internal server error' })
+    }
   });
 
   // KOL rejects the deal

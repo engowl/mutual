@@ -46,3 +46,5 @@ export const MUTUAL_ESCROW_PROGRAM = (chainId) => {
 
   return program;
 }
+
+export const adminKp = solanaWeb3.Keypair.fromSecretKey(bs58.decode(process.env.ADMIN_WALLET_PK));
