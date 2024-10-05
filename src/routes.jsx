@@ -84,27 +84,51 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "browse",
-            element: <ProjectOwnerBrowsePage />,
+            element: (
+              <RolesAuthRouteGuard roles={["PROJECT_OWNER"]}>
+                <ProjectOwnerBrowsePage />
+              </RolesAuthRouteGuard>
+            ),
           },
           {
             path: "offers",
-            element: <ProjectOwnerOffersPage />,
+            element: (
+              <RolesAuthRouteGuard roles={["PROJECT_OWNER"]}>
+                <ProjectOwnerOffersPage />
+              </RolesAuthRouteGuard>
+            ),
           },
           {
             path: "offers/:id",
-            element: <ProjectOwnerOffersDetailPage />,
+            element: (
+              <RolesAuthRouteGuard roles={["PROJECT_OWNER"]}>
+                <ProjectOwnerOffersDetailPage />
+              </RolesAuthRouteGuard>
+            ),
           },
           {
             path: "message",
-            element: <ProjectOwnerMessagePage />,
+            element: (
+              <RolesAuthRouteGuard roles={["PROJECT_OWNER"]}>
+                <ProjectOwnerMessagePage />
+              </RolesAuthRouteGuard>
+            ),
           },
           {
             path: "market-cap-vesting/:influencerId",
-            element: <ProjectOwnerMarketCapVestingPage />,
+            element: (
+              <RolesAuthRouteGuard roles={["PROJECT_OWNER"]}>
+                <ProjectOwnerMarketCapVestingPage />
+              </RolesAuthRouteGuard>
+            ),
           },
           {
             path: "time-vesting/:influencerId",
-            element: <ProjectOwnerTimeVestingPage />,
+            element: (
+              <RolesAuthRouteGuard roles={["PROJECT_OWNER"]}>
+                <ProjectOwnerTimeVestingPage />
+              </RolesAuthRouteGuard>
+            ),
           },
         ],
       },
