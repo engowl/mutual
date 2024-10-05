@@ -23,6 +23,7 @@ export default function InfluencerRegisterPage() {
         user.influencer.projectCriterias.length > 0
       ) {
         if (user.influencer.packages && user.influencer.packages.length > 0) {
+          console.log("Navigate to profile");
           navigate("/influencer/profile");
         } else {
           setStep(3);
@@ -38,8 +39,7 @@ export default function InfluencerRegisterPage() {
       <div className="w-full flex items-center max-w-7xl h-full flex-col xl:flex-row">
         {/* Register steps indicator */}
         <div className="flex flex-row xl:flex-col gap-3.5 pt-12 xl:pt-0 xl:h-full justify-center items-center xl:items-start text-[10px] md:text-sm xl:text-sm">
-          <button
-            onClick={() => setStep(1)}
+          <div
             className={cnm(
               "flex items-center",
               step >= 1 ? "text-orangy" : "text-neutral-400"
@@ -49,7 +49,7 @@ export default function InfluencerRegisterPage() {
             <p className="font-medium ml-3 xl:ml-4 text-center">
               Connect <br className="inline xl:hidden" /> Social Media
             </p>
-          </button>
+          </div>
           <div className="w-5 xl:w-6 flex justify-center items-center">
             <div
               className={cnm(
@@ -58,8 +58,7 @@ export default function InfluencerRegisterPage() {
               )}
             ></div>
           </div>
-          <button
-            onClick={() => setStep(2)}
+          <div
             className={cnm(
               "flex items-center",
               step >= 2 ? "text-orangy" : "text-neutral-400"
@@ -69,7 +68,7 @@ export default function InfluencerRegisterPage() {
             <p className="font-medium ml-3 xl:ml-4">
               Project <br className="inline xl:hidden" /> Criteria
             </p>
-          </button>
+          </div>
           <div className="w-5 xl:w-6 flex justify-center items-center">
             <div
               className={cnm(
@@ -78,8 +77,7 @@ export default function InfluencerRegisterPage() {
               )}
             ></div>
           </div>
-          <button
-            onClick={() => setStep(3)}
+          <div
             className={cnm(
               "flex items-center",
               step >= 3 ? "text-orangy" : "text-neutral-400"
@@ -89,7 +87,7 @@ export default function InfluencerRegisterPage() {
             <p className="font-medium ml-3 xl:ml-4">
               Package <br className="inline xl:hidden" /> and Pricing
             </p>
-          </button>
+          </div>
         </div>
         <div className="xl:ml-32 xl:h-full xl:overflow-y-auto xl:flex-1">
           <div className="py-12 xl:py-20 w-full flex flex-col items-start">
@@ -541,10 +539,10 @@ const RISKS = [
     id: "HIGH",
     label: "🧨 High Risk",
   },
-  {
-    id: "CUSTOM",
-    label: "🎨 Custom",
-  },
+  // {
+  //   id: "CUSTOM",
+  //   label: "🎨 Custom",
+  // },
 ];
 
 const TOKEN_AGES = [

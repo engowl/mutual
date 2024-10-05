@@ -15,6 +15,20 @@ import { CHAINS } from "../../../config";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK";
 import { getAlphanumericId, sleep } from "../../../utils/misc";
 import { shortenAddress } from "../../../utils/string";
+import { atom, useAtom } from "jotai";
+
+const marketCapVestingFormAtom = atom({
+  key: "marketCapVestingFormAtom",
+  default: {
+    tokenOfferAmount: "",
+    percentageOfSupply: "",
+    marketCapMilestone: "",
+    telegramAdminUsername: "",
+    marketingChannel: "",
+    promotionalPostText: "",
+    postDateAndTime: "",
+  },
+});
 
 export default function ProjectOwnerMarketCapVestingPage() {
   const [step, setStep] = useState(1);
@@ -26,7 +40,6 @@ export default function ProjectOwnerMarketCapVestingPage() {
   }
 }
 
-
 function MarketCapVestingConfirmation() {
   const { wallet } = useWallet();
   const [cookies] = useCookies(["session_token"]);
@@ -36,12 +49,12 @@ function MarketCapVestingConfirmation() {
     try {
       setIsLoading(true);
 
-      console.log('cookies:', cookies);
+      console.log("cookies:", cookies);
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
         bearerToken: cookies.session_token,
-        chainId: 'devnet',
-        chains: CHAINS
+        chainId: "devnet",
+        chains: CHAINS,
       });
 
       // const DUMMY_DEAL_DATA = {
@@ -71,12 +84,12 @@ function MarketCapVestingConfirmation() {
         tokenAmount: 1,
         campaignChannel: "TWITTER",
         promotionalPostText: "heheheh",
-        postDateAndTime: "2024-10-05T09:38:20.972Z"
+        postDateAndTime: "2024-10-05T09:38:20.972Z",
       };
 
       // Step 1: Verify the offer
       await escrowSDK.verifyOffer(DUMMY_DEAL_DATA);
-      console.log('Offer is valid!');
+      console.log("Offer is valid!");
 
       // Step 2: Prepare the transaction to create the deal
       const createDealTx = await escrowSDK.prepareCreateDealTransaction({
@@ -87,7 +100,7 @@ function MarketCapVestingConfirmation() {
         vestingType: DUMMY_DEAL_DATA.vestingType,
         amount: DUMMY_DEAL_DATA.tokenAmount * 10 ** 6
       });
-      console.log('createDealTx:', createDealTx);
+      console.log("createDealTx:", createDealTx);
 
       // Step 3: Sign and send the transaction
       const signedTx = await wallet.adapter.signTransaction(createDealTx);
@@ -103,11 +116,11 @@ function MarketCapVestingConfirmation() {
 
       console.log('Offer created:', created);
     } catch (error) {
-      console.error('Error creating deal:', error);
+      console.error("Error creating deal:", error);
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center">
@@ -207,6 +220,7 @@ function MarketCapVestingConfirmation() {
 }
 
 function MarketCapVestingForm({ setStep }) {
+  const [formValues, setFormValues] = useAtom(marketCapVestingFormAtom);
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center">
       <div className="w-full max-w-2xl flex flex-col py-20">
