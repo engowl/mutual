@@ -147,7 +147,7 @@ function ConnectSocialMedia() {
 
       setUserTwitter(res.data.data.userTwitter);
     } catch (error) {
-      console.log(error);
+      console.log("Error connect twitter: ", error);
     } finally {
       setTwitterLoading(false);
     }

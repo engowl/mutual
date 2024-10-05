@@ -16,6 +16,11 @@ import ProjectOwnerMarketCapVestingPage from "./pages/project-owner/vesting/Proj
 import ProjectOwnerTimeVestingPage from "./pages/project-owner/vesting/ProjectOwnerTimeVesting";
 import ProjectOwnerOffersDetailPage from "./pages/project-owner/offers/ProjectOwnerOffersDetailsPage";
 import RolesAuthRouteGuard from "./components/guard/RolesAuthRouteGuard";
+import ProjectOwnerRegisterRouteGuard from "./components/guard/register/ProjectOwnerRegisterRouteGuard";
+import AdminLayout from "./layouts/AdminLayout.jsx";
+import AdminPage from "./pages/admin/AdminPage.jsx";
+import KolPage from "./pages/admin/kol/KolPage.jsx";
+import ProjectsPage from "./pages/admin/projects/ProjectsPage.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -34,7 +39,11 @@ export const router = createBrowserRouter([
           },
           {
             path: "project-owner",
-            element: <ProjectOwnerRegisterPage />,
+            element: (
+              <ProjectOwnerRegisterRouteGuard>
+                <ProjectOwnerRegisterPage />
+              </ProjectOwnerRegisterRouteGuard>
+            ),
           },
         ],
       },
@@ -140,6 +149,23 @@ export const router = createBrowserRouter([
             element: <OfferSubmittedSuccessPage />,
           },
         ],
+      },
+    ],
+  },
+  {
+    element: <AdminLayout />,
+    children: [
+      {
+        path: "/__admin",
+        element: <AdminPage />,
+      },
+      {
+        path: "/__admin/projects",
+        element: <ProjectsPage />,
+      },
+      {
+        path: "/__admin/kol",
+        element: <KolPage />,
       },
     ],
   },

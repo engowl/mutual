@@ -101,20 +101,17 @@ export default function ProjectOwnerRegisterPage() {
   useEffect(() => {
     let interval;
     if (isLoggedIn) {
-      interval = setInterval(() => {
-        getUser({ silentLoad: true });
+      interval = setInterval(async () => {
+        const user = await getUser({ silentLoad: true });
+        if (user?.projectOwner?.status === "APPROVED") {
+          navigate("/project-owner/browse");
+        }
       }, 10000);
     }
     return () => {
       clearInterval(interval);
     };
   }, [getUser, isLoggedIn]);
-
-  useEffect(() => {
-    if (user?.projectOwner?.status === "APPROVED") {
-      navigate("/project-owner/browse");
-    }
-  }, [navigate, user?.projectOwner?.status]);
 
   useEffect(() => {
     if (code) {

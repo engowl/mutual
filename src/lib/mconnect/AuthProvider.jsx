@@ -10,6 +10,7 @@ import { createSolanaMessage } from "../solana.js";
 import { WalletSignInError } from "@solana/wallet-adapter-base";
 import toast from "react-hot-toast";
 import { AuthContext } from "../../contexts/AuthContext.js";
+import { useNavigate } from "react-router-dom";
 
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -24,6 +25,8 @@ export const AuthProvider = ({ children }) => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(false);
   const [walletType, setWalletType] = useState(null);
+
+  const navigate = useNavigate();
 
   // Adapter setup
   const {
@@ -75,6 +78,7 @@ export const AuthProvider = ({ children }) => {
             });
           });
         }
+        return res.data.data.user;
       } catch (error) {
         console.log("FAILED_GET_USER: ", error);
       } finally {
@@ -306,11 +310,11 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(() => {
     console.log("logout called");
     disconnect();
-
     removeCookie("session_token");
     setUser(null);
     setPortal(null);
     setIsLoggedIn(false);
+    navigate("/");
 
     googleLogout();
   }, [disconnect, removeCookie]);
@@ -381,6 +385,8 @@ export const AuthProvider = ({ children }) => {
         } finally {
           setIsCheckingSession(false);
         }
+      } else {
+        setIsCheckingSession(false);
       }
     }
 

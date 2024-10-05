@@ -5,20 +5,35 @@ import {
   ModalBody,
   ModalContent,
   ModalHeader,
+  Spinner,
   useDisclosure,
 } from "@nextui-org/react";
 import { shortenAddress } from "../../utils/string";
-import { ArrowUpRight, Search, Users, X } from "lucide-react";
+import { ArrowUpRight, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import GrowthIconSvg from "../../assets/project-owner/browse/growth.svg";
 import PeopleIconSvg from "../../assets/project-owner/browse/people-fill.svg";
-import RankIconSvg from "../../assets/project-owner/browse/rank.svg";
 import PriceIconSvg from "../../assets/project-owner/browse/price-tag.svg";
 import TimeVestingSvg from "../../assets/project-owner/browse/time-vest.svg";
 import MarketVestingSvg from "../../assets/project-owner/browse/market-vest.svg";
 import { Link, useNavigate } from "react-router-dom";
+import useSWR from "swr";
+import { mutualAPI } from "../../api/mutual";
 
 export default function ProjectOwnerBrowsePage() {
+  const { data, isLoading } = useSWR("/influencer/all", async (url) => {
+    const { data } = await mutualAPI.get(url);
+    return data;
+  });
+
+  if (isLoading) {
+    return (
+      <div className="w-full flex items-center justify-center min-h-full">
+        <Spinner size="xl" color="primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center font-clash px-5">
       <div className="w-full max-w-6xl flex flex-col py-20">
@@ -71,21 +86,12 @@ export default function ProjectOwnerBrowsePage() {
           {/* Influencer list */}
           <div className="flex-1">
             <div className="grid md:grid-cols-2 gap-3">
-              <InfluencerCard
-                influencerData={{
-                  username: "anggaandinata",
-                }}
-              />
-              <InfluencerCard
-                influencerData={{
-                  username: "anggaandinata",
-                }}
-              />
-              <InfluencerCard
-                influencerData={{
-                  username: "anggaandinata",
-                }}
-              />
+              {data.data.map((influencer) => (
+                <InfluencerCard
+                  key={influencer.id}
+                  influencerData={influencer}
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -96,6 +102,7 @@ export default function ProjectOwnerBrowsePage() {
 
 function InfluencerCard({ influencerData }) {
   const navigate = useNavigate();
+  console.log({ influencerData });
   return (
     <div className="bg-white rounded-2xl border p-4 w-full">
       <div className="flex w-full gap-2 md:gap-4">
@@ -110,7 +117,9 @@ function InfluencerCard({ influencerData }) {
         </div>
         <div className="flex-1">
           <div className="w-full flex items-center justify-between">
-            <p className="md:text-lg font-medium">@anggaandinata</p>
+            <p className="md:text-lg font-medium">
+              @{influencerData.twitterAccount.username}
+            </p>
             {/* Best match badge */}
             <div className="bg-gradient-to-br from-[#8E00C5] via-[#FF6E63] to-[#FFA427] px-3 py-1 rounded-full text-[10px] md:text-xs text-white">
               Best Match
@@ -139,34 +148,38 @@ function InfluencerCard({ influencerData }) {
       </div>
 
       {/* Stats */}
-      <div className="w-full flex justify-between mt-8">
+      <div className="w-full flex justify-start gap-10 mt-8">
         <div>
           <div className="size-10 rounded-full border flex items-center justify-center">
             <img src={PeopleIconSvg} alt="icon" className="size-4" />
           </div>
-          <p className="font-medium text-sm leading-none mt-2">81.2K</p>
+          <p className="font-medium text-sm leading-none mt-2">
+            {influencerData.twitterAccount.followersCount}
+          </p>
           <p className="text-xs mt-1">Followers</p>
         </div>
-        <div>
+        {/* <div>
           <div className="size-10 rounded-full border flex items-center justify-center">
             <img src={RankIconSvg} alt="icon" className="size-4" />
           </div>
           <p className="font-medium text-sm leading-none mt-2">81.2K</p>
           <p className="text-xs mt-1">Followers</p>
-        </div>
+        </div> */}
         <div>
           <div className="size-10 rounded-full border flex items-center justify-center">
             <img src={GrowthIconSvg} alt="icon" className="size-4" />
           </div>
-          <p className="font-medium text-sm leading-none mt-2">81.2K</p>
-          <p className="text-xs mt-1">Followers</p>
+          <p className="font-medium text-sm leading-none mt-2">0%</p>
+          <p className="text-xs mt-1">Success</p>
         </div>
         <div>
           <div className="size-10 rounded-full border flex items-center justify-center">
             <img src={PriceIconSvg} alt="icon" className="size-4" />
           </div>
-          <p className="font-medium text-sm leading-none mt-2">81.2K</p>
-          <p className="text-xs mt-1">Followers</p>
+          <p className="font-medium text-sm leading-none mt-2">
+            {influencerData.packages.price} SOL
+          </p>
+          <p className="text-xs mt-1">Min. Price</p>
         </div>
       </div>
     </div>
@@ -210,7 +223,8 @@ function OffersTokenDealsModal({ influencerData }) {
                     />
                   </div>
                   <p className="text-xl font-medium mt-2">
-                    Offer Token Deals to @{influencerData.username}
+                    Offer Token Deals to @
+                    {influencerData.twitterAccount.username}
                   </p>
                   <p className="text-base font-normal text-neutral-500">
                     Engage Influencers with Fair, Incentive-Based Vesting
@@ -221,7 +235,7 @@ function OffersTokenDealsModal({ influencerData }) {
                 <div>
                   <div className="w-full flex flex-col lg:flex-row gap-3 mt-3">
                     <Link
-                      to={`/project-owner/market-cap-vesting/${1298124892}`}
+                      to={`/project-owner/market-cap-vesting/${influencerData.id}`}
                       className="border rounded-xl p-6 flex-1 flex flex-col items-center hover:bg-creamy-200"
                     >
                       <div>
@@ -241,7 +255,7 @@ function OffersTokenDealsModal({ influencerData }) {
                       </p>
                     </Link>
                     <Link
-                      to={`/project-owner/time-vesting/${1298124892}`}
+                      to={`/project-owner/time-vesting/${influencerData.id}`}
                       className="border rounded-xl p-6 flex-1 flex flex-col items-center hover:bg-creamy-200"
                     >
                       <div>
