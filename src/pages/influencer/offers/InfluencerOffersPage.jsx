@@ -85,6 +85,27 @@ function OfferCard() {
     }
   }
 
+  const handleRejectOffer = async () => {
+    try {
+      setIsLoading(true);
+
+      console.log('cookie.session_token', cookie.session_token);
+
+      // Reject offer logic here
+      const escrowSDK = new MutualEscrowSDK({
+        backendEndpoint: import.meta.env.VITE_BACKEND_URL,
+        bearerToken: cookie.session_token,
+      })
+
+      await escrowSDK.rejectOffer('6auUot2SiNy7oLAx')
+      console.log("Offer rejected successfully");
+    } catch (error) {
+      console.error("Error rejecting offer:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <div className="flex items-center gap-4 p-3 border rounded-lg justify-between">
       <div>
@@ -112,7 +133,11 @@ function OfferCard() {
       {/* action buttons */}
       <div className="flex flex-col items-center">
         <div className="flex gap-2">
-          <Button color="default" className="text-xs rounded-full font-medium">
+          <Button
+            onClick={handleRejectOffer}
+            isLoading={isLoading}
+            color="default" className="text-xs rounded-full font-medium"
+          >
             Decline
           </Button>
           <Button

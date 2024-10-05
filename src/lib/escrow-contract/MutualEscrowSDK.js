@@ -121,11 +121,30 @@ class MutualEscrowSDK {
     }
   }
 
-  // Verify the offer data with the backend
   async acceptOffer(orderId) {
     try {
       const response = await axios.post(
         `${this.backendEndpoint}/campaign/accept-offer`,
+        {
+          orderId: orderId
+        },
+        {
+          headers: this.getHeaders()
+        }
+      )
+
+      console.log('Offer acceptance response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error verifying offer:', error);
+      throw error;
+    }
+  }
+
+  async rejectOffer(orderId) {
+    try {
+      const response = await axios.post(
+        `${this.backendEndpoint}/campaign/reject-offer`,
         {
           orderId: orderId
         },
