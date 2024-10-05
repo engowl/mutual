@@ -125,6 +125,9 @@ model TwitterAccount {
   username       String
   unfluencer     Influencer[]
   projectDetails ProjectDetails[]
+
+  followersCount Int?
+  description String?
 }
 
 enum UserWalletType {

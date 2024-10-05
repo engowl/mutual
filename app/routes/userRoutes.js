@@ -1,6 +1,11 @@
-import { authorizeTwitter, getTwitterUser } from "../api/twitterApi.js";
+import {
+  authorizeTwitter,
+  getTwitterUser,
+  unTwitterApiGetUser,
+} from "../api/twitterApi.js";
 import { prismaClient } from "../db/prisma.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
+import { formatGetUserResponse } from "../utils/unOfficialTwitterApiUtils.js";
 /**
  *
  * @param {import("fastify").FastifyInstance} app
@@ -136,6 +141,18 @@ export const userRoutes = (app, _, done) => {
           const { userTwitter, telegramLink, projectCriteria, packages } =
             influencer;
 
+          let unUserTwitter;
+
+          if (userTwitter) {
+            const unUserData = await unTwitterApiGetUser({
+              userId: userTwitter.id,
+            });
+
+            const formattedData = formatGetUserResponse(unUserData);
+
+            unUserTwitter = formattedData;
+          }
+
           updateData.influencer = {
             update: {
               telegramLink,
@@ -161,11 +178,15 @@ export const userRoutes = (app, _, done) => {
                         update: {
                           name: userTwitter.name,
                           username: userTwitter.username,
+                          followersCount: unUserTwitter.followers_count,
+                          description: unUserTwitter.description,
                         },
                         create: {
                           accountId: userTwitter.id,
                           name: userTwitter.name,
                           username: userTwitter.username,
+                          followersCount: unUserTwitter.followers_count,
+                          description: unUserTwitter.description,
                         },
                       },
                     },

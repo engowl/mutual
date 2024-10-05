@@ -11,6 +11,7 @@ import { campaignRoutes } from "./app/routes/campaignRoutes.js";
 import { tokenRoutes } from "./app/routes/tokenRoutes.js";
 import { messagesRoutes } from "./app/routes/messagesRoutes.js";
 import { campaignWorkers } from "./app/workers/campaignWorkers.js";
+import { influencerRoutes } from "./app/routes/influencerRoutes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,6 +48,9 @@ fastify.register(campaignRoutes, { prefix: "/campaign" });
 fastify.register(tokenRoutes, { prefix: "/token" });
 fastify.register(messagesRoutes, {
   prefix: "/messages",
+});
+fastify.register(influencerRoutes, {
+  prefix: "/influencer",
 });
 
 /* --------------------------------- Workers -------------------------------- */
