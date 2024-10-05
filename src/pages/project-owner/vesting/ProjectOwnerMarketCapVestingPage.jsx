@@ -1,6 +1,3 @@
-import { ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
-import { shortenAddress } from "../../../utils/string";
 import {
   Button,
   DatePicker,
@@ -8,8 +5,16 @@ import {
   Textarea,
   TimeInput,
 } from "@nextui-org/react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
+import { useCookies } from "react-cookie";
+import { Link } from "react-router-dom";
 import IconicButton from "../../../components/ui/IconicButton";
+import { CHAINS } from "../../../config";
+import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK";
+import { getAlphanumericId, sleep } from "../../../utils/misc";
+import { shortenAddress } from "../../../utils/string";
 
 export default function ProjectOwnerMarketCapVestingPage() {
   const [step, setStep] = useState(1);
@@ -21,7 +26,67 @@ export default function ProjectOwnerMarketCapVestingPage() {
   }
 }
 
+
 function MarketCapVestingConfirmation() {
+  const { wallet } = useWallet();
+  const [cookies] = useCookies(["session_token"]);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const handleCreateOffer = async () => {
+    try {
+      setIsLoading(true);
+
+      console.log('cookies:', cookies);
+      const escrowSDK = new MutualEscrowSDK({
+        backendEndpoint: import.meta.env.VITE_BACKEND_URL,
+        bearerToken: cookies.session_token,
+        chainId: 'devnet',
+        chains: CHAINS
+      });
+
+      const DUMMY_DEAL_DATA = {
+        orderId: "abcd1234abcd1235",
+        influencerId: "1",
+        vestingType: "TIME",
+        vestingCondition: {
+          vestingDuration: "1-month"
+        },
+        chainId: "devnet",
+        mintAddress: "6EXeGq2NuPUyB9UFWhbs35DBieQjhLrSfY2FU3o9gtr7",
+        tokenAmount: 1000000,
+        campaignChannel: "TWITTER",
+        promotionalPostText: "heheheh",
+        postDateAndTime: "2024-10-05T09:38:20.972Z"
+      };
+
+      // Step 1: Verify the offer
+      await escrowSDK.verifyOffer(DUMMY_DEAL_DATA);
+      console.log('Offer is valid!');
+
+      // Step 2: Prepare the transaction to create the deal
+      const createDealTx = await escrowSDK.prepareCreateDealTransaction({
+        orderId: getAlphanumericId(16), // Random orderId, must be 16 characters alphanumeric
+        mintAddress: DUMMY_DEAL_DATA.mintAddress,
+        kolAddress: "3AYyQGgCCZXNhagbBBcYRM47jvzBw1Ev5XvaAR31Nrap",
+        userAddress: "BhBjfxB7NvG4FugPg8d1HCtjRuj5UqDGgsEMxxRo1k3H",
+        vestingType: DUMMY_DEAL_DATA.vestingType,
+        amount: DUMMY_DEAL_DATA.tokenAmount // Must be in base unit (e.g., 1000 for 1 token if token has 3 decimals)
+      });
+      console.log('createDealTx:', createDealTx);
+
+      // Step 3: Sign and send the transaction
+      const signedTx = await wallet.adapter.signTransaction(createDealTx);
+
+      // Step 4: Send the transaction
+      const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
+      console.log('Deal created successfully. Tx:', txHash);
+    } catch (error) {
+      console.error('Error creating deal:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center">
       <div className="w-full max-w-2xl flex flex-col py-20">
@@ -106,6 +171,8 @@ function MarketCapVestingConfirmation() {
           <IconicButton
             className={"rounded-full border-orangy"}
             arrowBoxClassName={"rounded-full bg-orangy"}
+            onClick={handleCreateOffer}
+            isLoading={isLoading}
           >
             <p className="group-hover:text-white transition-colors text-orangy pl-3 pr-4">
               Send Offer
