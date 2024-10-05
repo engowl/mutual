@@ -17,7 +17,7 @@ export const AuthProvider = ({ children }) => {
   // Google setup
   const [user, setUser] = useState(null);
   const [portal, setPortal] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [cookies, setCookie, removeCookie] = useCookies(["session_token"]);
   const [isUserLoading, setUserLoading] = useState(false);
@@ -305,12 +305,14 @@ export const AuthProvider = ({ children }) => {
   // Logout and clear the session
   const logout = useCallback(() => {
     console.log("logout called");
-    disconnect();
-    googleLogout();
+
     removeCookie("session_token");
     setUser(null);
     setPortal(null);
     setIsLoggedIn(false);
+
+    disconnect();
+    googleLogout();
   }, [disconnect, removeCookie]);
 
   useEffect(() => {
@@ -360,6 +362,7 @@ export const AuthProvider = ({ children }) => {
             // const tokenRemainingTime = exp - currentTime;
             await getUser();
             console.log("get user called");
+            setCookie("session_token", token);
             setIsLoggedIn(true);
 
             // if (tokenRemainingTime > 5 * 60) {
