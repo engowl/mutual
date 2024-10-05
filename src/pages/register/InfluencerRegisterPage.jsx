@@ -1,14 +1,40 @@
 import { Button, Checkbox, Input, Textarea } from "@nextui-org/react";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { Newspaper, Package, UserCircle } from "lucide-react";
 import { influencerRegisterStepAtom } from "../../store/register-page-store";
 import { cnm } from "../../utils/style";
 import { useNavigate } from "react-router-dom";
 
+import twitterSvg from "../../assets/twitter.svg";
+import { useCallback, useEffect, useState } from "react";
+import { mutualAPI } from "../../api/mutual.js";
+import { useMCAuth } from "../../lib/mconnect/hooks/useMcAuth.jsx";
+import IconicButton from "../../components/ui/IconicButton.jsx";
+
 export default function InfluencerRegisterPage() {
   const [step, setStep] = useAtom(influencerRegisterStepAtom);
+  const { user } = useMCAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user?.influencer?.twitterAccount) {
+      if (
+        user.influencer.projectCriterias &&
+        user.influencer.projectCriterias.length > 0
+      ) {
+        if (user.influencer.packages && user.influencer.packages.length > 0) {
+          navigate("/influencer/profile");
+        } else {
+          setStep(3);
+        }
+      } else {
+        setStep(2);
+      }
+    }
+  }, [user, navigate, setStep]);
+
   return (
-    <div className="w-full h-full flex items-center justify-center px-5 xl:px-0">
+    <div className="w-full h-full flex items-center justify-center px-5 xl:px-10">
       <div className="w-full flex items-center max-w-7xl h-full flex-col xl:flex-row">
         {/* Register steps indicator */}
         <div className="flex flex-row xl:flex-col gap-3.5 pt-12 xl:pt-0 xl:h-full justify-center items-center xl:items-start text-[10px] md:text-sm xl:text-sm">
@@ -88,7 +114,70 @@ function RegisterStep() {
 }
 
 function ConnectSocialMedia() {
-  const setStep = useSetAtom(influencerRegisterStepAtom);
+  const [isTwitterLoading, setTwitterLoading] = useState(false);
+  const [isLoading, setLoading] = useState(false);
+  const [userTwitter, setUserTwitter] = useState(null);
+  const [telegramLink, setTelegramLink] = useState("");
+  const { getUser } = useMCAuth();
+
+  const searchParams = new URLSearchParams(location.search);
+  const code = searchParams.get("code");
+
+  const connectTwitter = async () => {
+    setTwitterLoading(true);
+
+    try {
+      const res = await mutualAPI.get("/users/twitter/authorize");
+
+      window.location.replace(res.data.data.redirectUrl);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setTwitterLoading(false);
+    }
+  };
+
+  const getTwitterUser = useCallback(async (code) => {
+    setTwitterLoading(true);
+
+    try {
+      const res = await mutualAPI.post("/users/twitter/connect", {
+        code: code,
+      });
+
+      setUserTwitter(res.data.data.userTwitter);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setTwitterLoading(false);
+    }
+  }, []);
+
+  const saveSocials = async () => {
+    if (userTwitter && telegramLink) {
+      setLoading(true);
+
+      try {
+        await mutualAPI.post("/users/update", {
+          influencer: {
+            userTwitter: userTwitter,
+            telegramLink: telegramLink,
+          },
+        });
+        await getUser();
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (code) {
+      getTwitterUser(code);
+    }
+  }, [code, getTwitterUser]);
 
   return (
     <div className="flex flex-col">
@@ -97,27 +186,39 @@ function ConnectSocialMedia() {
         <div>
           <p className="text-lg font-medium">Twitter</p>
           <div className="flex items-center gap-3 mt-3">
-            <Button className="bg-blue-400 text-white shrink-0">
-              Connect with Twitter
-            </Button>
-            <p>or</p>
-            <Input placeholder="Enter Twitter link" className="xl:min-w-96" />
+            {userTwitter && userTwitter.username ? (
+              <div className="bg-[#F7F8FA]  flex gap-2 items-center shrink-0 rounded-full px-5 py-2 w-fit">
+                <img src={twitterSvg} />
+                Connected @{userTwitter.username}
+              </div>
+            ) : (
+              <Button
+                onClick={connectTwitter}
+                isLoading={isTwitterLoading}
+                className="bg-[#F7F8FA] shrink-0 rounded-full w-fit"
+              >
+                <img src={twitterSvg} />
+                Connect with Twitter
+              </Button>
+            )}
           </div>
         </div>
         <div>
           <p className="text-lg font-medium">Telegram</p>
           <div className="flex items-center gap-3 mt-3">
-            <Button className="bg-blue-500 text-white shrink-0">
-              Connect with Telegram
-            </Button>
-            <p>or</p>
-            <Input placeholder="Enter Telegram link" className="xl:min-w-96" />
+            <Input
+              value={telegramLink}
+              onChange={(e) => setTelegramLink(e.target.value)}
+              placeholder="Enter Telegram link"
+              className="xl:min-w-96"
+            />
           </div>
         </div>
       </div>
       <div className="flex justify-end">
         <Button
-          onClick={() => setStep(2)}
+          onClick={saveSocials}
+          isLoading={isLoading}
           className="bg-orangy text-white rounded-full mt-6 px-8"
         >
           Continue
@@ -126,8 +227,52 @@ function ConnectSocialMedia() {
     </div>
   );
 }
+
 function ProjectCriteria() {
-  const setStep = useSetAtom(influencerRegisterStepAtom);
+  const [selectedRisk, setSelectedRisk] = useState({
+    id: "LOW",
+    label: "🐢 Low Risk",
+  });
+
+  const [selectedTokenAge, setSelectedTokenAge] = useState({
+    id: "LESS_THAN_SEVEN_WEEKS",
+    label: "Less than 7 days",
+  });
+
+  const [minMc, setMinMc] = useState("");
+  const [maxMc, setMaxMc] = useState("");
+  const [min24Vol, setMin24Vol] = useState("");
+  const [tokenHolder, setTokenHolder] = useState("");
+  const [liquiditySize, setLiquiditySize] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { getUser } = useMCAuth();
+
+  const handleSubmit = async () => {
+    setIsLoading(true);
+    try {
+      await mutualAPI.post("/users/update", {
+        influencer: {
+          projectCriteria: {
+            riskPreference: selectedRisk.id,
+            tokenAge: selectedTokenAge.id,
+            minMarketCap: parseFloat(minMc),
+            maxMarketCap: parseFloat(maxMc),
+            min24hVolume: parseFloat(min24Vol),
+            tokenHolder: parseInt(tokenHolder),
+            liquiditySize: parseFloat(liquiditySize),
+          },
+        },
+      });
+
+      getUser();
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-2xl">
       <div>
@@ -142,14 +287,19 @@ function ProjectCriteria() {
         <div className="w-full mt-6">
           <p>Risk Preference</p>
           <div className="mt-2 bg-white rounded-full p-1 flex w-full text-xs xl:text-base">
-            <div className="flex-1 flex justify-center py-1.5 bg-orangy/20 rounded-full">
-              🐢 Low Risk
-            </div>
-            <div className="flex-1 flex justify-center py-1.5">🦉 Moderate</div>
-            <div className="flex-1 flex justify-center py-1.5">
-              🧨 High Risk
-            </div>
-            <div className="flex-1 flex justify-center py-1.5">🎨 Custom</div>
+            {RISKS.map((risk) => {
+              return (
+                <div
+                  key={risk.id}
+                  onClick={() => setSelectedRisk(risk)}
+                  className={`cursor-pointer flex-1 flex justify-center py-1.5 rounded-full ${
+                    selectedRisk.id == risk.id ? "bg-orangy/20" : ""
+                  } transition-colors duration-200`}
+                >
+                  {risk.label}
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className="w-full mt-6">
@@ -158,6 +308,9 @@ function ProjectCriteria() {
             <Input
               placeholder="Min"
               className="flex-1"
+              type="number"
+              value={minMc}
+              onChange={(e) => setMinMc(e.target.value)}
               classNames={{
                 inputWrapper: "border border-black/10 rounded-lg h-12",
               }}
@@ -166,6 +319,9 @@ function ProjectCriteria() {
             <Input
               placeholder="Max"
               className="flex-1"
+              type="number"
+              value={maxMc}
+              onChange={(e) => setMaxMc(e.target.value)}
               classNames={{
                 inputWrapper: "border border-black/10 rounded-lg h-12",
               }}
@@ -175,22 +331,17 @@ function ProjectCriteria() {
         <div className="w-full mt-6">
           <p>Token Age</p>
           <div className="mt-2 flex flex-col gap-3">
-            <div className="flex items-center gap-1">
-              <Checkbox />
-              <p>Less than 7 days</p>
-            </div>
-            <div className="flex items-center gap-1">
-              <Checkbox />
-              <p>Less than 7 days</p>
-            </div>
-            <div className="flex items-center gap-1">
-              <Checkbox />
-              <p>Less than 7 days</p>
-            </div>
-            <div className="flex items-center gap-1">
-              <Checkbox />
-              <p>Less than 7 days</p>
-            </div>
+            {TOKEN_AGES.map((age) => {
+              return (
+                <div key={age.id} className="flex items-center gap-1">
+                  <Checkbox
+                    isSelected={selectedTokenAge?.id === age.id}
+                    onChange={() => setSelectedTokenAge(age)}
+                  />
+                  <p>{age.label}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className="w-full mt-6">
@@ -199,6 +350,9 @@ function ProjectCriteria() {
             <Input
               placeholder="e.g 1000000"
               className="flex-1"
+              type="number"
+              value={min24Vol}
+              onChange={(e) => setMin24Vol(e.target.value)}
               classNames={{
                 inputWrapper: "border border-black/10 rounded-lg h-12",
               }}
@@ -211,6 +365,9 @@ function ProjectCriteria() {
             <Input
               placeholder="Enter Token Holder"
               className="flex-1"
+              type="number"
+              value={tokenHolder}
+              onChange={(e) => setTokenHolder(e.target.value)}
               classNames={{
                 inputWrapper: "border border-black/10 rounded-lg h-12",
               }}
@@ -223,6 +380,9 @@ function ProjectCriteria() {
             <Input
               placeholder="Enter Liquidity Size"
               className="flex-1"
+              type="number"
+              value={liquiditySize}
+              onChange={(e) => setLiquiditySize(e.target.value)}
               classNames={{
                 inputWrapper: "border border-black/10 rounded-lg h-12",
               }}
@@ -232,15 +392,16 @@ function ProjectCriteria() {
       </div>
 
       <div className="flex gap-2 mt-6 justify-end">
-        <Button
+        {/* <Button
           onClick={() => setStep(1)}
           color="default"
           className="rounded-full"
         >
           Back
-        </Button>
+        </Button> */}
         <Button
-          onClick={() => setStep(3)}
+          onClick={handleSubmit}
+          isLoading={isLoading}
           className="bg-orangy text-white rounded-full px-8"
         >
           Continue
@@ -251,8 +412,53 @@ function ProjectCriteria() {
 }
 
 function PackageAndPricing() {
-  const setStep = useSetAtom(influencerRegisterStepAtom);
-  const navigate = useNavigate();
+  const { getUser } = useMCAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [packages, setPackages] = useState([
+    {
+      title: "Tweet Post",
+      subtitle: "Add price and details for one posting on Twitter",
+      type: "TWITTER",
+      price: "",
+      description: "",
+    },
+    {
+      title: "Telegram Group Post",
+      subtitle: "Add price and details for one posting on Telegram channel",
+      type: "TELEGRAM_GROUP",
+      price: "",
+      description: "",
+    },
+  ]);
+
+  const handleInputChange = (index, field, value) => {
+    const updatedPackages = [...packages];
+    updatedPackages[index][field] = value;
+    setPackages(updatedPackages);
+  };
+
+  const handleSubmit = async () => {
+    setIsLoading(true);
+    try {
+      const parsedPackages = packages.map((pkg) => ({
+        ...pkg,
+        price: parseFloat(pkg.price) || 0,
+      }));
+
+      await mutualAPI.post("/users/update", {
+        influencer: {
+          packages: parsedPackages,
+        },
+      });
+
+      await getUser();
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-3xl">
       <div className="w-full">
@@ -260,79 +466,102 @@ function PackageAndPricing() {
 
         <div className="mt-12 flex flex-col xl:flex-row gap-6 w-full">
           {/* Tweet post package input*/}
-          <div className="bg-white rounded-2xl border p-6 flex-1">
-            <p className="font-medium">Tweet Post</p>
-            <p className="text-xs text-neutral-500">
-              Add price and details for one posting on Twitter
-            </p>
-            <div className="w-full flex items-center justify-between mt-8">
-              <input
-                className="text-4xl font-medium outline-none placeholder:text-neutral-300 max-w-64 text-orangy"
-                placeholder="0.00"
-              />
-              <p className="text-3xl font-medium">SOL</p>
+          {packages.map((pkg, index) => (
+            <div key={index} className="bg-white rounded-2xl border p-6 flex-1">
+              <p className="font-medium">{pkg.title}</p>
+              <p className="text-xs text-neutral-500">{pkg.subtitle}</p>
+              <div className="w-full flex items-center justify-between mt-8">
+                <input
+                  value={pkg.price}
+                  type="number"
+                  onChange={(e) =>
+                    handleInputChange(index, "price", e.target.value)
+                  }
+                  className="text-4xl font-medium outline-none placeholder:text-neutral-300 max-w-64 text-orangy"
+                  placeholder="0.00"
+                />
+                <p className="text-3xl font-medium">SOL</p>
+              </div>
+              <div className="mt-6">
+                <p>Description</p>
+                <Textarea
+                  value={pkg.description}
+                  onChange={(e) =>
+                    handleInputChange(index, "description", e.target.value)
+                  }
+                  placeholder="Enter your description"
+                  variant="bordered"
+                  className="mt-2"
+                  classNames={{
+                    inputWrapper:
+                      "bg-creamy-50 border-black/10 border p-4 rounded-lg",
+                    input: "placeholder:text-neutral-400",
+                  }}
+                />
+              </div>
             </div>
-            <div className="mt-6">
-              <p>Description</p>
-              <Textarea
-                placeholder="Enter your description"
-                variant="bordered"
-                className="mt-2"
-                classNames={{
-                  inputWrapper:
-                    "bg-creamy-50 border-black/10 border p-4 rounded-lg",
-                  input: "placeholder:text-neutral-400",
-                }}
-              />
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl border p-6 flex-1">
-            <p className="font-medium">Tweet Post</p>
-            <p className="text-xs text-neutral-500">
-              Add price and details for one posting on Twitter
-            </p>
-            <div className="w-full flex items-center justify-between mt-8">
-              <input
-                className="text-4xl font-medium outline-none placeholder:text-neutral-300 max-w-64 text-orangy"
-                placeholder="0.00"
-              />
-              <p className="text-3xl font-medium">SOL</p>
-            </div>
-            <div className="mt-6">
-              <p>Description</p>
-              <Textarea
-                placeholder="Enter your description"
-                variant="bordered"
-                className="mt-2"
-                classNames={{
-                  inputWrapper:
-                    "bg-creamy-50 border-black/10 border p-4 rounded-lg",
-                  input: "placeholder:text-neutral-400",
-                }}
-              />
-            </div>
-          </div>
+          ))}
         </div>
 
         <div className="flex gap-2 mt-6 justify-end">
-          <Button
+          {/* <Button
             onClick={() => setStep(2)}
             color="default"
             className="rounded-full"
           >
             Back
-          </Button>
-          <Button
-            onClick={() => {
-              // TODO confirm button and process the data
-              navigate("/influencer/profile");
-            }}
-            className="bg-orangy text-white rounded-full px-8"
+          </Button> */}
+
+          <IconicButton
+            onClick={handleSubmit}
+            className={"rounded-full border-orangy"}
+            arrowBoxClassName={"rounded-full bg-orangy"}
+            isLoading={isLoading}
           >
-            Continue
-          </Button>
+            <p className="group-hover:text-white transition-colors text-orangy pl-3 pr-4">
+              Set Profile
+            </p>
+          </IconicButton>
         </div>
       </div>
     </div>
   );
 }
+
+const RISKS = [
+  {
+    id: "LOW",
+    label: "🐢 Low Risk",
+  },
+  {
+    id: "MODERATE",
+    label: "🦉 Moderate",
+  },
+  {
+    id: "HIGH",
+    label: "🧨 High Risk",
+  },
+  {
+    id: "CUSTOM",
+    label: "🎨 Custom",
+  },
+];
+
+const TOKEN_AGES = [
+  {
+    id: "LESS_THAN_SEVEN_WEEKS",
+    label: "Less than 7 days",
+  },
+  {
+    id: "ONE_TO_FOUR_WEEKS",
+    label: "1-4 weeks",
+  },
+  {
+    id: "ONE_TO_THREEE_MONTHS",
+    label: "1-3 months",
+  },
+  {
+    id: "MORE_THAN_THREE_MONTHS",
+    label: "More than 3 months",
+  },
+];

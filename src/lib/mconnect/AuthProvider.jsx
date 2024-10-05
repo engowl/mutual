@@ -1,4 +1,4 @@
-import { createContext, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { googleLogout, useGoogleLogin } from "@react-oauth/google";
 import Portal from "@portal-hq/web";
 import axios from "axios";
@@ -17,12 +17,12 @@ export const AuthProvider = ({ children }) => {
   // Google setup
   const [user, setUser] = useState(null);
   const [portal, setPortal] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [cookies, setCookie, removeCookie] = useCookies(["session_token"]);
   const [isUserLoading, setUserLoading] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [walletType, setWalletType] = useState(null);
 
   // Adapter setup
@@ -305,12 +305,14 @@ export const AuthProvider = ({ children }) => {
   // Logout and clear the session
   const logout = useCallback(() => {
     console.log("logout called");
-    disconnect();
-    googleLogout();
+
     removeCookie("session_token");
     setUser(null);
     setPortal(null);
     setIsLoggedIn(false);
+
+    disconnect();
+    googleLogout();
   }, [disconnect, removeCookie]);
 
   useEffect(() => {

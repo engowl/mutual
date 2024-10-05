@@ -4,14 +4,16 @@ import { useMCAuth } from "../lib/mconnect/hooks/useMcAuth.jsx";
 import { useEffect } from "react";
 
 export default function RootLayout() {
-  const { isLoggedIn } = useMCAuth();
+  const { isLoggedIn, isCheckingSession, isUserLoading, user } = useMCAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isLoggedIn) {
-      navigate("/");
+    if (!isCheckingSession && !isUserLoading) {
+      if (!isLoggedIn || !user) {
+        navigate("/");
+      }
     }
-  }, [isLoggedIn, navigate]);
+  }, [isCheckingSession, isLoggedIn, isUserLoading, navigate, user]);
 
   return (
     <div className="min-h-screen w-full bg-creamy overflow-hidden">

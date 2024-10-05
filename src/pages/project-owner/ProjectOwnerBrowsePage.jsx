@@ -219,7 +219,7 @@ function OffersTokenDealsModal({ influencerData }) {
               </ModalHeader>
               <ModalBody className="w-full pb-6">
                 <div>
-                  <div className="w-full flex flex-col gap-3 mt-3">
+                  <div className="w-full flex flex-col lg:flex-row gap-3 mt-3">
                     <Link
                       to={`/project-owner/market-cap-vesting/${1298124892}`}
                       className="border rounded-xl p-6 flex-1 flex flex-col items-center hover:bg-creamy-200"

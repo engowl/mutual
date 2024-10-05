@@ -1,13 +1,13 @@
-import { useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { Button, Input, Spinner } from "@nextui-org/react";
+import IconicButton from "../../components/ui/IconicButton";
+import { useMCAuth } from "../../lib/mconnect/hooks/useMcAuth.jsx";
 import { useNavigate } from "react-router-dom";
 import Lottie from "react-lottie";
-import { useMCAuth } from "../../lib/mconnect/hooks/useMcAuth.jsx";
 import { mutualAPI } from "../../api/mutual.js";
-import IconicButton from "../../components/ui/IconicButton";
+import twitterSvg from "../../assets/twitter.svg";
 import animationData from "../../assets/lottie-loading.json";
 import { AxiosError } from "axios";
-import { useLocalStorage } from "@solana/wallet-adapter-react";
 
 const FORM_INPUT_CHANGE = "FORM_INPUT_CHANGE";
 const FORM_SUBMIT_START = "FORM_SUBMIT_START";
@@ -53,6 +53,51 @@ export default function ProjectOwnerRegisterPage() {
   const { isLoggedIn, user, getUser, isUserLoading } = useMCAuth();
   const navigate = useNavigate();
 
+  const [isTwitterLoading, setTwitterLoading] = useState(false);
+  const [userTwitter, setUserTwitter] = useState(null);
+
+  const searchParams = new URLSearchParams(location.search);
+  const code = searchParams.get("code");
+
+  const connectTwitter = async () => {
+    setTwitterLoading(true);
+
+    try {
+      const res = await mutualAPI.get("/users/twitter/authorize");
+
+      window.location.replace(res.data.data.redirectUrl);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setTwitterLoading(false);
+    }
+  };
+
+  const getTwitterUser = useCallback(async (code) => {
+    setTwitterLoading(true);
+
+    try {
+      const res = await mutualAPI.post("/users/twitter/connect", {
+        code: code,
+      });
+
+      setUserTwitter(res.data.data.userTwitter);
+      console.log(res);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setTwitterLoading(false);
+    }
+  }, []);
+
+  const handleInputChange = (e) => {
+    dispatch({
+      type: FORM_INPUT_CHANGE,
+      field: e.target.name,
+      value: e.target.value,
+    });
+  };
+
   useEffect(() => {
     let interval;
     if (isLoggedIn) {
@@ -71,13 +116,12 @@ export default function ProjectOwnerRegisterPage() {
     }
   }, [navigate, user?.projectOwner?.status]);
 
-  const handleInputChange = (e) => {
-    dispatch({
-      type: FORM_INPUT_CHANGE,
-      field: e.target.name,
-      value: e.target.value,
-    });
-  };
+  useEffect(() => {
+    if (code) {
+      console.log("get code...");
+      getTwitterUser(code);
+    }
+  }, [code, getTwitterUser]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -89,7 +133,7 @@ export default function ProjectOwnerRegisterPage() {
           projectDetail: {
             projectName: state.formData.name,
             contractAddress: state.formData.ca,
-            twitterLink: state.formData.tw,
+            userTwitter: userTwitter,
             telegramGroupLink: state.formData.group,
           },
         },
@@ -119,7 +163,11 @@ export default function ProjectOwnerRegisterPage() {
     );
   }
 
-  if (user?.projectOwner && user.projectOwner.status !== "APPROVED") {
+  if (
+    user?.projectOwner &&
+    user?.projectOwner.status &&
+    user.projectOwner.status !== "APPROVED"
+  ) {
     return <OnProcessBanner />;
   }
 
@@ -133,6 +181,9 @@ export default function ProjectOwnerRegisterPage() {
           handleSubmit={handleSubmit}
           loading={state.loading}
           error={state.error}
+          userTwitter={userTwitter}
+          connectTwitter={connectTwitter}
+          isTwitterLoading={isTwitterLoading}
         />
       </div>
     </div>
@@ -157,6 +208,9 @@ function FormContent({
   handleSubmit,
   loading,
   error,
+  userTwitter,
+  connectTwitter,
+  isTwitterLoading,
 }) {
   return (
     <div className="flex-1 lg:overflow-y-auto">
@@ -173,13 +227,24 @@ function FormContent({
             onChange={handleInputChange}
             placeholder="Enter Project Name"
           />
-          <FormInput
-            label="Project Twitter Link"
-            name="tw"
-            value={formData.tw}
-            onChange={handleInputChange}
-            placeholder="e.g https://twitter.com/johndoe"
-          />
+          <div className="flex flex-col gap-1 w-full">
+            <label>Project Twitter Account</label>
+            {userTwitter && userTwitter.username ? (
+              <div className="bg-[#F7F8FA]  flex gap-2 items-center shrink-0 rounded-full px-5 py-2 w-fit">
+                <img src={twitterSvg} />
+                Connected @{userTwitter.username}
+              </div>
+            ) : (
+              <Button
+                onClick={connectTwitter}
+                isLoading={isTwitterLoading}
+                className="bg-[#F7F8FA] shrink-0 rounded-full w-fit"
+              >
+                <img src={twitterSvg} />
+                Connect with Twitter
+              </Button>
+            )}
+          </div>
           <FormInput
             label="Project Contract Address"
             name="ca"

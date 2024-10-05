@@ -21,18 +21,26 @@ export default function IndexPage() {
   } = useMCAuth();
   const navigate = useNavigate();
 
+  const searchParams = new URLSearchParams(location.search);
+  const code = searchParams.get("code");
+
   useEffect(() => {
-    if (user) {
+    if (user && isLoggedIn && user.role) {
+      let url = "";
+
       if (user.role === "INFLUENCER") {
-        navigate("/register/influencer");
+        url = `/register/influencer`;
       } else if (user.role === "PROJECT_OWNER") {
-        if (user.projectOwner.status === "APPROVED") {
-          return navigate("/project-owner/browse");
-        }
-        navigate("/register/project-owner");
+        url = `/register/project-owner`;
       }
+
+      if (code) {
+        url += `?code=${code}`;
+      }
+
+      navigate(url);
     }
-  }, [navigate, user]);
+  }, [code, isLoggedIn, navigate, user]);
 
   if (
     isCheckingSession ||
