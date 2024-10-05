@@ -121,7 +121,26 @@ class MutualEscrowSDK {
     }
   }
 
-  // TODO:
+  // Verify the offer data with the backend
+  async acceptOffer(orderId) {
+    try {
+      const response = await axios.post(
+        `${this.backendEndpoint}/campaign/accept-offer`,
+        {
+          orderId: orderId
+        },
+        {
+          headers: this.getHeaders()
+        }
+      )
+
+      console.log('Offer acceptance response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error verifying offer:', error);
+      throw error;
+    }
+  }
 
   // Send and confirm the transaction
   async sendAndConfirmTransaction(signedTx) {

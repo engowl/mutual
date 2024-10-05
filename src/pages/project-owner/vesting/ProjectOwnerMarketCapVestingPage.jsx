@@ -95,7 +95,7 @@ function MarketCapVestingConfirmation() {
       const createDealTx = await escrowSDK.prepareCreateDealTransaction({
         orderId: DUMMY_DEAL_DATA.orderId,
         mintAddress: DUMMY_DEAL_DATA.mintAddress,
-        kolAddress: "3AYyQGgCCZXNhagbBBcYRM47jvzBw1Ev5XvaAR31Nrap",
+        kolAddress: "BhBjfxB7NvG4FugPg8d1HCtjRuj5UqDGgsEMxxRo1k3H",
         userAddress: "3mvJDqu2ubdGR8V8aRsxhaKSDyJunjFvospfgBdobUXs",
         vestingType: DUMMY_DEAL_DATA.vestingType,
         amount: DUMMY_DEAL_DATA.tokenAmount * 10 ** 6
