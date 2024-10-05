@@ -10,6 +10,7 @@ import { userRoutes } from "./app/routes/userRoutes.js";
 import { campaignRoutes } from "./app/routes/campaignRoutes.js";
 import { tokenRoutes } from "./app/routes/tokenRoutes.js";
 import { messagesRoutes } from "./app/routes/messagesRoutes.js";
+import { campaignWorkers } from "./app/workers/campaignWorkers.js";
 import { influencerRoutes } from "./app/routes/influencerRoutes.js";
 import { adminRoutes } from "./app/routes/adminRoutes.js";
 
@@ -55,6 +56,7 @@ fastify.register(influencerRoutes, {
 fastify.register(adminRoutes, { prefix: "/__admin" });
 
 /* --------------------------------- Workers -------------------------------- */
+fastify.register(campaignWorkers)
 
 const start = async () => {
   try {

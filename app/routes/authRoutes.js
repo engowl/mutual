@@ -241,16 +241,6 @@ export const authRoutes = (app, _, done) => {
         }
       }
 
-      const token = jwt.sign(
-        {
-          address: parsedSIWS.publicKey,
-        },
-        process.env.JWT_SECRET,
-        {
-          expiresIn: "4d",
-        }
-      );
-
       let user = await prismaClient.user.findFirst({
         where: {
           wallet: {
@@ -278,6 +268,17 @@ export const authRoutes = (app, _, done) => {
           },
         });
       }
+
+      const token = jwt.sign(
+        {
+          id: user.id,
+          address: parsedSIWS.publicKey,
+        },
+        process.env.JWT_SECRET,
+        {
+          expiresIn: "4d",
+        }
+      );
 
       const dataToReturn = {
         session_token: token,

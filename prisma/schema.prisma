@@ -91,6 +91,8 @@ model Influencer {
 
   twitterAccountId String?
   twitterAccount   TwitterAccount? @relation(fields: [twitterAccountId], references: [id])
+
+  orders CampaignOrder[]
 }
 
 // Project Criteria for Influencers (KOL)
@@ -131,6 +133,103 @@ model TwitterAccount {
 enum UserWalletType {
   MPC
   EOA
+}
+
+// Campaign Order
+enum CampaignChannel {
+  TWITTER
+  TELEGRAM
+}
+
+enum CampaignOrderVestingType {
+  TIME
+  MARKETCAP
+  NONE
+}
+
+enum CampaignOrderStatus {
+  CREATED
+  ACCEPTED
+  REJECTED
+  PARTIALCOMPLETED
+  COMPLETED
+  DISPUTED
+  RESOLVED
+}
+
+enum CampaignOrderEligibilityStatus {
+  NOTELIGIBLE
+  PARTIALLYELIGIBLE
+  FULLYELIGIBLE
+}
+
+enum CHAIN {
+  MAINNET_BETA
+  DEVNET
+  LOCALNET
+}
+
+model Token {
+  id String @id @default(cuid())
+
+  mintAddress String
+  chainId     CHAIN
+
+  name        String
+  symbol      String
+  decimals    Int
+  totalSupply Float
+  imageUrl    String?
+  description String?
+  uriData     Json?
+
+  orders CampaignOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([mintAddress, chainId])
+}
+
+// model Pair {
+
+// }
+
+model CampaignOrder {
+  id String @id
+
+  influencerId String
+  influencer   Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+
+  // TODO: token mint
+  tokenId String
+  token   Token  @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  tokenAmount Float
+
+  channel CampaignChannel
+
+  vestingType      CampaignOrderVestingType
+  vestingCondition Json
+  status           CampaignOrderStatus            @default(CREATED)
+  eligibility      CampaignOrderEligibilityStatus @default(NOTELIGIBLE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EscrowEventLog {
+  id        String @id @default(cuid())
+  chainId   CHAIN
+  programId String
+
+  campaignOrderId String
+  eventName       String
+  signature       String
+  data            Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum ProjectOwnerStatus {

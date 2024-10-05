@@ -1,0 +1,664 @@
+{
+    "version": "0.1.0",
+    "name": "mutual_escrow",
+    "instructions": [
+        {
+            "name": "initialize",
+            "accounts": [
+                {
+                    "name": "escrow",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "admin",
+                    "isMut": true,
+                    "isSigner": true
+                },
+                {
+                    "name": "systemProgram",
+                    "isMut": false,
+                    "isSigner": false
+                }
+            ],
+            "args": [
+                {
+                    "name": "maxClaimableAfterObligation",
+                    "type": "u8"
+                }
+            ]
+        },
+        {
+            "name": "createDeal",
+            "accounts": [
+                {
+                    "name": "escrow",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "deal",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "projectOwner",
+                    "isMut": true,
+                    "isSigner": true
+                },
+                {
+                    "name": "kol",
+                    "isMut": false,
+                    "isSigner": false
+                },
+                {
+                    "name": "mint",
+                    "isMut": false,
+                    "isSigner": false
+                },
+                {
+                    "name": "projectOwnerTokenAccount",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "vaultTokenAccount",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "vaultAuthority",
+                    "isMut": false,
+                    "isSigner": false
+                },
+                {
+                    "name": "tokenProgram",
+                    "isMut": false,
+                    "isSigner": false
+                },
+                {
+                    "name": "systemProgram",
+                    "isMut": false,
+                    "isSigner": false
+                },
+                {
+                    "name": "rent",
+                    "isMut": false,
+                    "isSigner": false
+                }
+            ],
+            "args": [
+                {
+                    "name": "amount",
+                    "type": "u64"
+                },
+                {
+                    "name": "vestingType",
+                    "type": {
+                        "defined": "VestingType"
+                    }
+                },
+                {
+                    "name": "vestingDuration",
+                    "type": "i64"
+                },
+                {
+                    "name": "orderId",
+                    "type": {
+                        "array": [
+                            "u8",
+                            16
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "acceptDeal",
+            "accounts": [
+                {
+                    "name": "deal",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "signer",
+                    "isMut": false,
+                    "isSigner": true
+                },
+                {
+                    "name": "escrow",
+                    "isMut": false,
+                    "isSigner": false
+                }
+            ],
+            "args": []
+        },
+        {
+            "name": "rejectDeal",
+            "accounts": [
+                {
+                    "name": "deal",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "signer",
+                    "isMut": false,
+                    "isSigner": true
+                },
+                {
+                    "name": "escrow",
+                    "isMut": false,
+                    "isSigner": false
+                },
+                {
+                    "name": "projectOwner",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "vaultTokenAccount",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "vaultAuthority",
+                    "isMut": false,
+                    "isSigner": false
+                },
+                {
+                    "name": "projectOwnerTokenAccount",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "mint",
+                    "isMut": false,
+                    "isSigner": false
+                },
+                {
+                    "name": "tokenProgram",
+                    "isMut": false,
+                    "isSigner": false
+                },
+                {
+                    "name": "systemProgram",
+                    "isMut": false,
+                    "isSigner": false
+                },
+                {
+                    "name": "rent",
+                    "isMut": false,
+                    "isSigner": false
+                }
+            ],
+            "args": []
+        },
+        {
+            "name": "resolveDeal",
+            "accounts": [
+                {
+                    "name": "deal",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "signer",
+                    "isMut": false,
+                    "isSigner": true
+                },
+                {
+                    "name": "escrow",
+                    "isMut": false,
+                    "isSigner": false
+                },
+                {
+                    "name": "vaultTokenAccount",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "kolTokenAccount",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "vaultAuthority",
+                    "isMut": false,
+                    "isSigner": false
+                },
+                {
+                    "name": "tokenProgram",
+                    "isMut": false,
+                    "isSigner": false
+                }
+            ],
+            "args": []
+        },
+        {
+            "name": "setEligibilityStatus",
+            "accounts": [
+                {
+                    "name": "deal",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "signer",
+                    "isMut": false,
+                    "isSigner": true
+                },
+                {
+                    "name": "escrow",
+                    "isMut": false,
+                    "isSigner": false
+                }
+            ],
+            "args": [
+                {
+                    "name": "newStatus",
+                    "type": {
+                        "defined": "EligibilityStatus"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "updateMaxClaimablePercentage",
+            "accounts": [
+                {
+                    "name": "escrow",
+                    "isMut": true,
+                    "isSigner": false
+                },
+                {
+                    "name": "admin",
+                    "isMut": false,
+                    "isSigner": true
+                }
+            ],
+            "args": [
+                {
+                    "name": "newPercentage",
+                    "type": "u8"
+                }
+            ]
+        }
+    ],
+    "accounts": [
+        {
+            "name": "Escrow",
+            "type": {
+                "kind": "struct",
+                "fields": [
+                    {
+                        "name": "admin",
+                        "type": "publicKey"
+                    },
+                    {
+                        "name": "escrowBump",
+                        "type": "u8"
+                    },
+                    {
+                        "name": "maxClaimableAfterObligation",
+                        "type": "u8"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "Deal",
+            "type": {
+                "kind": "struct",
+                "fields": [
+                    {
+                        "name": "orderId",
+                        "type": {
+                            "array": [
+                                "u8",
+                                16
+                            ]
+                        }
+                    },
+                    {
+                        "name": "projectOwner",
+                        "type": "publicKey"
+                    },
+                    {
+                        "name": "kol",
+                        "type": "publicKey"
+                    },
+                    {
+                        "name": "mint",
+                        "type": "publicKey"
+                    },
+                    {
+                        "name": "amount",
+                        "type": "u64"
+                    },
+                    {
+                        "name": "releasedAmount",
+                        "type": "u64"
+                    },
+                    {
+                        "name": "vestingType",
+                        "type": {
+                            "defined": "VestingType"
+                        }
+                    },
+                    {
+                        "name": "vestingDuration",
+                        "type": "i64"
+                    },
+                    {
+                        "name": "startTime",
+                        "type": "i64"
+                    },
+                    {
+                        "name": "acceptTime",
+                        "type": "i64"
+                    },
+                    {
+                        "name": "doneObligationTime",
+                        "type": "i64"
+                    },
+                    {
+                        "name": "status",
+                        "type": {
+                            "defined": "DealStatus"
+                        }
+                    },
+                    {
+                        "name": "disputeReason",
+                        "type": {
+                            "defined": "DisputeReason"
+                        }
+                    },
+                    {
+                        "name": "dealBump",
+                        "type": "u8"
+                    },
+                    {
+                        "name": "eligibilityStatus",
+                        "type": {
+                            "defined": "EligibilityStatus"
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "types": [
+        {
+            "name": "VestingType",
+            "type": {
+                "kind": "enum",
+                "variants": [
+                    {
+                        "name": "Time"
+                    },
+                    {
+                        "name": "Marketcap"
+                    },
+                    {
+                        "name": "None"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "DealStatus",
+            "type": {
+                "kind": "enum",
+                "variants": [
+                    {
+                        "name": "Created"
+                    },
+                    {
+                        "name": "Accepted"
+                    },
+                    {
+                        "name": "Rejected"
+                    },
+                    {
+                        "name": "PartialCompleted"
+                    },
+                    {
+                        "name": "Completed"
+                    },
+                    {
+                        "name": "Disputed"
+                    },
+                    {
+                        "name": "Resolved"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "EligibilityStatus",
+            "type": {
+                "kind": "enum",
+                "variants": [
+                    {
+                        "name": "NotEligible"
+                    },
+                    {
+                        "name": "PartiallyEligible"
+                    },
+                    {
+                        "name": "FullyEligible"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "DisputeReason",
+            "type": {
+                "kind": "enum",
+                "variants": [
+                    {
+                        "name": "None"
+                    },
+                    {
+                        "name": "Unresolved"
+                    },
+                    {
+                        "name": "Other"
+                    }
+                ]
+            }
+        }
+    ],
+    "events": [
+        {
+            "name": "DealCreated",
+            "fields": [
+                {
+                    "name": "orderId",
+                    "type": {
+                        "array": [
+                            "u8",
+                            16
+                        ]
+                    },
+                    "index": false
+                },
+                {
+                    "name": "deal",
+                    "type": "publicKey",
+                    "index": false
+                },
+                {
+                    "name": "projectOwner",
+                    "type": "publicKey",
+                    "index": false
+                },
+                {
+                    "name": "kol",
+                    "type": "publicKey",
+                    "index": false
+                },
+                {
+                    "name": "amount",
+                    "type": "u64",
+                    "index": false
+                }
+            ]
+        },
+        {
+            "name": "DealStatusChanged",
+            "fields": [
+                {
+                    "name": "orderId",
+                    "type": {
+                        "array": [
+                            "u8",
+                            16
+                        ]
+                    },
+                    "index": false
+                },
+                {
+                    "name": "deal",
+                    "type": "publicKey",
+                    "index": false
+                },
+                {
+                    "name": "projectOwner",
+                    "type": "publicKey",
+                    "index": false
+                },
+                {
+                    "name": "kol",
+                    "type": "publicKey",
+                    "index": false
+                },
+                {
+                    "name": "status",
+                    "type": {
+                        "defined": "DealStatus"
+                    },
+                    "index": false
+                }
+            ]
+        },
+        {
+            "name": "MaxClaimablePercentageUpdated",
+            "fields": [
+                {
+                    "name": "oldPercentage",
+                    "type": "u8",
+                    "index": false
+                },
+                {
+                    "name": "newPercentage",
+                    "type": "u8",
+                    "index": false
+                }
+            ]
+        },
+        {
+            "name": "DealResolved",
+            "fields": [
+                {
+                    "name": "orderId",
+                    "type": {
+                        "array": [
+                            "u8",
+                            16
+                        ]
+                    },
+                    "index": false
+                },
+                {
+                    "name": "deal",
+                    "type": "publicKey",
+                    "index": false
+                },
+                {
+                    "name": "projectOwner",
+                    "type": "publicKey",
+                    "index": false
+                },
+                {
+                    "name": "kol",
+                    "type": "publicKey",
+                    "index": false
+                },
+                {
+                    "name": "releasedAmount",
+                    "type": "u64",
+                    "index": false
+                },
+                {
+                    "name": "status",
+                    "type": {
+                        "defined": "DealStatus"
+                    },
+                    "index": false
+                }
+            ]
+        },
+        {
+            "name": "EligibilityStatusUpdated",
+            "fields": [
+                {
+                    "name": "orderId",
+                    "type": {
+                        "array": [
+                            "u8",
+                            16
+                        ]
+                    },
+                    "index": false
+                },
+                {
+                    "name": "deal",
+                    "type": "publicKey",
+                    "index": false
+                },
+                {
+                    "name": "kol",
+                    "type": "publicKey",
+                    "index": false
+                },
+                {
+                    "name": "newStatus",
+                    "type": {
+                        "defined": "EligibilityStatus"
+                    },
+                    "index": false
+                }
+            ]
+        }
+    ],
+    "errors": [
+        {
+            "code": 6000,
+            "name": "InvalidDealStatus",
+            "msg": "Invalid deal status"
+        },
+        {
+            "code": 6001,
+            "name": "UnauthorizedSigner",
+            "msg": "Unauthorized signer"
+        },
+        {
+            "code": 6002,
+            "name": "ExceedsVestedAmount",
+            "msg": "Exceeds vested amount"
+        },
+        {
+            "code": 6003,
+            "name": "InvalidVestingType",
+            "msg": "Invalid vesting type"
+        },
+        {
+            "code": 6004,
+            "name": "InvalidPercentage",
+            "msg": "Invalid percentage value"
+        }
+    ]
+}
