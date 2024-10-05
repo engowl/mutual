@@ -65,7 +65,7 @@ export default function ProjectOwnerRegisterPage() {
     try {
       const res = await mutualAPI.get("/users/twitter/authorize");
 
-      window.location.replace(res.data.data.redirectUrl);
+      window.open(res.data.data.redirectUrl, "_blank");
     } catch (error) {
       console.log(error);
     } finally {

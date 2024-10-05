@@ -12,7 +12,9 @@ export default function InfluencerProfilePage() {
           />
         </div>
         <div className="mt-4">
-          <p className="text-[2.5rem] leading-tight">Angga Andinata</p>
+          <p className="text-3xl lg:text-[2.5rem] leading-tight">
+            Angga Andinata
+          </p>
           <p className="font-medium text-neutral-600">@anggaandinata</p>
         </div>
         <div className="w-full flex flex-col items-start gap-4 xl:flex-row xl:items-center justify-between mt-8">

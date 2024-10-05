@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
   const [cookies, setCookie, removeCookie] = useCookies(["session_token"]);
   const [isUserLoading, setUserLoading] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isCheckingSession, setIsCheckingSession] = useState(false);
   const [walletType, setWalletType] = useState(null);
 
   // Adapter setup
@@ -305,13 +305,13 @@ export const AuthProvider = ({ children }) => {
   // Logout and clear the session
   const logout = useCallback(() => {
     console.log("logout called");
+    disconnect();
 
     removeCookie("session_token");
     setUser(null);
     setPortal(null);
     setIsLoggedIn(false);
 
-    disconnect();
     googleLogout();
   }, [disconnect, removeCookie]);
 
