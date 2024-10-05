@@ -77,7 +77,7 @@ export const campaignWorkers = (app, _, done) => {
 
             // Save the event log
             saveEscrowEventLog({
-              chainId: chain.id,
+              chainId: chain.dbChainId,
               programId: program.programId.toBase58(),
               eventName: eventName,
               signature: signature,

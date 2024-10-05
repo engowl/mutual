@@ -7,3 +7,15 @@ const alphanumericNanoid = customAlphabet(alphabet, 16);
 export const getAlphanumericId = (length = 16) => {
   return alphanumericNanoid(length);
 }
+
+export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const toHexString = (buffer) =>
+  buffer.reduce((str, byte) => str + byte.toString(16).padStart(2, "0"), "");
+
+// Convert Buffer { type: 'Buffer', data: [ 1, 2, 3, 4, 5, 6, 7, 8 ] } to Uint8Array
+export const bufferToUint8Array = (buffer) => new Uint8Array(buffer.data);
+
+export const shortenId = (id, start = 3, end = 3) => {
+  return `${id.slice(0, start)}...${id.slice(-end)}`;
+};

@@ -1,4 +1,7 @@
+import { VESTING_CONFIG } from "../../config.js"
 import { authMiddleware } from "../middleware/authMiddleware.js"
+import { validateVestingCondition } from "../utils/campaignUtils.js"
+import { validateRequiredFields } from "../utils/validationUtils.js"
 
 /**
  *
@@ -10,12 +13,49 @@ export const campaignRoutes = (app, _, done) => {
 
   // Create an offer to the KOL
   app.post('/create-offer', {
-    preHandler: [authMiddleware]
+    // preHandler: [authMiddleware]
   }, async (req, reply) => {
     try {
+      await validateRequiredFields(
+        req.body,
+        [
+          'influencerId',
+          'vestingType',
+          'vestingCondition',
+          'chainId',
+          'mintAddress',
+          'tokenAmount',
+          'campaignChannel',
+          'promotionalPostText',
+          'postDateAndTime',
+          'createDealTxHash'
+        ],
+        reply
+      )
+
+      const { vestingType, vestingCondition } = req.body;
+
+      // Validate vestingType and vestingCondition
+      const validVestingType = VESTING_CONFIG.find(option => option.id === vestingType);
+      if (!validVestingType) {
+        return reply.status(400).send({ message: 'Invalid vesting type' });
+      }
+  
+      // Validate vesting condition based on vestingType
+      const isConditionValid = validateVestingCondition(vestingType, vestingCondition);
+      if (!isConditionValid.isValid) {
+        return reply.status(400).send({ message: isConditionValid.message });
+      }
+
+      // TODO: Validate if influencerId is valid
+      // TODO: Validate if mintAddress is valid, and get token info and save it to the database
+      // TODO: Validate
+
+
       return reply.status(200).send("OK")
     } catch (error) {
-      return reply.status(500).send({ message: 'Error creating offer' })
+      console.error('Error creating offer:', error)
+      return reply.status(500).send({ message: error?.message || 'Internal server error' })
     }
   })
 

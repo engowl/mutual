@@ -113,6 +113,11 @@ enum UserWalletType {
 }
 
 // Campaign Order
+enum CampaignChannel {
+  TWITTER
+  TELEGRAM
+}
+
 enum CampaignOrderVestingType {
   TIME
   MARKETCAP
@@ -135,6 +140,31 @@ enum CampaignOrderEligibilityStatus {
   FULLYELIGIBLE
 }
 
+enum CHAIN {
+  MAINNET_BETA
+  DEVNET
+  LOCALNET
+}
+
+model Token {
+  id String @id @default(cuid())
+
+  mintAddress String
+  chainId     CHAIN
+
+  name        String
+  symbol      String
+  decimals    Int
+  totalSupply Float
+
+  orders CampaignOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([mintAddress, chainId])
+}
+
 model CampaignOrder {
   id String @id
 
@@ -142,6 +172,12 @@ model CampaignOrder {
   influencer   Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
 
   // TODO: token mint
+  tokenId String
+  token    Token  @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  tokenAmount Float
+
+  channel     CampaignChannel
 
   vestingType CampaignOrderVestingType
   status      CampaignOrderStatus
@@ -153,7 +189,7 @@ model CampaignOrder {
 
 model EscrowEventLog {
   id String @id @default(cuid())
-  chainId         String
+  chainId         CHAIN
   programId       String
 
   campaignOrderId String
