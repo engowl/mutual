@@ -1,7 +1,6 @@
 import { createBrowserRouter } from "react-router-dom";
 import IndexPage from "./pages/IndexPage";
 import RootLayout from "./layouts/RootLayout";
-import ProfilePage from "./pages/ProfilePage";
 import InfluencerRegisterPage from "./pages/register/InfluencerRegisterPage";
 import ProjectOwnerRegisterPage from "./pages/register/ProjectOwnerRegisterPage";
 import InfluencerProfilePage from "./pages/influencer/profile/InfluencerProfilePage";
@@ -16,6 +15,7 @@ import OfferSubmittedSuccessPage from "./pages/success/OfferSubmittedSuccessPage
 import ProjectOwnerMarketCapVestingPage from "./pages/project-owner/vesting/ProjectOwnerMarketCapVestingPage";
 import ProjectOwnerTimeVestingPage from "./pages/project-owner/vesting/ProjectOwnerTimeVesting";
 import ProjectOwnerOffersDetailPage from "./pages/project-owner/offers/ProjectOwnerOffersDetailsPage";
+import RolesAuthRouteGuard from "./components/guard/RolesAuthRouteGuard";
 
 export const router = createBrowserRouter([
   {
@@ -24,10 +24,6 @@ export const router = createBrowserRouter([
       {
         path: "/",
         element: <IndexPage />,
-      },
-      {
-        path: "/profile",
-        element: <ProfilePage />,
       },
       {
         path: "/register",
@@ -47,15 +43,27 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "offers",
-            element: <InfluencerOffersPage />,
+            element: (
+              <RolesAuthRouteGuard roles={["INFLUENCER"]}>
+                <InfluencerOffersPage />
+              </RolesAuthRouteGuard>
+            ),
           },
           {
             path: "offers/:id",
-            element: <InfluencerOffersDetailPage />,
+            element: (
+              <RolesAuthRouteGuard roles={["INFLUENCER"]}>
+                <InfluencerOffersDetailPage />
+              </RolesAuthRouteGuard>
+            ),
           },
           {
             path: "profile",
-            element: <InfluencerProfilePage />,
+            element: (
+              <RolesAuthRouteGuard roles={["INFLUENCER"]}>
+                <InfluencerProfilePage />
+              </RolesAuthRouteGuard>
+            ),
           },
           {
             path: "profile/:id",
@@ -63,7 +71,11 @@ export const router = createBrowserRouter([
           },
           {
             path: "message",
-            element: <InfluencerMessagePage />,
+            element: (
+              <RolesAuthRouteGuard roles={["INFLUENCER"]}>
+                <InfluencerMessagePage />
+              </RolesAuthRouteGuard>
+            ),
           },
         ],
       },

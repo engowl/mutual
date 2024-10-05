@@ -2,7 +2,7 @@ import { Phone, Search } from "lucide-react";
 
 export default function ProjectOwnerMessagePage() {
   return (
-    <div className="h-full overflow-y-auto w-full flex flex-col items-center">
+    <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
       <div className="w-full max-w-5xl flex flex-col py-20">
         <div className="w-full flex">
           <div className="p-6 border rounded-2xl bg-white w-full max-w-sm">
@@ -46,11 +46,15 @@ export default function ProjectOwnerMessagePage() {
                 </div>
               </div>
               {/* Message chat */}
-              <div className="mt-4 rounded-2xl bg-creamy-300 min-h-[412px]"></div>
+              <MessageChat />
             </div>
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+function MessageChat() {
+  return <div className="mt-4 rounded-2xl bg-creamy-300 min-h-[412px]"></div>;
 }

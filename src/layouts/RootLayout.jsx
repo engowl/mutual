@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import Navbar from "../components/shared/Navbar";
 import { useMCAuth } from "../lib/mconnect/hooks/useMcAuth.jsx";
 import { useEffect } from "react";

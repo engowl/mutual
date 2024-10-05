@@ -6,6 +6,8 @@ import { useMCAuth } from "../../lib/mconnect/hooks/useMcAuth.jsx";
 export default function Navbar() {
   const { user, isLoggedIn } = useMCAuth();
 
+  console.log({ user, isLoggedIn });
+
   return (
     <nav className="flex items-center px-8 h-12 justify-between border-b border-black/20">
       <div className="flex h-full items-center">
@@ -17,9 +19,9 @@ export default function Navbar() {
           />
         </Link>
 
-        {user && isLoggedIn && user.role === "project-owner" ? (
+        {user && isLoggedIn && user.role === "PROJECT_OWNER" ? (
           <ProjectOwnerNav />
-        ) : user && isLoggedIn && user.role === "influencer" ? (
+        ) : user && isLoggedIn && user.role === "INFLUENCER" ? (
           <InfluencerNav />
         ) : null}
       </div>

@@ -7,13 +7,13 @@ import { mutualAPI } from "../../api/mutual.js";
 import IconicButton from "../../components/ui/IconicButton";
 import animationData from "../../assets/lottie-loading.json";
 import { AxiosError } from "axios";
+import { useLocalStorage } from "@solana/wallet-adapter-react";
 
 const FORM_INPUT_CHANGE = "FORM_INPUT_CHANGE";
 const FORM_SUBMIT_START = "FORM_SUBMIT_START";
 const FORM_SUBMIT_SUCCESS = "FORM_SUBMIT_SUCCESS";
 const FORM_SUBMIT_ERROR = "FORM_SUBMIT_ERROR";
 
-// Initial state
 const initialState = {
   formData: {
     name: "",
@@ -67,7 +67,7 @@ export default function ProjectOwnerRegisterPage() {
 
   useEffect(() => {
     if (user?.projectOwner?.status === "APPROVED") {
-      navigate("/success");
+      navigate("/project-owner/browse");
     }
   }, [navigate, user?.projectOwner?.status]);
 
@@ -239,7 +239,7 @@ const FormInput = ({ label, name, value, onChange, placeholder }) => (
 
 const OnProcessBanner = () => {
   return (
-    <div className="w-full min-h-screen flex items-center justify-center text-center px-5 md:px-10">
+    <div className="w-full min-h-full flex items-center justify-center text-center px-5 md:px-10">
       <div className="flex flex-col items-center">
         <div className="size-[16rem] md:size-[20rem]">
           <Lottie

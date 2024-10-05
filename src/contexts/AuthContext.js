@@ -11,4 +11,6 @@ export const AuthContext = createContext({
   logout: () => {},
   walletType: null,
   isUserLoading: false,
+  isLoggingIn: false,
+  isCheckingSession: false,
 });

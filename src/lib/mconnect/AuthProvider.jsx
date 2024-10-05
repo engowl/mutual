@@ -21,7 +21,8 @@ export const AuthProvider = ({ children }) => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [cookies, setCookie, removeCookie] = useCookies(["session_token"]);
   const [isUserLoading, setUserLoading] = useState(false);
-
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(false);
   const [walletType, setWalletType] = useState(null);
 
   // Adapter setup
@@ -132,6 +133,7 @@ export const AuthProvider = ({ children }) => {
 
   // login with google
   const login = async (userInfo) => {
+    setIsLoggingIn(true);
     try {
       const res = await axios.post(`${BACKEND_BASE_URL}/auth/sign-in/google`, {
         email: userInfo.email,
@@ -156,6 +158,8 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("FAILED_LOGIN: ", error);
       return;
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -344,34 +348,41 @@ export const AuthProvider = ({ children }) => {
 
   // Handle Session
   useEffect(() => {
-    if (token) {
-      try {
-        const decodedToken = jwtDecode(token);
-        const exp = decodedToken.exp;
-        const currentTime = Math.floor(Date.now() / 1000);
+    async function checkSession() {
+      if (token) {
+        setIsCheckingSession(true);
+        try {
+          const decodedToken = jwtDecode(token);
+          const exp = decodedToken.exp;
+          const currentTime = Math.floor(Date.now() / 1000);
 
-        if (exp > currentTime) {
-          // const tokenRemainingTime = exp - currentTime;
-          getUser();
-          console.log("get user called");
-          setIsLoggedIn(true);
+          if (exp > currentTime) {
+            // const tokenRemainingTime = exp - currentTime;
+            await getUser();
+            console.log("get user called");
+            setIsLoggedIn(true);
 
-          // if (tokenRemainingTime > 5 * 60) {
-          //   setIsLoggedIn(true);
-          // } else {
-          //   const expires = new Date(exp * 1000);
-          //   setCookie("session_token", token, { expires });
-          //   setIsLoggedIn(true);
-          // }
-        } else {
+            // if (tokenRemainingTime > 5 * 60) {
+            //   setIsLoggedIn(true);
+            // } else {
+            //   const expires = new Date(exp * 1000);
+            //   setCookie("session_token", token, { expires });
+            //   setIsLoggedIn(true);
+            // }
+          } else {
+            logout();
+          }
+        } catch (error) {
+          console.error("Invalid token", error);
+          removeCookie("session_token");
           logout();
+        } finally {
+          setIsCheckingSession(false);
         }
-      } catch (error) {
-        console.error("Invalid token", error);
-        removeCookie("session_token");
-        logout();
       }
     }
+
+    checkSession();
   }, [
     cookies.session_token,
     setCookie,
@@ -396,6 +407,8 @@ export const AuthProvider = ({ children }) => {
         logout,
         walletType,
         isUserLoading,
+        isLoggingIn,
+        isCheckingSession,
       }}
     >
       {children}

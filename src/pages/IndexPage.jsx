@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Navigate, useLoaderData, useNavigate } from "react-router-dom";
 import MCWidget from "../lib/mconnect/components/MCWidget.jsx";
 import { useMCAuth } from "../lib/mconnect/hooks/useMcAuth.jsx";
 import { useEffect, useState } from "react";
@@ -8,7 +8,17 @@ import { mutualAPI } from "../api/mutual.js";
 import { Spinner } from "@nextui-org/react";
 
 export default function IndexPage() {
-  const { isLoggedIn, user, getUser } = useMCAuth();
+  // const user = useLoaderData();
+  const {
+    isLoggedIn,
+    getUser,
+    user,
+    isCheckingSession,
+    isUserLoading,
+    isWalletLoading,
+    isLoggingIn,
+    isGoogleLoading,
+  } = useMCAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -16,10 +26,26 @@ export default function IndexPage() {
       if (user.role === "INFLUENCER") {
         navigate("/register/influencer");
       } else if (user.role === "PROJECT_OWNER") {
+        if (user.projectOwner.status === "APPROVED") {
+          return navigate("/project-owner/browse");
+        }
         navigate("/register/project-owner");
       }
     }
   }, [navigate, user]);
+
+  if (
+    isCheckingSession ||
+    isUserLoading ||
+    isWalletLoading ||
+    isLoggingIn ||
+    isGoogleLoading
+  )
+    return (
+      <div className="w-full flex items-center justify-center min-h-full bg-creamy px-5 md:px-10 py-12">
+        <Spinner size="xl" color="primary" />
+      </div>
+    );
 
   return (
     <div className="w-full flex items-center justify-center min-h-full bg-creamy px-5 md:px-10 py-12">
@@ -44,7 +70,7 @@ function ChooseRole({ getUser }) {
       await mutualAPI.post("/users/update", {
         role,
       });
-      getUser();
+      await getUser();
     } catch (error) {
       console.log("ERROR_UPDATE_ROLE: ", error);
     } finally {
