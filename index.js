@@ -56,7 +56,7 @@ fastify.register(influencerRoutes, {
 fastify.register(adminRoutes, { prefix: "/__admin" });
 
 /* --------------------------------- Workers -------------------------------- */
-fastify.register(campaignWorkers)
+// fastify.register(campaignWorkers);
 
 const start = async () => {
   try {

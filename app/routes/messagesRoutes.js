@@ -11,33 +11,53 @@ import { prismaClient } from "../db/prisma.js";
 export const messagesRoutes = (app, _, done) => {
   const io = new Server(app.server, {
     cors: {
-      origin: "http://localhost:5173",
+      origin: "*",
     },
   });
 
   const activeUsers = new Map();
 
   io.on("connection", (socket) => {
-    console.log("A user connected");
+    console.log("A user connected", socket.id);
+
+    socket.on("join", async ({ userId }) => {
+      activeUsers.set(userId, socket.id);
+
+      console.log(activeUsers);
+      console.log(`User ${userId} joined`);
+    });
 
     socket.on("userActive", async ({ userId }) => {
       activeUsers.set(userId, socket.id);
-      await updateUserStatus(userId, "online");
+      // await updateUserStatus(userId, "online");
       console.log(`User ${userId} is now active`);
     });
 
     socket.on("userInactive", async ({ userId }) => {
       activeUsers.delete(userId);
-      await updateUserStatus(userId, "offline");
+      // await updateUserStatus(userId, "offline");
       console.log(`User ${userId} is now inactive`);
     });
 
+    socket.on(
+      "personal-message",
+      async ({ senderId, receiverId, content, role }) => {
+        const receiverSocketId = activeUsers.get(receiverId);
+        console.log({ senderId });
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit("personal-message", {
+            senderId,
+            content,
+          });
+        }
+      }
+    );
+
     socket.on("disconnect", async () => {
-      console.log("User disconnected");
       for (const [userId, socketId] of activeUsers.entries()) {
         if (socketId === socket.id) {
           activeUsers.delete(userId);
-          await updateUserStatus(userId, "offline");
+          // await updateUserStatus(userId, "offline");
           break;
         }
       }
