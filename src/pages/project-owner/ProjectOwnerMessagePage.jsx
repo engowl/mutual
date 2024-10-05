@@ -1,8 +1,36 @@
 import { Phone, Search, Send } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cnm } from "../../utils/style";
+import { io } from "socket.io-client";
+import { BACKEND_URL } from "../../config";
+import toast from "react-hot-toast";
 
 export default function ProjectOwnerMessagePage() {
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const currentUser = { id: 1, timezone: "UTC" };
+  const [socket, setSocket] = useState(null);
+
+  useEffect(() => {
+    const socket = io(`${BACKEND_URL}`);
+    setSocket(socket);
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on("connect", () => {
+      toast.success("Connected to server");
+    });
+    socket.emit("userActive", { userId: currentUser.id });
+
+    socket.on("userStatusChange", ({ userId, status }) => {});
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [socket]);
+
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
       <div className="w-full max-w-5xl flex flex-col py-20">
@@ -48,7 +76,11 @@ export default function ProjectOwnerMessagePage() {
                 </div>
               </div>
               {/* Message chat */}
-              <MessageChat />
+              <MessageChat
+                messages={messages}
+                newMessage={newMessage}
+                setNewMessage={setNewMessage}
+              />
             </div>
           </div>
         </div>
@@ -57,20 +89,9 @@ export default function ProjectOwnerMessagePage() {
   );
 }
 
-function MessageChat() {
-  const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([
-    { content: "Hey there!", role: "another" },
-    { content: "Hello! How are you?", role: "user" },
-    { content: "I'm good, thanks. What about you?", role: "another" },
-    { content: "Doing great! Working on a new project.", role: "user" },
-  ]);
-
+function MessageChat({ sendMessage, messages, setNewMessage, newMessage }) {
   const handleSend = () => {
-    if (message.trim()) {
-      setMessages([...messages, { content: message, role: "user" }]);
-      setMessage(""); // Clear the input
-    }
+    sendMessage();
   };
 
   return (
@@ -103,7 +124,7 @@ function MessageChat() {
                 >
                   {msg.content}
                 </div>
-                <p className="text-xs">10:00</p>
+                <p className="text-xs text-neutral-400">10:00</p>
               </div>
 
               <p></p>
@@ -117,8 +138,8 @@ function MessageChat() {
           <input
             type="text"
             placeholder="Type a message"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             className="flex-1 py-2 bg-transparent placeholder:text-sm outline-none px-4"
           />

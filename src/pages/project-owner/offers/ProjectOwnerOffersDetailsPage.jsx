@@ -1,18 +1,27 @@
 import { Button } from "@nextui-org/react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { shortenAddress } from ".././../../utils/string";
 import { Clock } from "lucide-react";
+import Countdown from "react-countdown";
 
 export default function ProjectOwnerOffersDetailPage() {
   const params = useParams();
   const isWaitingApproval = true;
+  const navigate = useNavigate();
+
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center font-clash">
       <div className="w-full max-w-3xl flex flex-col py-20">
         <div className="w-full flex items-center justify-between">
           <h1 className="text-3xl font-medium">Offers Detail</h1>
           <div className="flex gap-2">
-            <Button color="default" className="rounded-full font-medium px-8">
+            <Button
+              onClick={() => {
+                navigate(`/project-owner/message?influencerId=${3232323}`);
+              }}
+              color="default"
+              className="rounded-full font-medium px-8"
+            >
               Message
             </Button>
             {isWaitingApproval && (
@@ -29,7 +38,9 @@ export default function ProjectOwnerOffersDetailPage() {
             <Clock className="size-4" />
             Respond in:
           </div>
-          <div className="font-medium">12:04:05</div>
+          <div className="font-medium">
+            <Countdown date={Date.now() + 30000} daysInHours />
+          </div>
         </div>
         <div className="mt-4 p-4 rounded-xl bg-white border">
           <div className="w-full flex items-center justify-between">
