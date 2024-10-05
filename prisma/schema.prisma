@@ -28,6 +28,8 @@ model User {
   projectOwner ProjectOwner?
   influencer   Influencer?
 
+  messagesSent  UserMessage?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -116,4 +118,39 @@ enum UserWalletType {
 enum ProjectOwnerStatus {
   PENDING
   APPROVED
+}
+
+
+model UserMessage {
+  id         String      @id @default(cuid())
+
+  status     UserOnlineStatus @default(OFFLINE)
+
+  userId     String      @unique
+  user       User        @relation(fields: [userId], references: [id])
+
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum UserOnlineStatus {
+  ONLINE
+  OFFLINE
+}
+  
+model Message {
+  id         Int      @id @default(autoincrement())
+  content    String
+  sentAt     DateTime @default(now())
+  senderTimezone String
+  sender     UserMessage     @relation("SentMessages", fields: [senderId], references: [id])
+  senderId   String
+  receiver   UserMessage     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  receiverId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
