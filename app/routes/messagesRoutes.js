@@ -46,8 +46,8 @@ export const messagesRoutes = (app, _, done) => {
 
   async function updateUserStatus(userId, status) {
     try {
-      const user = await prismaClient.user.update({
-        where: { id: userId },
+      const user = await prismaClient.userMessage.update({
+        where: { userId: userId },
         data: { status },
       });
       io.emit("userStatusChange", { userId, status });
