@@ -4,6 +4,11 @@ export const influencerRoutes = (app, _, done) => {
   app.get("/all", async (request, reply) => {
     try {
       let influencers = await prismaClient.influencer.findMany({
+        where: {
+          packages: {
+            some: {},
+          },
+        },
         include: {
           user: true,
           twitterAccount: true,
