@@ -7,7 +7,9 @@ import { fileURLToPath } from "url";
 import fastifyMultipart from "@fastify/multipart";
 import { authRoutes } from "./app/routes/authRoutes.js";
 import { userRoutes } from "./app/routes/userRoutes.js";
-import { campaignRoutes } from './app/routes/campaignRoutes.js';
+import { campaignRoutes } from "./app/routes/campaignRoutes.js";
+import { tokenRoutes } from "./app/routes/tokenRoutes.js";
+import { messagesRoutes } from "./app/routes/messagesRoutes.js";
 import { campaignWorkers } from "./app/workers/campaignWorkers.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -41,7 +43,11 @@ fastify.get("/", async (request, reply) => {
 
 fastify.register(authRoutes, { prefix: "/auth" });
 fastify.register(userRoutes, { prefix: "/users" });
-fastify.register(campaignRoutes, { prefix: '/campaign' });
+fastify.register(campaignRoutes, { prefix: "/campaign" });
+fastify.register(tokenRoutes, { prefix: "/token" });
+fastify.register(messagesRoutes, {
+  prefix: "/messages",
+});
 
 /* --------------------------------- Workers -------------------------------- */
 fastify.register(campaignWorkers)

@@ -1,3 +1,4 @@
+import { authorizeTwitter, getTwitterUser } from "../api/twitterApi.js";
 import { prismaClient } from "../db/prisma.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 /**
@@ -39,12 +40,18 @@ export const userRoutes = (app, _, done) => {
             wallet: true,
             projectOwner: {
               include: {
-                projectDetails: true,
+                projectDetails: {
+                  include: {
+                    twitterAccount: true,
+                  },
+                },
               },
             },
             influencer: {
               include: {
-                projectCriteria: true,
+                projectCriterias: true,
+                packages: true,
+                twitterAccount: true,
               },
             },
           },
@@ -81,33 +88,6 @@ export const userRoutes = (app, _, done) => {
       try {
         const updateData = {};
 
-        if (role) {
-          if (!["PROJECT_OWNER", "INFLUENCER"].includes(role)) {
-            return reply.status(400).send({ message: "Invalid role" });
-          }
-          updateData.role = role;
-        }
-
-        if (influencer) {
-          updateData.influencer = {
-            update: influencer,
-          };
-        }
-
-        if (projectOwner) {
-          const { telegramAdmin, projectDetail } = projectOwner;
-
-          updateData.projectOwner = {
-            create: {
-              telegramAdmin: telegramAdmin || "",
-              status: "PENDING",
-              projectDetails: {
-                create: projectDetail,
-              },
-            },
-          };
-        }
-
         const currentUser = await prismaClient.user.findFirst({
           where: {
             wallet: {
@@ -115,6 +95,111 @@ export const userRoutes = (app, _, done) => {
             },
           },
         });
+
+        if (role) {
+          if (!["PROJECT_OWNER", "INFLUENCER"].includes(role)) {
+            return reply.status(400).send({ message: "Invalid role" });
+          }
+          updateData.role = role;
+
+          if (role === "INFLUENCER") {
+            const existingInfluencer = await prismaClient.influencer.findUnique(
+              {
+                where: {
+                  userId: currentUser.id,
+                },
+              }
+            );
+
+            if (!existingInfluencer) {
+              updateData.influencer = {
+                create: {},
+              };
+            }
+          } else if (role === "PROJECT_OWNER") {
+            const existingProjectOwner =
+              await prismaClient.projectOwner.findUnique({
+                where: {
+                  userId: currentUser.id,
+                },
+              });
+
+            if (!existingProjectOwner) {
+              updateData.projectOwner = {
+                create: {},
+              };
+            }
+          }
+        }
+
+        if (influencer) {
+          const { userTwitter, telegramLink, projectCriteria, packages } =
+            influencer;
+
+          updateData.influencer = {
+            update: {
+              telegramLink,
+              projectCriterias: {
+                create: projectCriteria,
+              },
+              ...(packages
+                ? {
+                    packages: {
+                      deleteMany: {},
+                      create: packages.map((pkg) => ({
+                        description: pkg.description,
+                        type: pkg.type,
+                        price: pkg.price,
+                      })),
+                    },
+                  }
+                : {}),
+              ...(userTwitter
+                ? {
+                    twitterAccount: {
+                      upsert: {
+                        update: {
+                          name: userTwitter.name,
+                          username: userTwitter.username,
+                        },
+                        create: {
+                          accountId: userTwitter.id,
+                          name: userTwitter.name,
+                          username: userTwitter.username,
+                        },
+                      },
+                    },
+                  }
+                : {}),
+            },
+          };
+        }
+
+        if (projectOwner) {
+          const { telegramAdmin, projectDetail } = projectOwner;
+          const { userTwitter } = projectDetail;
+
+          updateData.projectOwner = {
+            update: {
+              telegramAdmin: telegramAdmin || "",
+              status: "PENDING",
+              projectDetails: {
+                create: {
+                  projectName: projectDetail.projectName,
+                  contractAddress: projectDetail.contractAddress,
+                  telegramGroupLink: projectDetail.telegramGroupLink,
+                  twitterAccount: {
+                    create: {
+                      accountId: userTwitter.id,
+                      name: userTwitter.name,
+                      username: userTwitter.username,
+                    },
+                  },
+                },
+              },
+            },
+          };
+        }
 
         const updatedUser = await prismaClient.user.update({
           where: {
@@ -134,6 +219,60 @@ export const userRoutes = (app, _, done) => {
         console.log({ error });
         return reply.status(500).send({
           message: "Error update user",
+          error: error.message,
+          data: null,
+        });
+      }
+    }
+  );
+
+  app.get(
+    "/twitter/authorize",
+    { preHandler: [authMiddleware] },
+    async (req, reply) => {
+      try {
+        const url = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${process.env.TWITTER_CLIENT_ID}&redirect_uri=${process.env.FRONTEND_URL}&scope=tweet.read%20users.read%20follows.read%20follows.write&state=state&code_challenge=challenge&code_challenge_method=plain`;
+        return reply.send({
+          message: "Success",
+          error: null,
+          data: {
+            redirectUrl: url,
+          },
+        });
+      } catch (error) {
+        return reply.status(500).send({ message: "Error authorize" });
+      }
+    }
+  );
+
+  app.post(
+    "/twitter/connect",
+    { preHandler: [authMiddleware] },
+    async (req, reply) => {
+      const { code } = req.body;
+
+      try {
+        const authorizeResponse = await authorizeTwitter({
+          code: code,
+          redirectUri: process.env.FRONTEND_URL,
+          codeVerifier: "challenge",
+        });
+
+        const userTwitter = await getTwitterUser({
+          accessToken: authorizeResponse.access_token,
+        });
+
+        return reply.send({
+          message: "Success",
+          error: null,
+          data: {
+            userTwitter: userTwitter.data,
+          },
+        });
+      } catch (error) {
+        console.log({ error });
+        return reply.status(500).send({
+          message: "Error connect twitter",
           error: error.message,
           data: null,
         });
