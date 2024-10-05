@@ -7,7 +7,7 @@ import { Spinner } from "@nextui-org/react";
 import { useMCAuth } from "../hooks/useMcAuth.jsx";
 
 export default function MCWalletWidget() {
-  const { address, wallet } = useMCWallet();
+  const { address, wallet, isWalletLoading } = useMCWallet();
   const { walletType, logout } = useMCAuth();
   const [copied, setCopied] = useState(false);
 
@@ -17,14 +17,28 @@ export default function MCWalletWidget() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  return address ? (
+  return isWalletLoading || !address ? (
+    <div className="py-2">
+      <div className="flex items-center justify-center rounded-full bg-white h-8 w-36 border-[1px] border-[#C9C9C9]">
+        <Spinner
+          size="sm"
+          color="primary"
+          classNames={{
+            wrapper: "flex items-center justify-center",
+            circle1: "h-4 w-4",
+            circle2: "h-4 w-4",
+          }}
+        />
+      </div>
+    </div>
+  ) : (
     <Menu as="div" className="relative">
       <MenuButton>
         <div className="flex items-center justify-center gap-2 rounded-full bg-white border-[1px] border-[#C9C9C9] p-1">
           {walletType == "MPC" ? (
-            <GoogleIcon className="w-10 h-10 p-[2px]" />
+            <GoogleIcon className="size-5" />
           ) : (
-            <img src={wallet.adapter.icon} className="size-5 rounded-full" />
+            <img src={wallet?.adapter?.icon} className="size-5 rounded-full" />
           )}
           <div className="flex gap-2 pr-4 items-center">
             <p className="text-xs text-[#575757]">{shortenId(address)}</p>
@@ -95,19 +109,5 @@ export default function MCWalletWidget() {
         </MenuItems>
       </Transition>
     </Menu>
-  ) : (
-    <div className="py-2">
-      <div className="flex items-center justify-center rounded-full bg-white h-8 w-36 border-[1px] border-[#C9C9C9]">
-        <Spinner
-          size="sm"
-          color="primary"
-          classNames={{
-            wrapper: "flex items-center justify-center",
-            circle1: "h-4 w-4",
-            circle2: "h-4 w-4",
-          }}
-        />
-      </div>
-    </div>
   );
 }

@@ -61,7 +61,7 @@ const LoginContent = ({ loginWithGoogle, handleConnect }) => {
             <h1 className="text-sm text-[#131523] font-medium">
               Login with Google
             </h1>
-            <p className="text-xs text-[#575757]">
+            <p className="text-xs text-[#575757] text-start">
               Quickly connect using your Google Account
             </p>
           </div>
@@ -81,7 +81,7 @@ const LoginContent = ({ loginWithGoogle, handleConnect }) => {
             <h1 className="text-sm text-[#131523] font-medium">
               Login with Wallet
             </h1>
-            <p className="text-xs text-[#575757]">
+            <p className="text-xs text-[#575757] text-start">
               Securely access Mutual with your Web3 Wallet.
             </p>
           </div>

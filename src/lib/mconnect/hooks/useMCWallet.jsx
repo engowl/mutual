@@ -6,17 +6,21 @@ export default function useMCWallet() {
   const { portal, isLoggedIn, walletType } = useMCAuth();
   const [address, setAddress] = useState(null);
   const [wallet, setWallet] = useState(null);
+  const [isWalletLoading, setWalletLoading] = useState(false);
 
   const { wallet: walletAdapter, connected, publicKey } = useWallet();
 
   useEffect(() => {
     const fetchWalletAddress = async () => {
       if (walletType === "MPC" && portal && isLoggedIn) {
+        setWalletLoading(true);
         try {
           const solAddress = await portal.getSolanaAddress();
           setAddress(solAddress);
         } catch (error) {
           console.error("Failed to fetch Solana address:", error);
+        } finally {
+          setWalletLoading(false);
         }
       } else if (walletType === "EOA" && isLoggedIn && connected) {
         setAddress(publicKey.toBase58());
@@ -54,5 +58,6 @@ export default function useMCWallet() {
     wallet,
     address,
     signSolanaTxWithPortal,
+    isWalletLoading,
   };
 }
