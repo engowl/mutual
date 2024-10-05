@@ -105,7 +105,7 @@ function isEmptyObject(obj) {
 export const validateTokenAmount = (clientAmount, contractAmount, tokenDecimals) => {
   // Convert client amount to BN, considering token decimals
   const clientBN = new BN(clientAmount).mul(new BN(10).pow(new BN(tokenDecimals)));
-  
+
   // Assuming contractAmount is already a string (from parsing account data)
   const contractBN = new BN(contractAmount);
 
@@ -128,3 +128,14 @@ export const validateTokenAmount = (clientAmount, contractAmount, tokenDecimals)
     contractAmount: contractBN.toString()
   };
 };
+
+export function prepareOrderId(orderId) {
+  let orderIdBuffer = Buffer.from(orderId, "utf-8");
+  if (orderIdBuffer.length > 16) {
+    orderIdBuffer = orderIdBuffer.slice(0, 16);
+  } else if (orderIdBuffer.length < 16) {
+    const padding = Buffer.alloc(16 - orderIdBuffer.length);
+    orderIdBuffer = Buffer.concat([orderIdBuffer, padding], 16);
+  }
+  return orderIdBuffer;
+}

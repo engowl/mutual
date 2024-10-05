@@ -1,14 +1,9 @@
-import { getTokenMetadata, TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import { CHAINS, VESTING_CONFIG } from "../../config.js"
 import { prismaClient } from "../db/prisma.js"
 import { authMiddleware } from "../middleware/authMiddleware.js"
 import { validateOfferData, validateVestingCondition } from "../utils/campaignUtils.js"
-import { validateRequiredFields } from "../utils/validationUtils.js"
-import { Connection, PublicKey } from "@solana/web3.js"
-import { getTokenInfo } from '../utils/solanaUtils.js';
 import { getCreateDealTxDetails } from "../lib/contract/mutualEscrowContract.js"
-import { validateTokenAmount } from "../utils/contractUtils.js"
-
+import { prepareOrderId, validateTokenAmount } from "../utils/contractUtils.js"
 /**
  *
  * @param {import("fastify").FastifyInstance} app
@@ -18,9 +13,21 @@ import { validateTokenAmount } from "../utils/contractUtils.js"
 export const campaignRoutes = (app, _, done) => {
   // Validate the offer data before creating the offer, this is called before the user called the create_deal function on the contract
   // Endpoint for validation only
-  app.post('/create-offer-check', { preHandler: [authMiddleware] }, async (req, reply) => {
+  app.post('/create-offer-check', {
+    preHandler: [authMiddleware]
+  }, async (req, reply) => {
+    const { user } = req;
     const validationResult = await validateOfferData(req, reply);
-    if (validationResult.success) reply.status(200).send({ message: 'Validation successful' });
+
+    if (!validationResult.success) {
+      return reply.status(400).send({ 
+        message: validationResult.message 
+      })
+    }else{
+      return reply.status(200).send({ 
+        message: 'Offer data is valid' 
+      })
+    }
   });
 
 

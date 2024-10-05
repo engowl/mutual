@@ -28,7 +28,7 @@ model User {
   projectOwner ProjectOwner?
   influencer   Influencer?
 
-  messagesSent  UserMessage?
+  messagesSent UserMessage?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -195,30 +195,30 @@ model Token {
 model CampaignOrder {
   id String @id
 
-  influencerId Int
+  influencerId String
   influencer   Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
 
   // TODO: token mint
   tokenId String
-  token    Token  @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  token   Token  @relation(fields: [tokenId], references: [id], onDelete: Cascade)
 
   tokenAmount Float
 
-  channel     CampaignChannel
+  channel CampaignChannel
 
-  vestingType CampaignOrderVestingType
+  vestingType      CampaignOrderVestingType
   vestingCondition Json
-  status      CampaignOrderStatus @default(CREATED)
-  eligibility CampaignOrderEligibilityStatus @default(NOTELIGIBLE)
+  status           CampaignOrderStatus            @default(CREATED)
+  eligibility      CampaignOrderEligibilityStatus @default(NOTELIGIBLE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model EscrowEventLog {
-  id String @id @default(cuid())
-  chainId         CHAIN
-  programId       String
+  id        String @id @default(cuid())
+  chainId   CHAIN
+  programId String
 
   campaignOrderId String
   eventName       String
@@ -234,14 +234,13 @@ enum ProjectOwnerStatus {
   APPROVED
 }
 
-
 model UserMessage {
-  id         String      @id @default(cuid())
+  id String @id @default(cuid())
 
-  status     UserOnlineStatus @default(OFFLINE)
+  status UserOnlineStatus @default(OFFLINE)
 
-  userId     String      @unique
-  user       User        @relation(fields: [userId], references: [id])
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
 
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
@@ -254,20 +253,21 @@ enum UserOnlineStatus {
   ONLINE
   OFFLINE
 }
-  
+
 model Message {
-  id         Int      @id @default(autoincrement())
-  content    String
-  sentAt     DateTime @default(now())
+  id             Int         @id @default(autoincrement())
+  content        String
+  sentAt         DateTime    @default(now())
   senderTimezone String
-  sender     UserMessage     @relation("SentMessages", fields: [senderId], references: [id])
-  senderId   String
-  receiver   UserMessage     @relation("ReceivedMessages", fields: [receiverId], references: [id])
-  receiverId String
+  sender         UserMessage @relation("SentMessages", fields: [senderId], references: [id])
+  senderId       String
+  receiver       UserMessage @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  receiverId     String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 enum RiskPreferenceEnum {
   LOW
   MODERATE

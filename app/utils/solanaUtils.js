@@ -55,3 +55,4 @@ export const getTokenInfo = async (mintAddress, connection) => {
 
   return tokenData;
 };
+

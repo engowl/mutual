@@ -15,8 +15,7 @@
     "db:migrate": "prisma migrate dev --name init",
     "db:generate-seed": "npx @snaplet/seed sync",
     "db:seed": "npx tsx prisma/seed/seed.ts",
-    "db:reset": "prisma migrate reset --force && prisma db push",
-    "ngrok": "ngrok http 3400"
+    "db:reset": "prisma migrate reset --force && prisma db push"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
