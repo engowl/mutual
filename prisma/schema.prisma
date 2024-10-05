@@ -159,6 +159,9 @@ model Token {
   symbol      String
   decimals    Int
   totalSupply Float
+  imageUrl    String?
+  description String?
+  uriData     Json?
 
   orders CampaignOrder[]
 
@@ -167,6 +170,10 @@ model Token {
 
   @@unique([mintAddress, chainId])
 }
+
+// model Pair {
+
+// }
 
 model CampaignOrder {
   id String @id
@@ -183,8 +190,9 @@ model CampaignOrder {
   channel     CampaignChannel
 
   vestingType CampaignOrderVestingType
-  status      CampaignOrderStatus
-  eligibility CampaignOrderEligibilityStatus
+  vestingCondition Json
+  status      CampaignOrderStatus @default(CREATED)
+  eligibility CampaignOrderEligibilityStatus @default(NOTELIGIBLE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

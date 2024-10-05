@@ -28,9 +28,11 @@
     "@solana/spl-token": "^0.4.8",
     "@solana/wallet-standard-util": "^1.1.1",
     "@solana/web3.js": "^1.95.3",
+    "@thirdweb-dev/storage": "^2.0.15",
     "@web3auth/sign-in-with-solana": "^4.0.0",
     "axios": "^1.7.7",
     "base58": "^2.0.1",
+    "bn.js": "^5.2.1",
     "bs58": "^6.0.0",
     "canvas": "^2.11.2",
     "cloudinary": "^2.5.0",
@@ -46,6 +48,7 @@
     "validator": "^13.12.0"
   },
   "devDependencies": {
+    "@types/bn.js": "^5.1.6",
     "@types/node": "^22.5.5",
     "@types/validator": "^13.12.1",
     "eslint": "^8.57.0",

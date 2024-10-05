@@ -1,5 +1,7 @@
 import * as metaplex from '@metaplex-foundation/js';
 import * as solanaWeb3 from '@solana/web3.js';
+import { getIPFSData } from './ipfsUtils.js';
+import BN from 'bn.js';
 
 /**
  * Get the token info
@@ -25,15 +27,30 @@ export const getTokenInfo = async (mintAddress, connection) => {
   // Fetch token metadata
   const token = await _metaplex.nfts().findByMint({ mintAddress: new solanaWeb3.PublicKey(mintAddress) });
 
+  let tokenUri = token.uri;
+  let uriData = null;
+  if (token?.uri) {
+    try {
+      const ipfsData = await getIPFSData(token.uri);
+      uriData = ipfsData.data;
+    } catch (error) {
+      console.error('Error fetching IPFS data:', error);
+    }
+  }
+
+  // Calculate total supply, use bn.js to handle large numbers
+  const formattedTotalSupply = new BN(token.mint.supply.basisPoints).div(new BN(10).pow(new BN(token.mint.decimals))).toNumber();
+
   const tokenData = {
     address: token.mint.address.toBase58(),
     name: token.name,
     symbol: token.symbol,
     decimals: token.mint.decimals,
-    uri: token.uri || '',
-    description: token?.json?.description || '',
-    image: token?.json?.image || '',
-    totalSupply: token.mint.supply.basisPoints.toString(),
+    uri: tokenUri,
+    description: uriData?.description || '',
+    image: uriData?.image || '',
+    totalSupply: formattedTotalSupply,
+    uriData: uriData,
   };
 
   return tokenData;

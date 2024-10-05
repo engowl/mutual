@@ -1,4 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
+import { BN } from 'bn.js';
 
 /**
  * 
@@ -41,6 +42,33 @@ export const parseEventData = (event, eventSchema) => {
   return parsedEvent;
 };
 
+export const parseAccountData = (accountData, schema) => {
+  const parsedData = {};
+
+  schema.type.fields.forEach(field => {
+    const fieldName = field.name;
+    const fieldType = field.type;
+    const fieldValue = accountData[fieldName];
+
+    if (fieldType === "publicKey") {
+      parsedData[fieldName] = new PublicKey(fieldValue).toBase58();
+    } else if (typeof fieldType === 'object' && fieldType.array) {
+      parsedData[fieldName] = parseFixedSizeArray(fieldValue);
+    } else if (["u64", "u32", "u16", "u8", "i64", "i32", "i16", "i8"].includes(fieldType)) {
+      parsedData[fieldName] = fieldValue instanceof BN ? fieldValue.toString() : fieldValue.toString();
+    } else if (fieldType === "u8") {
+      parsedData[fieldName] = fieldValue;
+    } else if (typeof fieldType === 'object' && fieldType.defined) {
+      parsedData[fieldName] = Object.keys(fieldValue)[0];
+    } else {
+      console.warn(`Unrecognized type: ${JSON.stringify(fieldType)} for field ${fieldName}`);
+      parsedData[fieldName] = fieldValue;
+    }
+  });
+
+  return parsedData;
+};
+
 // Helper function to check if a type is a fixed-size array
 function isFixedSizeArray(type) {
   return typeof type === 'object' &&
@@ -73,3 +101,30 @@ function isEmptyObject(obj) {
     obj !== null &&
     Object.keys(obj).length === 0;
 }
+
+export const validateTokenAmount = (clientAmount, contractAmount, tokenDecimals) => {
+  // Convert client amount to BN, considering token decimals
+  const clientBN = new BN(clientAmount).mul(new BN(10).pow(new BN(tokenDecimals)));
+  
+  // Assuming contractAmount is already a string (from parsing account data)
+  const contractBN = new BN(contractAmount);
+
+  let isValid = false;
+  let message = '';
+
+  if (clientBN.eq(contractBN)) {
+    isValid = true;
+    message = 'Amount matches the contract.';
+  } else if (clientBN.lt(contractBN)) {
+    message = `Amount is smaller than expected. Provided: ${clientBN.toString()}, Expected: ${contractBN.toString()}`;
+  } else {
+    message = `Amount is larger than expected. Provided: ${clientBN.toString()}, Expected: ${contractBN.toString()}`;
+  }
+
+  return {
+    isValid,
+    message,
+    clientAmount: clientBN.toString(),
+    contractAmount: contractBN.toString()
+  };
+};
