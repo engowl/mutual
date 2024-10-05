@@ -381,6 +381,8 @@ export const AuthProvider = ({ children }) => {
         } finally {
           setIsCheckingSession(false);
         }
+      } else {
+        setIsCheckingSession(false);
       }
     }
 
