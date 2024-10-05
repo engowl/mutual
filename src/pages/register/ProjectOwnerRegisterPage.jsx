@@ -82,6 +82,7 @@ export default function ProjectOwnerRegisterPage() {
       });
 
       setUserTwitter(res.data.data.userTwitter);
+      console.log(res);
     } catch (error) {
       console.log(error);
     } finally {
@@ -117,6 +118,7 @@ export default function ProjectOwnerRegisterPage() {
 
   useEffect(() => {
     if (code) {
+      console.log("get code...");
       getTwitterUser(code);
     }
   }, [code, getTwitterUser]);
@@ -161,7 +163,11 @@ export default function ProjectOwnerRegisterPage() {
     );
   }
 
-  if (user?.projectOwner && user.projectOwner.status !== "APPROVED") {
+  if (
+    user?.projectOwner &&
+    user?.projectOwner.status &&
+    user.projectOwner.status !== "APPROVED"
+  ) {
     return <OnProcessBanner />;
   }
 
@@ -175,7 +181,7 @@ export default function ProjectOwnerRegisterPage() {
           handleSubmit={handleSubmit}
           loading={state.loading}
           error={state.error}
-          userTwitte={userTwitter}
+          userTwitter={userTwitter}
           connectTwitter={connectTwitter}
           isTwitterLoading={isTwitterLoading}
         />

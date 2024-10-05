@@ -1,4 +1,4 @@
-import { createContext, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { googleLogout, useGoogleLogin } from "@react-oauth/google";
 import Portal from "@portal-hq/web";
 import axios from "axios";
@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
   const [cookies, setCookie, removeCookie] = useCookies(["session_token"]);
   const [isUserLoading, setUserLoading] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [walletType, setWalletType] = useState(null);
 
   // Adapter setup
@@ -362,7 +362,6 @@ export const AuthProvider = ({ children }) => {
             // const tokenRemainingTime = exp - currentTime;
             await getUser();
             console.log("get user called");
-            setCookie("session_token", token);
             setIsLoggedIn(true);
 
             // if (tokenRemainingTime > 5 * 60) {

@@ -412,7 +412,7 @@ function ProjectCriteria() {
 }
 
 function PackageAndPricing() {
-  const navigate = useNavigate();
+  const { getUser } = useMCAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [packages, setPackages] = useState([
     {
@@ -451,7 +451,7 @@ function PackageAndPricing() {
         },
       });
 
-      navigate("/influencer/profile");
+      await getUser();
     } catch (error) {
       console.log(error);
     } finally {
