@@ -96,6 +96,31 @@ class MutualEscrowSDK {
     }
   }
 
+  // Verify the offer data with the backend
+  async createOffer({
+    dealData,
+    txHash
+  }) {
+    try {
+      const response = await axios.post(
+        `${this.backendEndpoint}/campaign/create-offer`,
+        {
+          ...dealData,
+          createDealTxHash: txHash
+        },
+        {
+          headers: this.getHeaders()
+        }
+      )
+
+      console.log('Offer verification response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error verifying offer:', error);
+      throw error;
+    }
+  }
+
   // TODO:
 
   // Send and confirm the transaction

@@ -177,7 +177,7 @@ function InfluencerCard({ influencerData }) {
             <img src={PriceIconSvg} alt="icon" className="size-4" />
           </div>
           <p className="font-medium text-sm leading-none mt-2">
-            {influencerData.packages.price} SOL
+            {influencerData?.packages?.price} SOL
           </p>
           <p className="text-xs mt-1">Min. Price</p>
         </div>
