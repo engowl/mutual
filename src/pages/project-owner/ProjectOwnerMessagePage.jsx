@@ -5,35 +5,53 @@ import { io } from "socket.io-client";
 import { BACKEND_URL } from "../../config";
 import toast from "react-hot-toast";
 import { useSearchParams } from "react-router-dom";
+import { useMCAuth } from "../../lib/mconnect/hooks/useMCAuth";
 
 export default function ProjectOwnerMessagePage() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const currentUser = { id: 1, timezone: "UTC" };
+  const { user } = useMCAuth();
   const [socket, setSocket] = useState(null);
   const [searchParams] = useSearchParams();
 
   const influencerId = searchParams.get("influencerId");
 
   useEffect(() => {
+    if (!user) return;
     const socket = io(`${BACKEND_URL}`);
     setSocket(socket);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !user) return;
 
     socket.on("connect", () => {
+      socket.emit("join", { userId: user.id });
       toast.success("Connected to server");
     });
-    socket.emit("userActive", { userId: currentUser.id });
+    socket.emit("userActive", { userId: user.id });
 
-    socket.on("userStatusChange", ({ userId, status }) => {});
+    socket.on("personal-message", (data) => {
+      toast(JSON.stringify(data));
+    });
 
     return () => {
       socket.disconnect();
     };
-  }, [socket]);
+  }, [socket, user]);
+
+  function sendMessage() {
+    console.log({ newMessage });
+    if (!newMessage) return;
+
+    socket.emit("personal-message", {
+      senderId: user.id,
+      receiverId: "cm1wmtvbe00005pe62o4anp05",
+      content: newMessage,
+      role: "user",
+    });
+    setNewMessage("");
+  }
 
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
@@ -88,6 +106,7 @@ export default function ProjectOwnerMessagePage() {
                 messages={messages}
                 newMessage={newMessage}
                 setNewMessage={setNewMessage}
+                sendMessage={sendMessage}
               />
             </div>
           </div>
@@ -99,6 +118,7 @@ export default function ProjectOwnerMessagePage() {
 
 function MessageChat({ sendMessage, messages, setNewMessage, newMessage }) {
   const handleSend = () => {
+    console.log("send");
     sendMessage();
   };
 
