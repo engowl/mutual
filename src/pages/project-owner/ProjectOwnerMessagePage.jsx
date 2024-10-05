@@ -1,4 +1,6 @@
-import { Phone, Search } from "lucide-react";
+import { Phone, Search, Send } from "lucide-react";
+import { useState } from "react";
+import { cnm } from "../../utils/style";
 
 export default function ProjectOwnerMessagePage() {
   return (
@@ -56,5 +58,75 @@ export default function ProjectOwnerMessagePage() {
 }
 
 function MessageChat() {
-  return <div className="mt-4 rounded-2xl bg-creamy-300 min-h-[412px]"></div>;
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([
+    { content: "Hey there!", role: "another" },
+    { content: "Hello! How are you?", role: "user" },
+    { content: "I'm good, thanks. What about you?", role: "another" },
+    { content: "Doing great! Working on a new project.", role: "user" },
+  ]);
+
+  const handleSend = () => {
+    if (message.trim()) {
+      setMessages([...messages, { content: message, role: "user" }]);
+      setMessage(""); // Clear the input
+    }
+  };
+
+  return (
+    <div className="mt-4 rounded-2xl bg-creamy-300 min-h-[412px] relative">
+      {/* chat bubbles */}
+      <div className="flex flex-col p-4 overflow-y-auto size-full max-h-[412px]">
+        <div className="pb-12 w-full flex flex-col">
+          {messages.map((msg, index) => (
+            <div key={index} className="py-2 w-full flex">
+              <div
+                className={cnm(
+                  "flex items-end gap-2",
+                  msg.role === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
+                )}
+              >
+                <div className="size-6 rounded-full overflow-hidden">
+                  <img
+                    src="/assets/demo/angga.png"
+                    alt="user"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div
+                  className={cnm(
+                    "chat-bubble px-4 py-2 rounded-lg text-sm",
+                    msg.role === "user"
+                      ? "bg-white border border-orangy/50 text-neutral-600"
+                      : "bg-neutral-200"
+                  )}
+                >
+                  {msg.content}
+                </div>
+                <p className="text-xs">10:00</p>
+              </div>
+
+              <p></p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="absolute bottom-0 left-0 right-0 p-4">
+        <div className="flex gap-4 bg-white border rounded-xl items-center pr-4 h-12 focus-within:border-orangy/50">
+          <input
+            type="text"
+            placeholder="Type a message"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            className="flex-1 py-2 bg-transparent placeholder:text-sm outline-none px-4"
+          />
+          <button onClick={handleSend}>
+            <Send className="size-6 text-orangy" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

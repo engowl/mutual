@@ -19,11 +19,13 @@ export default function Navbar() {
           />
         </Link>
 
-        {user && isLoggedIn && user.role === "PROJECT_OWNER" ? (
-          <ProjectOwnerNav />
-        ) : user && isLoggedIn && user.role === "INFLUENCER" ? (
-          <InfluencerNav />
-        ) : null}
+        <div className="h-full hidden lg:inline">
+          {user && isLoggedIn && user.role === "PROJECT_OWNER" ? (
+            <ProjectOwnerNav />
+          ) : user && isLoggedIn && user.role === "INFLUENCER" ? (
+            <InfluencerNav />
+          ) : null}
+        </div>
       </div>
       <SignInButton />
     </nav>

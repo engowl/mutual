@@ -20,17 +20,18 @@ import { Link, useNavigate } from "react-router-dom";
 
 export default function ProjectOwnerBrowsePage() {
   return (
-    <div className="h-full overflow-y-auto w-full flex flex-col items-center font-clash">
+    <div className="h-full overflow-y-auto w-full flex flex-col items-center font-clash px-5">
       <div className="w-full max-w-6xl flex flex-col py-20">
-        <div className="w-full flex items-center justify-between">
-          <h1 className="text-[2.5rem] font-medium">
+        <div className="w-full flex flex-col lg:flex-row gap-5 lg:items-center justify-between">
+          <h1 className="text-3xl lg:text-[2.5rem] font-medium">
             Find your ideal influencer
           </h1>
           <Input
             variant="bordered"
             classNames={{
               inputWrapper:
-                "h-12 border border-black/10 shadow-none rounded-lg",
+                "h-10 lg:h-12 border border-black/10 shadow-none rounded-lg ",
+              input: "text-sm lg:text-base",
             }}
             className="w-full max-w-xs"
             startContent={<Search className="size-5" />}
@@ -39,7 +40,7 @@ export default function ProjectOwnerBrowsePage() {
         </div>
         <div className="w-full flex gap-6 mt-6">
           {/* Sidebar */}
-          <div className="bg-white rounded-2xl border p-5 w-80 min-h-[400px]">
+          <div className="hidden xl:inline bg-white rounded-2xl border p-5 w-80 min-h-[400px]">
             <div className="bg-orangy rounded-2xl p-4 text-white flex flex-col gap-2">
               <div className="w-full flex justify-between items-center">
                 <p className="text-neutral-100">$MICHI</p>
@@ -69,15 +70,22 @@ export default function ProjectOwnerBrowsePage() {
 
           {/* Influencer list */}
           <div className="flex-1">
-            <div className="grid lg:grid-cols-2 gap-3 ">
+            <div className="grid md:grid-cols-2 gap-3">
               <InfluencerCard
                 influencerData={{
                   username: "anggaandinata",
                 }}
               />
-              <InfluencerCard />
-              <InfluencerCard />
-              <InfluencerCard />
+              <InfluencerCard
+                influencerData={{
+                  username: "anggaandinata",
+                }}
+              />
+              <InfluencerCard
+                influencerData={{
+                  username: "anggaandinata",
+                }}
+              />
             </div>
           </div>
         </div>
@@ -90,8 +98,8 @@ function InfluencerCard({ influencerData }) {
   const navigate = useNavigate();
   return (
     <div className="bg-white rounded-2xl border p-4 w-full">
-      <div className="flex w-full gap-4">
-        <div className="shrink-0 size-20 rounded-full bg-neutral-200 overflow-hidden">
+      <div className="flex w-full gap-2 md:gap-4">
+        <div className="shrink-0 size-16 md:size-20 rounded-full bg-neutral-200 overflow-hidden">
           <img
             className="w-full h-full object-cover"
             alt="demo"
@@ -102,21 +110,21 @@ function InfluencerCard({ influencerData }) {
         </div>
         <div className="flex-1">
           <div className="w-full flex items-center justify-between">
-            <p className="text-lg font-medium">@anggaandinata</p>
+            <p className="md:text-lg font-medium">@anggaandinata</p>
             {/* Best match badge */}
-            <div className="bg-gradient-to-br from-[#8E00C5] via-[#FF6E63] to-[#FFA427] px-3 py-1 rounded-full text-xs text-white">
+            <div className="bg-gradient-to-br from-[#8E00C5] via-[#FF6E63] to-[#FFA427] px-3 py-1 rounded-full text-[10px] md:text-xs text-white">
               Best Match
             </div>
           </div>
           {/* buttons */}
-          <div className="w-full flex gap-1 mt-4">
+          <div className="w-full flex gap-1 mt-2 md:mt-4">
             <OffersTokenDealsModal influencerData={influencerData} />
             <Button
               onClick={() => {
                 navigate(`/influencer/profile/${2112233}`);
               }}
               variant="bordered"
-              className="text-xs bg-transparent border text-black rounded-full h-8 flex-1"
+              className="text-[10px] lg:text-xs bg-transparent border text-black rounded-full h-8 flex-1"
             >
               Package
             </Button>
@@ -176,7 +184,7 @@ function OffersTokenDealsModal({ influencerData }) {
     <>
       <Button
         onClick={handleOpen}
-        className="text-xs bg-orangy text-white rounded-full h-8 flex-1"
+        className="text-[10px] lg:text-xs bg-orangy text-white rounded-full h-8 flex-1"
       >
         Offer Token Deals
       </Button>
@@ -211,7 +219,7 @@ function OffersTokenDealsModal({ influencerData }) {
               </ModalHeader>
               <ModalBody className="w-full pb-6">
                 <div>
-                  <div className="w-full flex gap-3 mt-3">
+                  <div className="w-full flex flex-col gap-3 mt-3">
                     <Link
                       to={`/project-owner/market-cap-vesting/${1298124892}`}
                       className="border rounded-xl p-6 flex-1 flex flex-col items-center hover:bg-creamy-200"
