@@ -28,7 +28,7 @@ model User {
   projectOwner ProjectOwner?
   influencer   Influencer?
 
-  messagesSent  UserMessage?
+  messagesSent UserMessage?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -123,6 +123,9 @@ model TwitterAccount {
   username       String
   unfluencer     Influencer[]
   projectDetails ProjectDetails[]
+
+  followersCount Int?
+  description String?
 }
 
 enum UserWalletType {
@@ -135,14 +138,13 @@ enum ProjectOwnerStatus {
   APPROVED
 }
 
-
 model UserMessage {
-  id         String      @id @default(cuid())
+  id String @id @default(cuid())
 
-  status     UserOnlineStatus @default(OFFLINE)
+  status UserOnlineStatus @default(OFFLINE)
 
-  userId     String      @unique
-  user       User        @relation(fields: [userId], references: [id])
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
 
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
@@ -155,20 +157,21 @@ enum UserOnlineStatus {
   ONLINE
   OFFLINE
 }
-  
+
 model Message {
-  id         Int      @id @default(autoincrement())
-  content    String
-  sentAt     DateTime @default(now())
+  id             Int         @id @default(autoincrement())
+  content        String
+  sentAt         DateTime    @default(now())
   senderTimezone String
-  sender     UserMessage     @relation("SentMessages", fields: [senderId], references: [id])
-  senderId   String
-  receiver   UserMessage     @relation("ReceivedMessages", fields: [receiverId], references: [id])
-  receiverId String
+  sender         UserMessage @relation("SentMessages", fields: [senderId], references: [id])
+  senderId       String
+  receiver       UserMessage @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  receiverId     String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 enum RiskPreferenceEnum {
   LOW
   MODERATE
