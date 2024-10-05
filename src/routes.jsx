@@ -16,6 +16,7 @@ import ProjectOwnerMarketCapVestingPage from "./pages/project-owner/vesting/Proj
 import ProjectOwnerTimeVestingPage from "./pages/project-owner/vesting/ProjectOwnerTimeVesting";
 import ProjectOwnerOffersDetailPage from "./pages/project-owner/offers/ProjectOwnerOffersDetailsPage";
 import RolesAuthRouteGuard from "./components/guard/RolesAuthRouteGuard";
+import ProjectOwnerRegisterRouteGuard from "./components/guard/register/ProjectOwnerRegisterRouteGuard";
 
 export const router = createBrowserRouter([
   {
@@ -34,7 +35,11 @@ export const router = createBrowserRouter([
           },
           {
             path: "project-owner",
-            element: <ProjectOwnerRegisterPage />,
+            element: (
+              <ProjectOwnerRegisterRouteGuard>
+                <ProjectOwnerRegisterPage />
+              </ProjectOwnerRegisterRouteGuard>
+            ),
           },
         ],
       },

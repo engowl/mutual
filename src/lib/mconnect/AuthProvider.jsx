@@ -78,6 +78,7 @@ export const AuthProvider = ({ children }) => {
             });
           });
         }
+        return res.data.data.user;
       } catch (error) {
         console.log("FAILED_GET_USER: ", error);
       } finally {

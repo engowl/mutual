@@ -5,29 +5,35 @@ import {
   ModalBody,
   ModalContent,
   ModalHeader,
+  Spinner,
   useDisclosure,
 } from "@nextui-org/react";
 import { shortenAddress } from "../../utils/string";
-import { ArrowUpRight, Search, Users, X } from "lucide-react";
+import { ArrowUpRight, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import GrowthIconSvg from "../../assets/project-owner/browse/growth.svg";
 import PeopleIconSvg from "../../assets/project-owner/browse/people-fill.svg";
-import RankIconSvg from "../../assets/project-owner/browse/rank.svg";
 import PriceIconSvg from "../../assets/project-owner/browse/price-tag.svg";
 import TimeVestingSvg from "../../assets/project-owner/browse/time-vest.svg";
 import MarketVestingSvg from "../../assets/project-owner/browse/market-vest.svg";
 import { Link, useNavigate } from "react-router-dom";
 import useSWR from "swr";
-import { useMCAuth } from "../../lib/mconnect/hooks/useMcAuth";
 import { mutualAPI } from "../../api/mutual";
 
 export default function ProjectOwnerBrowsePage() {
-  const { data } = useSWR("/influencer/all", async (url) => {
+  const { data, isLoading } = useSWR("/influencer/all", async (url) => {
     const { data } = await mutualAPI.get(url);
     return data;
   });
 
-  console.log({ data });
+  if (isLoading) {
+    return (
+      <div className="w-full flex items-center justify-center min-h-full">
+        <Spinner size="xl" color="primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center font-clash px-5">
       <div className="w-full max-w-6xl flex flex-col py-20">

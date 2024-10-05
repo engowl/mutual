@@ -3,21 +3,26 @@ import Navbar from "../components/shared/Navbar";
 import { useMCAuth } from "../lib/mconnect/hooks/useMcAuth.jsx";
 import { useEffect } from "react";
 import RootProvider from "../providers/RootProvider.jsx";
+import { Spinner } from "@nextui-org/react";
 
 function RootLayout() {
   const { isLoggedIn, isCheckingSession, isUserLoading, user } = useMCAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const code = searchParams.get("code");
 
   useEffect(() => {
-    if (code) return;
-    if (!isCheckingSession && !isUserLoading) {
-      if (!isLoggedIn || !user) {
-        navigate("/");
-      }
+    if (!user || isUserLoading) return;
+    if (!isLoggedIn) {
+      navigate("/");
     }
-  }, [isCheckingSession, isLoggedIn, isUserLoading, navigate, user, code]);
+  }, [isCheckingSession, isLoggedIn, isUserLoading, navigate, user]);
+
+  if (isUserLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <Spinner size="md" color="primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-creamy overflow-hidden">
