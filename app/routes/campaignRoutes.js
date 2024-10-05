@@ -5,7 +5,10 @@ import { validateOfferData, validateVestingCondition } from "../utils/campaignUt
 import { getCreateDealTxDetails } from "../lib/contract/mutualEscrowContract.js"
 import { prepareOrderId, validateTokenAmount } from "../utils/contractUtils.js"
 import { adminKp, MUTUAL_ESCROW_PROGRAM } from "../lib/contract/contracts.js"
-import { PublicKey } from "@solana/web3.js"
+import { PublicKey, SystemProgram } from "@solana/web3.js"
+import * as splToken from "@solana/spl-token"
+import * as anchor from "@project-serum/anchor"
+
 /**
  *
  * @param {import("fastify").FastifyInstance} app
@@ -180,7 +183,7 @@ export const campaignRoutes = (app, _, done) => {
         return reply.status(400).send({ message: 'Order not found' });
       }
 
-      // TODO: Call the contract to accept the deal
+      // Call the contract to accept the deal
       const orderChain = CHAINS.find(c => c.dbChainId === order.chainId);
       const program = MUTUAL_ESCROW_PROGRAM(orderChain.id);
 
@@ -188,7 +191,6 @@ export const campaignRoutes = (app, _, done) => {
       const kolPublicKey = new PublicKey(kol.user.wallet.address);
       const projectOwnerPublicKey = new PublicKey(order.projectOwner.user.wallet.address);
       const mintPublicKey = new PublicKey(order.token.mintAddress);
-
 
       console.log({
         orderIdBuffer,
@@ -249,9 +251,140 @@ export const campaignRoutes = (app, _, done) => {
   });
 
   // KOL rejects the deal
-  app.post('/reject-deal', { preHandler: [authMiddleware] }, async (request, reply) => {
-    // KOL rejects the deal (backend admin handles the contract interaction)
-    reply.send('OK');
+  app.post('/reject-offer', { preHandler: [authMiddleware] }, async (request, reply) => {
+    try {
+      const { user } = request;
+      const { orderId } = request.body;
+
+      const kol = await prismaClient.influencer.findUnique({
+        where: {
+          userId: user.id
+        },
+        include: {
+          user: {
+            include: {
+              wallet: true
+            }
+          }
+        }
+      });
+      if (!kol) {
+        return reply.status(400).send({ message: 'KOL not found' });
+      }
+
+      const order = await prismaClient.campaignOrder.findUnique({
+        where: {
+          id: orderId,
+          influencerId: kol.id
+        },
+        include: {
+          projectOwner: {
+            include: {
+              user: {
+                include: {
+                  wallet: true
+                }
+              }
+            }
+          },
+          token: true
+        }
+      });
+
+      if (!order) {
+        return reply.status(400).send({ message: 'Order not found' });
+      }
+
+      // Call the contract to reject the deal
+      const orderChain = CHAINS.find(c => c.dbChainId === order.chainId);
+      const program = MUTUAL_ESCROW_PROGRAM(orderChain.id);
+
+      const orderIdBuffer = prepareOrderId(order.id);
+      const kolPublicKey = new PublicKey(kol.user.wallet.address);
+      const projectOwnerPublicKey = new PublicKey(order.projectOwner.user.wallet.address);
+      const mintPublicKey = new PublicKey(order.token.mintAddress);
+
+      console.log({
+        orderIdBuffer,
+        kolPublicKey,
+        projectOwnerPublicKey,
+        mintPublicKey
+      })
+
+      const [dealPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('deal'),
+          orderIdBuffer,
+          projectOwnerPublicKey.toBuffer(),
+          kolPublicKey.toBuffer(),
+          mintPublicKey.toBuffer()
+        ],
+        program.programId
+      );
+      const [escrowPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("escrow")
+        ],
+        program.programId
+      );
+
+      const [vaultTokenAccountPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("vault_token_account"),
+          mintPublicKey.toBuffer(),
+        ],
+        program.programId
+      );
+
+      const [vaultAuthorityPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("vault_authority")],
+        program.programId
+      );
+
+      const projectOwnerTokenAccount = await splToken.getAssociatedTokenAddress(
+        mintPublicKey,
+        projectOwnerPublicKey
+      )
+      console.log('projectOwnerTokenAccount:', projectOwnerTokenAccount);
+
+      console.log('dealPda:', dealPda.toBase58());
+      console.log('escrowPda:', escrowPda.toBase58());
+
+      // Call the reject deal function on the contract
+      const txHash = await program.methods
+        .rejectDeal()
+        .accounts({
+          deal: dealPda,
+          escrow: escrowPda,
+          signer: adminKp.publicKey,
+          projectOwner: projectOwnerPublicKey,
+          vaultTokenAccount: vaultTokenAccountPda,
+          vaultAuthority: vaultAuthorityPda,
+          projectOwnerTokenAccount: projectOwnerTokenAccount,
+          mint: mintPublicKey,
+          tokenProgram: splToken.TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        })
+        .signers([adminKp]) // Admin or KOL can sign
+        .rpc({ commitment: "confirmed" });
+      console.log('reject deal txHash:', txHash);
+
+      // Update the order status to rejected
+      const rejectedOrder = await prismaClient.campaignOrder.update({
+        where: {
+          id: order.id
+        },
+        data: {
+          status: 'REJECTED'
+        }
+      })
+
+      reply.send(rejectedOrder);
+    } catch (error) {
+      console.error('Error rejecting deal:', error)
+      return reply.status(500).send({ message: error?.message || 'Internal server error' })
+    }
   });
 
   // KOL confirms that the obligated task is done
