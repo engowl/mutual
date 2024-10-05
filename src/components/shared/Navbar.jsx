@@ -10,7 +10,11 @@ export default function Navbar() {
     <nav className="flex items-center px-8 h-12 justify-between border-b border-black/20">
       <div className="flex h-full items-center">
         <Link to={"/"} className="text-xl font-medium">
-          MUTUAL
+          <img
+            src="/assets/mutual_text_logo.svg"
+            alt="mutaal_logo"
+            className="w-20"
+          />
         </Link>
 
         {user && isLoggedIn && user.role === "project-owner" ? (

@@ -18,16 +18,13 @@ export default function MCWalletWidget() {
   }
 
   return address ? (
-    <Menu as="div" className="relative w-fit pt-2">
+    <Menu as="div" className="relative">
       <MenuButton>
-        <div className="flex items-center justify-center gap-2 rounded-full bg-white border-[1px] border-[#C9C9C9]">
+        <div className="flex items-center justify-center gap-2 rounded-full bg-white border-[1px] border-[#C9C9C9] p-1">
           {walletType == "MPC" ? (
             <GoogleIcon className="w-10 h-10 p-[2px]" />
           ) : (
-            <img
-              src={wallet.adapter.icon}
-              className="size-8 rounded-full p-[2px]"
-            />
+            <img src={wallet.adapter.icon} className="size-5 rounded-full" />
           )}
           <div className="flex gap-2 pr-4 items-center">
             <p className="text-xs text-[#575757]">{shortenId(address)}</p>
@@ -45,7 +42,7 @@ export default function MCWalletWidget() {
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
-        <MenuItems className="absolute right-0 mt-4 w-56 origin-top-right rounded-xl p-4 backdrop-blur-xl z-50 bg-white border-[1px] border-[#C9C9C9]">
+        <MenuItems className="absolute right-0 mt-1 w-56 origin-top-right rounded-xl p-4 backdrop-blur-xl z-50 bg-white border-[1px] border-[#C9C9C9]">
           <div className="flex flex-col items-start text-[#131523]">
             <button
               onClick={handleCopyAddress}

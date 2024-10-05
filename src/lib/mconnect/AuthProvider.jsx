@@ -9,10 +9,9 @@ import base58 from "bs58";
 import { createSolanaMessage } from "../solana.js";
 import { WalletSignInError } from "@solana/wallet-adapter-base";
 import toast from "react-hot-toast";
+import { AuthContext } from "../../contexts/AuthContext.js";
 
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL;
-
-export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   // Google setup
@@ -21,6 +20,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [cookies, setCookie, removeCookie] = useCookies(["session_token"]);
+  const [isUserLoading, setUserLoading] = useState(false);
 
   const [walletType, setWalletType] = useState(null);
 
@@ -41,39 +41,49 @@ export const AuthProvider = ({ children }) => {
   const token = cookies.session_token;
 
   // Get User
-  const getUser = useCallback(async () => {
-    try {
-      const res = await axios.get(`${BACKEND_BASE_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setUser(res.data.data.user);
-      setWalletType(res.data.data.user.wallet.type);
-
-      if (res.data.data.user.wallet.type === "MPC") {
-        const portalInstance = new Portal({
-          apiKey: res.data.data.user.portalClientApiKey,
-          autoApprove: true,
-          rpcConfig: {
-            "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1":
-              "https://api.devnet.solana.com",
-            "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp":
-              "https://api.mainnet-beta.solana.com",
-          },
-        });
-
-        await new Promise((resolve) => {
-          portalInstance.onReady(async () => {
-            setPortal(portalInstance);
-            resolve();
-          });
-        });
+  const getUser = useCallback(
+    async (props) => {
+      const { silentLoad } = props || { silentLoad: false };
+      if (!silentLoad) {
+        setUserLoading(true);
       }
-    } catch (error) {
-      console.log("FAILED_GET_USER: ", error);
-      return;
-    }
-  }, [token]);
+      try {
+        const res = await axios.get(`${BACKEND_BASE_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setUser(res.data.data.user);
+        setWalletType(res.data.data.user.wallet.type);
+
+        if (res.data.data.user.wallet.type === "MPC") {
+          const portalInstance = new Portal({
+            apiKey: res.data.data.user.portalClientApiKey,
+            autoApprove: true,
+            rpcConfig: {
+              "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1":
+                "https://api.devnet.solana.com",
+              "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp":
+                "https://api.mainnet-beta.solana.com",
+            },
+          });
+
+          await new Promise((resolve) => {
+            portalInstance.onReady(async () => {
+              setPortal(portalInstance);
+              resolve();
+            });
+          });
+        }
+      } catch (error) {
+        console.log("FAILED_GET_USER: ", error);
+      } finally {
+        if (!silentLoad) {
+          setUserLoading(false);
+        }
+      }
+    },
+    [token]
+  );
 
   // Google login handler
   const googleLogin = useGoogleLogin({
@@ -219,7 +229,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const walletSignInData = {
-        chainId: "devnet",
+        chainId: import.meta.env.PROD ? "mainnet" : "devnet",
         address: wallet.adapter.publicKey
           ? wallet.adapter.publicKey.toBase58()
           : "",
@@ -385,6 +395,7 @@ export const AuthProvider = ({ children }) => {
         isWalletLoading,
         logout,
         walletType,
+        isUserLoading,
       }}
     >
       {children}
