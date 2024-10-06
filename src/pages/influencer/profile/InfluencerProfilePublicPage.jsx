@@ -12,11 +12,18 @@ import {
   TimeInput,
   useDisclosure,
 } from "@nextui-org/react";
+import { NATIVE_MINT } from "@solana/spl-token";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 import { useParams } from "react-router-dom";
 import { mutualAPI } from "../../../api/mutual.js";
 import RandomAvatar from "../../../components/ui/RandomAvatar.jsx";
+import { CHAINS } from "../../../config.js";
+import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK.js";
+import { getAlphanumericId } from "../../../utils/misc.js";
 
 export default function InfluencerProfilePublicPage() {
   const params = useParams();
@@ -157,11 +164,65 @@ function TelegramPackageModal() {
 
 function TweetPackageModal() {
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const [cookies] = useCookies(["session_token"]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleTweetSubmit = (formData) => {
-    // Submit logic for Twitter Package
-    console.log("Submitting Twitter Package:", formData);
-    onClose(); // Close modal after submission
+  const { wallet } = useWallet();
+
+  const handleTweetSubmit = async (formData) => {
+    try {
+      // Submit logic for Twitter Package
+      setIsLoading(true);
+      console.log("Submitting Twitter Package:", formData);
+
+      // onClose(); // Close modal after submission
+
+      const escrowSDK = new MutualEscrowSDK({
+        backendEndpoint: import.meta.env.VITE_BACKEND_URL,
+        bearerToken: cookies.session_token,
+        chainId: 'devnet',
+        chains: CHAINS
+      })
+
+      const DATA = {
+        orderId: getAlphanumericId(16),
+        influencerId: 'cm1woosyd0002s3rywklvtzik',
+        vestingType: "NONE",
+        vestingCondition: {},
+        mintAddress: NATIVE_MINT.toBase58(),
+        tokenAmount: 0.05,
+        campaignChannel: 'TWITTER',
+        promotionalPostText: 'This is a promotional text',
+        postDateAndTime: new Date()
+      }
+
+      await escrowSDK.verifyOffer(DATA);
+      console.log("Offer verified successfully");
+
+      const createDealTx = await escrowSDK.prepareNativeCreateDealTransaction({
+        orderId: DATA.orderId,
+        kolAddress: 'BhBjfxB7NvG4FugPg8d1HCtjRuj5UqDGgsEMxxRo1k3H',
+        userAddress: wallet.adapter.publicKey.toBase58(),
+        vestingType: "NONE",
+        amount: DATA.tokenAmount * LAMPORTS_PER_SOL,
+      })
+      console.log("Create deal transaction prepared:", createDealTx);
+
+      const signedTx = await wallet.adapter.signTransaction(createDealTx);
+
+      const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
+      console.log("Deal created successfully. Tx:", txHash);
+
+      const created = await escrowSDK.createOffer({
+        dealData: DATA,
+        txHash: txHash,
+      });
+      console.log("Offer created successfully:", created);
+    } catch (error) {
+      console.error("Error submitting Twitter Package:", error?.response?.data?.message || error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

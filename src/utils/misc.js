@@ -9,3 +9,7 @@ const alphanumericNanoid = customAlphabet(alphabet, 16);
 export const getAlphanumericId = (length = 16) => {
   return alphanumericNanoid(length);
 }
+
+export const manyMinutesFromNowUnix = (minutes) => {
+  return Math.floor(Date.now() / 1000) + 60 * minutes;
+}
