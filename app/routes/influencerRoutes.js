@@ -49,5 +49,39 @@ export const influencerRoutes = (app, _, done) => {
     }
   });
 
+  app.get("/:id", async (request, reply) => {
+    const influencerId = request.params.id;
+
+    try {
+      const influencer = await prismaClient.influencer.findUnique({
+        where: {
+          id: influencerId,
+        },
+        include: {
+          user: {
+            include: {
+              wallet: true,
+            },
+          },
+          twitterAccount: true,
+          packages: true,
+        },
+      });
+
+      return reply.status(200).send({
+        message: "Influencer fetched successfully",
+        error: null,
+        data: influencer,
+      });
+    } catch (e) {
+      console.error(e);
+      return reply.status(500).send({
+        message: "Error while fetching influencer",
+        error: e,
+        data: null,
+      });
+    }
+  });
+
   done();
 };
