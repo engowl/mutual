@@ -23,22 +23,34 @@ import RandomAvatar from "../../components/ui/RandomAvatar";
 
 export default function ProjectOwnerBrowsePage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [followersRange, setFollowersRange] = useState([0, 1000000]);
 
   const { data, isLoading } = useSWR("/influencer/all", async (url) => {
     const { data } = await mutualAPI.get(url);
     return data;
   });
 
-  const filteredInfluencers = data?.data?.filter(
-    (influencer) =>
+  const handleFollowersRangeChange = (min, max) => {
+    setFollowersRange([min, max === 1000000 ? undefined : max]);
+  };
+
+  const filteredInfluencers = data?.data?.filter((influencer) => {
+    const matchesSearchQuery =
       influencer.twitterAccount.username
         .toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
       influencer.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       influencer.twitterAccount.name
         .toLowerCase()
-        .includes(searchQuery.toLowerCase())
-  );
+        .includes(searchQuery.toLowerCase());
+
+    const withinFollowersRange =
+      influencer.twitterAccount.followersCount >= followersRange[0] &&
+      (followersRange[1] === undefined ||
+        influencer.twitterAccount.followersCount <= followersRange[1]);
+
+    return matchesSearchQuery && withinFollowersRange;
+  });
 
   if (isLoading) {
     return (
@@ -59,7 +71,7 @@ export default function ProjectOwnerBrowsePage() {
             variant="bordered"
             classNames={{
               inputWrapper:
-                "h-10 lg:h-12 border border-black/10 shadow-none rounded-lg ",
+                "h-10 lg:h-12 bg-[#F6F6F6] border border-black/10 shadow-none rounded-lg ",
               input: "text-sm lg:text-base",
             }}
             className="w-full max-w-xs"
@@ -91,7 +103,9 @@ export default function ProjectOwnerBrowsePage() {
                 <BudgetRangeSlider />
               </div>
               <div className="mt-4">
-                <FollowersRangeSlider />
+                <FollowersRangeSlider
+                  onRangeChange={handleFollowersRangeChange}
+                />
               </div>
               <div className="mt-4">
                 <EngagementRangeSlider />
@@ -314,24 +328,21 @@ function BudgetRangeSlider() {
     <div className="w-full">
       <p>Budget</p>
       <div className="mt-3 w-full">
-        <GraphRangeSlider
-          initialMax={5000000}
-          initialMin={2000000}
-          step={100000}
-        />
+        <GraphRangeSlider initialMax={1} initialMin={1} step={100} />
       </div>
     </div>
   );
 }
-function FollowersRangeSlider() {
+function FollowersRangeSlider({ onRangeChange }) {
   return (
     <div className="w-full">
       <p>Followers</p>
       <div className="mt-3 w-full">
         <GraphRangeSlider
           initialMax={5000000}
-          initialMin={2000000}
-          step={100000}
+          initialMin={1}
+          step={1}
+          onRangeChange={onRangeChange}
         />
       </div>
     </div>
@@ -343,17 +354,18 @@ function EngagementRangeSlider() {
     <div className="w-full">
       <p>Engagement</p>
       <div className="mt-3 w-full">
-        <GraphRangeSlider
-          initialMax={5000000}
-          initialMin={2000000}
-          step={100000}
-        />
+        <GraphRangeSlider initialMax={1} initialMin={1} step={100} />
       </div>
     </div>
   );
 }
 
-function GraphRangeSlider({ initialMin = 0, initialMax = 100, step = 10 }) {
+function GraphRangeSlider({
+  initialMin = 0,
+  initialMax = 100,
+  step = 10,
+  onRangeChange,
+}) {
   const [minValue, setMinValue] = useState(initialMin);
   const [maxValue, setMaxValue] = useState(initialMax);
 
@@ -373,11 +385,13 @@ function GraphRangeSlider({ initialMin = 0, initialMax = 100, step = 10 }) {
   const handleMinChange = (e) => {
     const value = Math.min(Number(e.target.value), maxValue - 1);
     setMinValue(value);
+    onRangeChange(value, maxValue);
   };
 
   const handleMaxChange = (e) => {
     const value = Math.max(Number(e.target.value), minValue + 1);
     setMaxValue(value);
+    onRangeChange(minValue, value);
   };
 
   const handleMinInputChange = (e) => {

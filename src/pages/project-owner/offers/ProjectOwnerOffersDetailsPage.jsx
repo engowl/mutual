@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { shortenAddress } from ".././../../utils/string";
 import { Clock } from "lucide-react";
 import Countdown from "react-countdown";
+import { cnm } from "../../../utils/style.js";
+import dayjs from "dayjs";
 
 export default function ProjectOwnerOffersDetailPage() {
   const params = useParams();
@@ -100,6 +102,7 @@ export default function ProjectOwnerOffersDetailPage() {
           </div>
         </div>
         {isWaitingApproval && <SubmissionCard />}
+        <EventLogs events={DUMMY_LOGS} />
       </div>
     </div>
   );
@@ -126,3 +129,105 @@ function SubmissionCard() {
     </div>
   );
 }
+
+function EventLogs({ events }) {
+  return (
+    <div className="relative flex flex-col gap-5 w-full mt-4 bg-white rounded-xl border p-4">
+      <p className="font-medium">Activity</p>
+
+      <div className="flex flex-col">
+        {events.map((event, index) => {
+          return (
+            <div key={event.id} className="flex flex-col w-full px-4">
+              <div className="flex flex-row items-start gap-4 h-full w-full">
+                <div className="flex flex-col h-full items-center mt-0.5">
+                  <div className="size-4 rounded-full bg-orangy aspect-square"></div>
+                  <div
+                    className={cnm(
+                      "h-full w-[2px] bg-orangy/50",
+                      `${index === events.length - 1 ? "hidden" : ""}`
+                    )}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2 pb-5">
+                  <p className="text-sm text-[#161616]">
+                    {dayjs(event.time).format("MMM D, YYYY [at] h:mm A")}
+                  </p>
+                  <h1 className="text-md font-medium text-[#161616]">
+                    {event.description}
+                  </h1>
+                </div>
+
+                {event.txHash && (
+                  <button
+                    onClick={() =>
+                      window.open(`https://solscan.io/tx/${event.txHash}`)
+                    }
+                    className="my-auto ml-auto text-xs text-[#161616] hover:text-[#161616]/70 font-medium whitespace-nowrap underline"
+                  >
+                    View Transaction
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export const DUMMY_LOGS = [
+  {
+    id: "created_offer",
+    title: "Offer Created",
+    description:
+      "An offer was submitted with Market-cap vesting terms for $MUTUAL.",
+    time: "2024-10-06T19:01:33.617Z",
+    txHash:
+      "2z1szYnKuB1QpWw5eafWTfrnZyCMCj6ngNsjL3jxWdHUfonMZzPSzkMKP9G2YSTuVuzuAEQbjP9chqApBLQtEHsP",
+  },
+  {
+    id: "accepted_offer",
+    description: "The offer has been accepted. The post is scheduled for ...",
+    time: "2024-10-06T20:21:10.986Z",
+    txHash: null,
+  },
+  {
+    id: "partially_eligible",
+    description:
+      "The tweet has been verified, the first unlock is now available for claiming.",
+    time: "2024-10-06T20:21:14.142Z",
+    txHash:
+      "5M755wbCF2PxKDVHodg3fsdEvVitPLBAxx2u7pGEQsvGBNU6FvzwaaxRnDHXzCe3fgKfuiw8QbRNV34pAy5QEKqj",
+  },
+  {
+    id: "partial_deal_resolved_pnL",
+    description: "A partial unlock of 250 $MUTUAL has been claimed.",
+    time: "2024-10-06T20:21:17.316Z",
+    txHash:
+      "5PQ94Duw3jJL6p2K6iPqR4pnesq8d8Bu6zHwrpScp4TJQb8yF3SMKCjAwknZCDVSgbQVJ849YHQKaWMzGNPyobYB",
+  },
+  {
+    id: "fully_eligible",
+    description:
+      "$MUTUAL has reached the target market cap! All remaining tokens are now available for claiming.",
+    time: "2024-10-06T20:21:18.141Z",
+    txHash:
+      "4ibC2f71LzTFcFBspMjehu5ocnQnyu9JPSgvR3ayGaqUG3gE3Gmn2CcbUJ2aM9tUMb4qiDiCu5RcWCLYqZzJvjUA",
+  },
+  {
+    id: "deal_resolved",
+    description: "All 1000 $MUTUAL has been claimed.",
+    time: "2024-10-06T20:21:20.249Z",
+    txHash:
+      "5US6j9QbjVg97hfhBzoH9fDnaQECs5r4EBJ4HPHrXkKhsGPRRGXrxctUsTDzzbsCVJev8VGyheVQG1dbCZ68zJMf",
+  },
+  {
+    id: "completed_offer",
+    description: "The offer is completed. All tokens have been released.",
+    time: "2024-10-06T20:21:20.249Z",
+    txHash: null,
+  },
+];
