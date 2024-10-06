@@ -392,27 +392,14 @@ export const campaignRoutes = (app, _, done) => {
     try {
       const { user } = request;
 
-      const orders = await prismaClient.campaignOrder.findMany({
-        where: {
-          OR: [
-            {
-              influencer: {
-                userId: user.id
-              }
-            },
-            {
-              projectOwner: {
-                userId: user.id
-              }
-            }
-          ]
+      console.log('User:', user);
+      const ordersInfluencer = await prismaClient.campaignOrder.findMany({
+        where:{
+          influencer: {
+            userId: user.id
+          }
         },
         include: {
-          projectOwner: {
-            include: {
-              user: true
-            }
-          },
           influencer: {
             include: {
               user: true
@@ -421,6 +408,31 @@ export const campaignRoutes = (app, _, done) => {
           token: true
         }
       });
+
+      const ordersProjectOwner = await prismaClient.campaignOrder.findMany({
+        where:{
+          projectOwner: {
+            userId: user.id
+          }
+        },
+        include: {
+          projectOwner: {
+            include: {
+              user: true
+            }
+          },
+          token: true
+        }
+      });
+
+      let orders = [];
+      if(ordersInfluencer?.length > 0){
+        console.log('Using influencer orders');
+        orders = ordersInfluencer;
+      } else if(ordersProjectOwner?.length > 0){
+        console.log('Using project owner orders');
+        orders = ordersProjectOwner;
+      }
 
       reply.send(orders);
     } catch (error) {
