@@ -22,7 +22,7 @@ export const parseEventData = (event, eventSchema) => {
       parsedEvent[fieldName] = parseFixedSizeArray(fieldValue);
 
     } else if (["u64", "u32", "u16", "u8"].includes(fieldType)) {
-      parsedEvent[fieldName] = Number(fieldValue);
+      parsedEvent[fieldName] = String(fieldValue);
 
     } else if (fieldType === "bool") {
       parsedEvent[fieldName] = Boolean(fieldValue);

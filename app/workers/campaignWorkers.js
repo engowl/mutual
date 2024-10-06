@@ -1,15 +1,18 @@
 import bs58 from 'bs58';
 import solanaWeb3 from '@solana/web3.js';
-import { CHAINS } from '../../config.js';
+import cron from 'node-cron';
+import { CHAINS, OFFER_EXPIRY_IN_MINUTES } from '../../config.js';
 import { MUTUAL_ESCROW_PROGRAM } from '../lib/contract/contracts.js';
-import { getAlphanumericId } from '../utils/miscUtils.js';
+import { getAlphanumericId, manyMinutesFromNowUnix } from '../utils/miscUtils.js';
 import { parseEventData } from '../utils/contractUtils.js';
 import { prismaClient } from '../db/prisma.js';
+import { handleExpiredOffer } from './helpers/campaignHelpers.js';
 
 /**
  *
  * @param {import("fastify").FastifyInstance} app
- * @param {*} _
+ * @param {import { cron } from 'node-cron';
+*} _
  * @param {Function} done
  */
 export const campaignWorkers = (app, _, done) => {
@@ -29,6 +32,7 @@ export const campaignWorkers = (app, _, done) => {
     eventName,
     signature,
     parsedEvent,
+    slot
   }) => {
     try {
       await prismaClient.escrowEventLog.create({
@@ -39,11 +43,50 @@ export const campaignWorkers = (app, _, done) => {
           eventName: eventName,
           signature: signature,
           data: parsedEvent,
+          slot: slot
         }
       })
       console.log('Escrow event log saved successfully');
     } catch (error) {
       console.error('Error saving escrow event log:', error.stack || error);
+    }
+  }
+
+  const handleEvent = async ({
+    chain,
+    program,
+    eventName,
+    event,
+    slot,
+    signature,
+  }) => {
+    try {
+      console.group(`Event: ${eventName}`);
+      console.log(`New event detected: ${eventName}`);
+      console.log('Event data:', event);
+      console.log('Slot:', slot);
+      console.log('Transaction signature:', signature);
+      console.groupEnd();
+
+      // Parse the event data
+      const parsedEvent = parseEventData(event, program.idl.events.find((e) => e.name === eventName));
+      console.log('New Event Detected:', {
+        name: eventName,
+        signature: signature,
+        data: parsedEvent,
+      });
+
+      // Save the event log
+      await saveEscrowEventLog({
+        chainId: chain.dbChainId,
+        programId: program.programId.toBase58(),
+        eventName: eventName,
+        signature: signature,
+        parsedEvent: parsedEvent,
+        slot: slot,
+      });
+    } catch (error) {
+      console.error(`Error handling event ${eventName} on chain ${chain.id}:`, error.stack || error);
     }
   }
 
@@ -54,34 +97,19 @@ export const campaignWorkers = (app, _, done) => {
         const program = MUTUAL_ESCROW_PROGRAM(chain.id);
         const eventNames = program.idl.events.map((e) => e.name);
 
-        console.group(`Listening for events on chain ${chain.id}`);
-        console.log('Detected event names:', eventNames);
+        // console.group(`Listening for events on chain ${chain.id}`);
+        // console.log('Detected event names:', eventNames);
         console.groupEnd();
 
         eventNames.forEach((eventName) => {
-          program.addEventListener(eventName, (event, slot, signature) => {
-            console.group(`Event: ${eventName}`);
-            console.log(`New event detected: ${eventName}`);
-            console.log('Event data:', event);
-            console.log('Slot:', slot);
-            console.log('Transaction signature:', signature);
-            console.groupEnd();
-
-            // Parse the event data
-            const parsedEvent = parseEventData(event, program.idl.events.find((e) => e.name === eventName));
-            console.log('New Event Detected:', {
-              name: eventName,
-              signature: signature,
-              data: parsedEvent,
-            });
-
-            // Save the event log
-            saveEscrowEventLog({
-              chainId: chain.dbChainId,
-              programId: program.programId.toBase58(),
-              eventName: eventName,
-              signature: signature,
-              parsedEvent: parsedEvent,
+          program.addEventListener(eventName, async (event, slot, signature) => {
+            await handleEvent({
+              chain,
+              program,
+              eventName,
+              event,
+              slot,
+              signature,
             });
           });
         });
@@ -94,6 +122,40 @@ export const campaignWorkers = (app, _, done) => {
   // TODO: Scans for MC Threshold reached or not. For the devnet, just make it reached after 1 minute
 
   // TODO: Scans for Token price updates. For the devnet, just make everything $1 for the price
+
+
+  // TODO: Handle offer expiry, if the order createdAt more than expiry time threshold, auto reject it, and refund the tokens
+  const handleCheckExpiredOffer = async () => {
+    try {
+      const nowUnix = manyMinutesFromNowUnix(0);
+      const expiredOffers = await prismaClient.campaignOrder.findMany({
+        where: {
+          expiredAtUnix: {
+            lt: nowUnix
+          },
+          status: 'CREATED'
+        },
+        orderBy: {
+          expiredAtUnix: 'asc'
+        }
+      })
+
+      for (const offer of expiredOffers) {
+        // console.log('Expired Offer:', offer);
+        await handleExpiredOffer(offer.id);
+      }
+
+      console.log('Expired Offers:', expiredOffers.length);
+    } catch (error) {
+      console.error('Error checking expired offers:', error.stack || error);
+    }
+  }
+
+  // Check every 1 minute
+  cron.schedule(`*/1 * * * *`, async () => {
+    console.log('Checking for expired offers...');
+    await handleCheckExpiredOffer();
+  });
 
   // Graceful Shutdown: Ensure proper cleanup on exit
   const handleExit = () => {

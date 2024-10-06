@@ -19,3 +19,7 @@ export const bufferToUint8Array = (buffer) => new Uint8Array(buffer.data);
 export const shortenId = (id, start = 3, end = 3) => {
   return `${id.slice(0, start)}...${id.slice(-end)}`;
 };
+
+export const manyMinutesFromNowUnix = (minutes) => {
+  return Math.floor(Date.now() / 1000) + 60 * minutes;
+}

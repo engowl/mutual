@@ -1,4 +1,4 @@
-import { CHAINS, VESTING_CONFIG } from "../../config.js";
+import { CHAINS, MINIMUM_POST_LIVE_IN_MINUTES, OFFER_EXPIRY_IN_MINUTES, PARTIAL_UNLOCK_PERCENTAGE, VESTING_CONFIG } from "../../config.js";
 import { prismaClient } from "../db/prisma.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import {
@@ -6,12 +6,14 @@ import {
   validateVestingCondition,
 } from "../utils/campaignUtils.js";
 import { getCreateDealTxDetails } from "../lib/contract/mutualEscrowContract.js";
-import { prepareOrderId, validateTokenAmount } from "../utils/contractUtils.js";
+import { parseAccountData, prepareOrderId, validateTokenAmount } from "../utils/contractUtils.js";
 import { adminKp, MUTUAL_ESCROW_PROGRAM } from "../lib/contract/contracts.js";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import * as splToken from "@solana/spl-token";
 import * as anchor from "@project-serum/anchor";
 import { BN } from "bn.js";
+import { manyMinutesFromNowUnix } from "../utils/miscUtils.js";
+import { generateEventLogs } from "../workers/helpers/campaignHelpers.js";
 
 /**
  *
@@ -146,6 +148,8 @@ export const campaignRoutes = (app, _, done) => {
 
         console.log("Project Owner:", projectOwner);
 
+        const expiry = manyMinutesFromNowUnix(OFFER_EXPIRY_IN_MINUTES);
+
         // Insert the offer to the database
         const offer = await prismaClient.campaignOrder.create({
           data: {
@@ -158,6 +162,7 @@ export const campaignRoutes = (app, _, done) => {
             channel: campaignChannel.toUpperCase(),
             vestingType: vestingType.toUpperCase(),
             vestingCondition: vestingCondition,
+            expiredAtUnix: expiry,
           },
         });
 
@@ -491,28 +496,65 @@ export const campaignRoutes = (app, _, done) => {
     }
   );
 
+  app.get('/:orderId/detail', {
+    preHandler: [authMiddleware]
+  }, async (req, reply) => {
+    try {
+      const { user } = req
+      const { orderId } = req.params
+
+      const order = await prismaClient.campaignOrder.findUnique({
+        where: {
+          id: orderId
+        },
+        include: {
+          influencer: {
+            include: {
+              user: true
+            }
+          },
+          projectOwner: {
+            include: {
+              user: true
+            }
+          },
+          token: true
+        }
+      })
+
+      if (!order) {
+        return reply.status(400).send({ message: "Order not found" });
+      }
+
+      return reply.send(order)
+    } catch (error) {
+      console.error("Error fetching order detail:", error);
+      return reply.status(500).send({
+        message: error?.message || "Internal server error",
+      });
+    }
+  });
+
   app.get("/:orderId/contract-logs", async (req, reply) => {
     try {
       const { orderId } = req.params;
-      const { chainId = "devnet" } = req.query;
 
-      const chain = CHAINS.find((c) => c.id === chainId);
-      if (!chain) {
-        return reply.status(400).send({ message: "Invalid chain ID" });
-      }
-
-      // Fetch contract logs for the order
-      const events = await prismaClient.escrowEventLog.findMany({
+      const order = await prismaClient.campaignOrder.findUnique({
+        select: {
+          id: true
+        },
         where: {
-          campaignOrderId: orderId,
-          chainId: chain.dbChainId,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
+          id: orderId,
+        }
       });
 
-      reply.send(events);
+      if (!order) {
+        return reply.status(400).send({ message: "Order not found" });
+      }
+
+      const logs = await generateEventLogs(order.id)
+
+      return reply.send(logs);
     } catch (error) {
       console.error("Error fetching contract logs:", error);
       return reply.status(500).send({
@@ -746,6 +788,12 @@ export const campaignRoutes = (app, _, done) => {
           program.programId
         );
 
+        const dealData = await program.account.deal.fetch(dealPda);
+        const dealSchema = program.idl.accounts.find(a => a.name === 'Deal');
+        // console.log("Deal Data:", parseAccountData(dealData, dealSchema));
+        const parsedDealData = parseAccountData(dealData, dealSchema);
+        console.log("Parsed Deal Data:", parsedDealData);
+
         // Call the check_claimable_amount instruction on the program
         const claimableAmount = await program.methods
           .checkClaimableAmount()
@@ -763,12 +811,140 @@ export const campaignRoutes = (app, _, done) => {
         const formattedAmount = new BN(claimableAmount).div(
           new BN(10).pow(new BN(order.token.decimals))
         );
-        const claimable = {
-          token: order.token,
-          amount: formattedAmount.toNumber(),
-        };
 
-        reply.send(claimable);
+        // parsedDealData.eligibilityStatus = "fullyEligible"; // Fully Eligible
+
+        let claimInfo = {};
+
+        const isNotEligible = parsedDealData.eligibilityStatus === "notEligible";
+        const isPartiallyEligible = parsedDealData.eligibilityStatus === "partiallyEligible";
+        const isFullyEligible = parsedDealData.eligibilityStatus === "fullyEligible";
+
+        // Calculate the partial and total unlock amounts
+        const partialUnlockAmount = (order.tokenAmount * PARTIAL_UNLOCK_PERCENTAGE) / 100;
+        const totalAmount = order.tokenAmount;
+
+        // Common logic for both NONE and MARKETCAP vesting types
+        const canClaimPartial = isPartiallyEligible && new BN(claimableAmount).gt(new BN(0));
+        const canClaimFull = isFullyEligible && new BN(claimableAmount).gt(new BN(0));
+
+        let mediaLabel
+        if (order.channel === "TWITTER") {
+          mediaLabel = "Tweet"
+        } else if (order.channel === "TELEGRAM") {
+          mediaLabel = "Telegram Post"
+        }
+
+        if (order.vestingType === "NONE") {
+          // NONE-based vesting logic
+          if (isPartiallyEligible || isNotEligible) {
+            // Can claim all tokens in one phase
+            claimInfo = {
+              phases: [
+                {
+                  phaseName: "Final Unlock",
+                  amount: totalAmount,
+                  amountLabel: `${totalAmount} $${order.token.symbol}`,
+                  conditionLabel: `Claimable ${MINIMUM_POST_LIVE_IN_MINUTES / 60} hours after the ${mediaLabel} is posted`,
+                  isClaimable: false
+                }
+              ],
+            };
+          } else if (isFullyEligible) {
+            // Can claim all tokens in one phase
+            claimInfo = {
+              phases: [
+                {
+                  phaseName: "Final Unlock",
+                  amount: totalAmount,
+                  amountLabel: `${totalAmount} $${order.token.symbol}`,
+                  conditionLabel: `You can claim the full amount of ${totalAmount} tokens now.`,
+                  isClaimable: canClaimFull
+                }
+              ],
+            };
+          } else {
+            console.log("Invalid eligibility status:", parsedDealData.eligibilityStatus);
+          }
+        } else if (order.vestingType === "MARKETCAP") {
+          // Market Cap-based vesting logic
+          if (isPartiallyEligible || isNotEligible) {
+            // TODO: Marketcap label
+            claimInfo = {
+              phases: [
+                {
+                  phaseName: "First Unlock",
+                  amount: partialUnlockAmount,
+                  amountLabel: `${partialUnlockAmount} $${order.token.symbol}`,
+                  conditionLabel: `Claim after the ${mediaLabel} is posted`,
+                  isClaimable: canClaimPartial
+                },
+                {
+                  phaseName: "Final Unlock",
+                  amount: totalAmount - partialUnlockAmount,
+                  amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol}`,
+                  conditionLabel: `Claim after $${order.token.symbol} reaches the target ... market cap`,
+                  isClaimable: false
+                }
+              ],
+            };
+          } else if (isFullyEligible) {
+            // Can claim all tokens in one phase
+            claimInfo = {
+              phases: [
+                {
+                  phaseName: "Final Unlock",
+                  amount: totalAmount,
+                  amountLabel: `${totalAmount} $${order.token.symbol}`,
+                  conditionLabel: `You can claim the full amount of ${totalAmount} tokens now.`,
+                  isClaimable: canClaimFull
+                }
+              ],
+            };
+          } else {
+            console.log("Invalid eligibility status:", parsedDealData.eligibilityStatus);
+          }
+        } else if (order.vestingType === "TIME") {
+          // Time-based vesting logic
+          if (isPartiallyEligible || isNotEligible) {
+            claimInfo = {
+              phases: [
+                {
+                  phaseName: "First Unlock",
+                  amount: partialUnlockAmount,
+                  amountLabel: `${partialUnlockAmount} $${order.token.symbol}`,
+                  conditionLabel: `Claim after the ${mediaLabel} is posted`,
+                  isClaimable: canClaimPartial
+                },
+                {
+                  phaseName: "Final Unlock",
+                  amount: totalAmount - partialUnlockAmount,
+                  amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol} `,
+                  conditionLabel: `Claim after the vesting period ends`,
+                  isClaimable: false
+                }
+              ],
+            };
+          } else if (isFullyEligible) {
+            // Can claim all tokens in one phase
+            // TODO: Dynamic labelling because the time-based vesting can have different claimable amounts
+            claimInfo = {
+              phases: [
+                {
+                  phaseName: "Final Unlock",
+                  amount: totalAmount,
+                  amountLabel: `${formattedAmount} $${order.token.symbol} `,
+                  conditionLabel: `You can claim ${formattedAmount} tokens now.`,
+                  isClaimable: canClaimFull
+                }
+              ],
+            };
+          } else {
+            console.log("Invalid eligibility status:", parsedDealData.eligibilityStatus);
+          }
+        }
+
+        reply.send(claimInfo);
       } catch (error) {
         console.error("Error checking claimable tokens:", error);
         return reply.status(500).send({

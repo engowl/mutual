@@ -47,3 +47,8 @@ export const VESTING_CONFIG = [
     allowCustom: false, // No custom conditions allowed
   },
 ];
+export const OFFER_EXPIRY_IN_MINUTES = 60 * 24; // 24 hours
+
+export const MINIMUM_POST_LIVE_IN_MINUTES = 60 * 6; // 6 hours
+
+export const PARTIAL_UNLOCK_PERCENTAGE = 20;
