@@ -11,6 +11,7 @@ import { WalletSignInError } from "@solana/wallet-adapter-base";
 import toast from "react-hot-toast";
 import { AuthContext } from "../../contexts/AuthContext.js";
 import { useNavigate } from "react-router-dom";
+import { mutualAPI } from "../../api/mutual.js";
 
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -52,9 +53,7 @@ export const AuthProvider = ({ children }) => {
         setUserLoading(true);
       }
       try {
-        const res = await axios.get(`${BACKEND_BASE_URL}/users/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await mutualAPI.get(`${BACKEND_BASE_URL}/users/me`);
 
         setUser(res.data.data.user);
         setWalletType(res.data.data.user.wallet.type);
@@ -154,11 +153,21 @@ export const AuthProvider = ({ children }) => {
         },
       });
 
-      setCookie("session_token", res.data.data.session_token);
+      await new Promise((resolve, reject) => {
+        portalInstance.onReady(async () => {
+          try {
+            setCookie("session_token", res.data.data.session_token);
 
-      // Set state
-      setPortal(portalInstance);
-      setIsLoggedIn(true);
+            // Set state
+            setPortal(portalInstance);
+            setIsLoggedIn(true);
+
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        });
+      });
     } catch (error) {
       console.error("FAILED_LOGIN: ", error);
       return;
@@ -315,7 +324,6 @@ export const AuthProvider = ({ children }) => {
     setPortal(null);
     setIsLoggedIn(false);
     navigate("/");
-
     googleLogout();
   }, [disconnect, removeCookie]);
 
