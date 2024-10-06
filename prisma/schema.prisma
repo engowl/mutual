@@ -237,6 +237,22 @@ enum ProjectOwnerStatus {
   APPROVED
 }
 
+
+model UserConversation {
+  id           String   @id @default(cuid())
+  lastMessage  String
+
+  userId       String
+  user      UserMessage   @relation("UserConversations", fields: [userId], references: [userId])
+  otherUserId  String
+  otherUser UserMessage   @relation("OtherUserConversations", fields: [otherUserId], references: [userId])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, otherUserId])
+}
+
 model UserMessage {
   id String @id @default(cuid())
 
@@ -247,6 +263,9 @@ model UserMessage {
 
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
+
+  conversations      UserConversation[] @relation("UserConversations")
+  otherConversations  UserConversation[] @relation("OtherUserConversations")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -260,6 +279,8 @@ enum UserOnlineStatus {
 model Message {
   id             Int         @id @default(autoincrement())
   content        String
+  status MessageStatus @default(UNREAD)
+
   sentAt         DateTime    @default(now())
   senderTimezone String
   sender         UserMessage @relation("SentMessages", fields: [senderId], references: [id])
@@ -267,8 +288,14 @@ model Message {
   receiver       UserMessage @relation("ReceivedMessages", fields: [receiverId], references: [id])
   receiverId     String
 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum MessageStatus {
+  READ
+  UNREAD
 }
 
 enum RiskPreferenceEnum {

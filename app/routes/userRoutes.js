@@ -153,6 +153,10 @@ export const userRoutes = (app, _, done) => {
             unUserTwitter = formattedData;
           }
 
+          if (userTwitter) {
+            updateData.name = userTwitter.username;
+          }
+
           updateData.influencer = {
             update: {
               telegramLink,
@@ -199,6 +203,10 @@ export const userRoutes = (app, _, done) => {
         if (projectOwner) {
           const { telegramAdmin, projectDetail } = projectOwner;
           const { userTwitter } = projectDetail;
+
+          if (userTwitter) {
+            updateData.name = userTwitter.username;
+          }
 
           updateData.projectOwner = {
             update: {
