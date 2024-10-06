@@ -12,10 +12,13 @@ import { useState } from "react";
 import IconicButton from "../../../components/ui/IconicButton";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useCookies } from "react-cookie";
-import { atom, useAtomValue } from "jotai";
+import { atom, useAtom, useAtomValue } from "jotai";
 import { getAlphanumericId } from "../../../utils/misc";
 import { CHAINS } from "../../../config";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK";
+import { useMCAuth } from "../../../lib/mconnect/hooks/useMCAuth";
+import useSWR from "swr";
+import { mutualAPI } from "../../../api/mutual";
 
 const vestingPeriods = [
   {
@@ -44,7 +47,7 @@ const timeVestingFormAtom = atom({
   key: "timeVestingFormAtom",
   tokenOfferAmount: "",
   percentageOfSupply: "",
-  marketCapMilestone: "",
+  timeMilestone: "",
   telegramAdminUsername: "",
   marketingChannel: "",
   promotionalPostText: "",
@@ -93,7 +96,7 @@ function TimeVestingConfirmation() {
       const DATA = {
         orderId: getAlphanumericId(16), // Random orderId, must be 16 characters alphanumeric
         influencerId: influencerId,
-        vestingType: "MARKETCAP",
+        vestingType: "TIME",
         vestingCondition: {
           marketcapThreshold: formData.marketCapMilestone,
         },
@@ -241,6 +244,29 @@ function TimeVestingConfirmation() {
 }
 
 function TimeVestingForm({ setStep }) {
+  const [formData, setFormData] = useAtom(timeVestingFormAtom); // Use useAtom here
+  const { user } = useMCAuth();
+  // TODO change network to dynamic
+  const { data } = useSWR(
+    user
+      ? `/wallet/info?walletAddress=${user.wallet.address}&network=devnet`
+      : null,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      console.log({ data });
+      return data.data;
+    }
+  );
+
+  console.log({ data, user });
+
+  const handleChange = (field) => (event) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: event.target.value,
+    }));
+  };
+
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center">
       <div className="w-full max-w-2xl flex flex-col py-20">
@@ -289,6 +315,8 @@ function TimeVestingForm({ setStep }) {
                   <input
                     className="outline-none text-2xl"
                     placeholder="1.000.000"
+                    value={formData.tokenOfferAmount}
+                    onChange={handleChange("tokenOfferAmount")}
                   />
                 </div>
                 <div className="mt-2 w-full flex items-center justify-between">

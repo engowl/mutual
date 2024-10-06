@@ -21,6 +21,7 @@ import AdminLayout from "./layouts/AdminLayout.jsx";
 import AdminPage from "./pages/admin/AdminPage.jsx";
 import KolPage from "./pages/admin/kol/KolPage.jsx";
 import ProjectsPage from "./pages/admin/projects/ProjectsPage.jsx";
+import ProjectOwnerSingleMessagePage from "./pages/project-owner/ProjectOwnerSingleMessagePage.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -126,6 +127,14 @@ export const router = createBrowserRouter([
             element: (
               <RolesAuthRouteGuard roles={["PROJECT_OWNER"]}>
                 <ProjectOwnerMessagePage />
+              </RolesAuthRouteGuard>
+            ),
+          },
+          {
+            path: "message/:influencerId",
+            element: (
+              <RolesAuthRouteGuard roles={["PROJECT_OWNER"]}>
+                <ProjectOwnerSingleMessagePage />
               </RolesAuthRouteGuard>
             ),
           },

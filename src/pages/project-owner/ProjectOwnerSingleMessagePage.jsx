@@ -4,39 +4,50 @@ import { cnm } from "../../utils/style";
 import { io } from "socket.io-client";
 import { BACKEND_URL } from "../../config";
 import toast from "react-hot-toast";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useMCAuth } from "../../lib/mconnect/hooks/useMCAuth";
 import { mutualAPI } from "../../api/mutual";
 import dayjs from "dayjs";
 import useSWR from "swr";
 import { motion } from "framer-motion";
-import { Spinner } from "@nextui-org/react";
+import { Button, Spinner } from "@nextui-org/react";
 import RandomAvatar from "../../components/ui/RandomAvatar";
 
-export default function InfluencerMessagePage() {
+export default function ProjectOwnerSingleMessagePage() {
   const [newMessage, setNewMessage] = useState("");
   const { user } = useMCAuth();
   const [socket, setSocket] = useState(null);
+  const params = useParams();
   const [selectedMessageUserId, setSelectedMessageUserId] = useState(null);
   const [selectedMessageConversationId, setSelectedMessageConversationId] =
     useState(null);
+  const [messages, setMessages] = useState({});
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [socketError, setSocketError] = useState(null);
 
-  console.log({ user });
+  const influencerId = params.influencerId;
+  const otherUserId = selectedMessageUserId;
 
-  const [messages, setMessages] = useState([]);
+  console.log({ selectedMessageUserId });
 
   const {
     data: messagesHistory,
     isLoading,
-    mutate: mutateMessagesHistory,
+    mutate,
   } = useSWR(
-    user && selectedMessageUserId
-      ? `/messages/conversation/${user.id}/${selectedMessageUserId}?timezone=UTC`
+    user && otherUserId
+      ? `/messages/conversation/${user.id}/${otherUserId}?timezone=UTC`
       : null,
     async (url) => {
+      console.log({ url }, "messages");
       const { data } = await mutualAPI.get(url);
       return data;
     }
   );
+
+  console.log("MESSAGE TEST", {
+    messagesHistory,
+  });
 
   useEffect(() => {
     if (!messagesHistory) return;
@@ -71,9 +82,7 @@ export default function InfluencerMessagePage() {
     isLoading: otherUserDetailLoading,
     mutate: mutateOtherUserDetails,
   } = useSWR(
-    selectedMessageUserId
-      ? `/messages/other-user-details/${selectedMessageUserId}`
-      : null,
+    otherUserId ? `/messages/other-user-details/${otherUserId}` : null,
     async (url) => {
       console.log({ url });
       const { data } = await mutualAPI.get(url);
@@ -81,9 +90,14 @@ export default function InfluencerMessagePage() {
     }
   );
 
-  console.log({ messagesHistory });
+  console.log({ otherUserDetail });
   console.log({ conversations });
   console.log({ conversationDetail });
+
+  useEffect(() => {
+    if (!influencerId) return;
+    setSelectedMessageUserId(influencerId);
+  }, [influencerId]);
 
   useEffect(() => {
     if (!user) return;
@@ -99,7 +113,11 @@ export default function InfluencerMessagePage() {
 
     socket.on("connect", () => {
       socket.emit("join", { userId: user.id });
-      toast.success("Connected to server");
+      setSocketConnected(true);
+    });
+
+    socket.on("error", (error) => {
+      setSocketError(error);
     });
 
     socket.on("userStatusChange", () => {
@@ -108,26 +126,33 @@ export default function InfluencerMessagePage() {
     });
 
     socket.on("personal-message", (data) => {
-      toast(JSON.stringify(data));
-      setMessages((currentMessages) => {
-        const currentDate = dayjs().format("YYYY-MM-DD");
-        return {
-          ...currentMessages,
-          [currentDate]: [
-            ...(currentMessages?.[currentDate] || []),
-            {
-              id: Date.now(),
-              content: data.content,
-              senderId: data.senderId,
-              receiverId: data.receiverId,
-              role: data.senderId === user.id ? "user" : "other",
-              sentAt: new Date().toISOString(),
-            },
-          ],
-        };
-      });
-      // mutateMessagesHistory();
+      // TODO implement conversation filtering
+      // if (
+      //   (data.senderId === selectedMessageUserId &&
+      //     data.receiverId === user.id) ||
+      //   (data.receiverId === selectedMessageUserId && data.senderId === user.id)
+      // ) {
+      // Only add the message if it belongs to the current conversation
+      const optimisticMessage = {
+        id: Date.now(),
+        content: data.content,
+        senderId: data.senderId,
+        receiverId: data.receiverId,
+        role: data.senderId === user.id ? "user" : "other",
+        sentAt: new Date().toISOString(),
+      };
+
+      setMessages((currentMessages) => ({
+        ...currentMessages,
+        [dayjs().format("YYYY-MM-DD")]: [
+          ...(currentMessages?.[dayjs().format("YYYY-MM-DD")] || []),
+          optimisticMessage,
+        ],
+      }));
       mutateConversations();
+      // } else {
+      //   mutateConversations();
+      // }
     });
 
     return () => {
@@ -135,19 +160,10 @@ export default function InfluencerMessagePage() {
     };
   }, [socket, user]);
 
-  function selectConversation(conversation) {
-    setSelectedMessageUserId(conversation.userId);
-    setSelectedMessageConversationId(conversation.id);
-    if (conversation.id !== selectedMessageConversationId) {
-      setMessages([]);
-    }
-    mutateMessagesHistory();
-  }
-
   function sendMessage() {
     console.log({ newMessage });
 
-    if (!selectedMessageUserId) {
+    if (!otherUserId) {
       return toast.error("Select a user");
     }
 
@@ -155,15 +171,54 @@ export default function InfluencerMessagePage() {
       return toast.error("Please enter a message or select a user");
     }
 
+    const optimisticMessage = {
+      id: Date.now(),
+      content: newMessage,
+      senderId: user.id,
+      receiverId: otherUserId,
+      role: "user",
+      sentAt: new Date().toISOString(),
+    };
+
+    setMessages((currentMessages) => ({
+      ...currentMessages,
+      [dayjs().format("YYYY-MM-DD")]: [
+        ...(currentMessages?.[dayjs().format("YYYY-MM-DD")] || []),
+        optimisticMessage,
+      ],
+    }));
+
     socket.emit("personal-message", {
       senderId: user.id,
-      receiverId: selectedMessageUserId,
+      receiverId: otherUserId,
       content: newMessage,
       role: "user",
     });
-
     setNewMessage("");
     mutateConversations();
+  }
+
+  console.log({ selectedMessageConversationId, selectedMessageUserId });
+
+  if (!socketConnected) {
+    return (
+      <div className="h-full overflow-y-auto w-full flex items-center justify-center">
+        <Spinner size="md" color="primary" />
+      </div>
+    );
+  }
+
+  if (socketError) {
+    return (
+      <div className="h-full w-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-center text-neutral-500">
+            Can&apos;t connect to message service, please try again
+          </p>
+          <Button onClick={() => window.location.reload()}>Reload</Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -173,7 +228,7 @@ export default function InfluencerMessagePage() {
           {/* Sidebar */}
           <div
             className={cnm(
-              "p-6 border rounded-2xl bg-white w-full grow  max-w-[200px] xl:max-w-sm"
+              "p-6 border rounded-2xl bg-white w-full grow max-w-[200px] xl:max-w-sm"
               // conversations && conversations?.length === 0
               //   ? "flex-1 h-[140px]"
               //   : "w-full max-w-sm"
@@ -197,7 +252,14 @@ export default function InfluencerMessagePage() {
                           ? "bg-neutral-100"
                           : "hover:bg-neutral-200"
                       )}
-                      onClick={() => selectConversation(conversation)}
+                      onClick={() => {
+                        console.log({ conversation });
+                        setSelectedMessageUserId(conversation.userId);
+                        setSelectedMessageConversationId(conversation.id);
+                        if (conversation.id !== selectedMessageConversationId) {
+                          setMessages([]);
+                        }
+                      }}
                     >
                       <div className="flex items-center gap-4">
                         <div className="size-10 bg-neutral-200 rounded-full">
@@ -221,8 +283,7 @@ export default function InfluencerMessagePage() {
           </div>
 
           {/* Message Box */}
-
-          <div className="p-6 border rounded-2xl bg-white flex-1 lg:ml-6 lg:w-auto w-full">
+          <div className="p-6 border rounded-2xl bg-white flex-1 ml-6">
             {isLoading || otherUserDetailLoading ? (
               <div className="w-full h-[450px] flex items-center justify-center">
                 <Spinner size="md" color="primary" />
@@ -321,7 +382,7 @@ function MessageChat({
     sendMessage();
   };
 
-  console.log({ messages });
+  const { user } = useMCAuth();
 
   return (
     <div className="mt-4 rounded-2xl bg-creamy-300 h-[412px] relative overflow-hidden">
@@ -337,9 +398,9 @@ function MessageChat({
         <div className="flex flex-col p-4 overflow-y-auto size-full max-h-[412px]">
           <div className="pb-14 w-full flex flex-col">
             {/* Loop through the messages grouped by date */}
-            {Object.entries(messages).map(([date, dayMessages], index) => (
+            {Object.entries(messages).map(([date, dayMessages]) => (
               <motion.div
-                key={index}
+                key={date}
                 initial={{ opacity: 0, translateY: 50 }}
                 animate={{ opacity: 1, translateY: 0 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}

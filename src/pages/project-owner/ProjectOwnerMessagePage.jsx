@@ -10,31 +10,29 @@ import { mutualAPI } from "../../api/mutual";
 import dayjs from "dayjs";
 import useSWR from "swr";
 import { motion } from "framer-motion";
-import { Spinner } from "@nextui-org/react";
+import { Button, Spinner } from "@nextui-org/react";
 import RandomAvatar from "../../components/ui/RandomAvatar";
 
 export default function ProjectOwnerMessagePage() {
   const [newMessage, setNewMessage] = useState("");
   const { user } = useMCAuth();
   const [socket, setSocket] = useState(null);
-  const [searchParams] = useSearchParams();
   const [selectedMessageUserId, setSelectedMessageUserId] = useState(null);
   const [selectedMessageConversationId, setSelectedMessageConversationId] =
     useState(null);
-  const [messages, setMessages] = useState({});
-
-  const influencerId = searchParams.get("influencerId");
-  const otherUserId = selectedMessageUserId;
+  const [messages, setMessages] = useState(null);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [socketError, setSocketError] = useState(null);
 
   console.log({ selectedMessageUserId });
 
   const {
     data: messagesHistory,
     isLoading,
-    mutate,
+    mutate: mutateMessagesHistory,
   } = useSWR(
-    user && otherUserId
-      ? `/messages/conversation/${user.id}/${otherUserId}?timezone=UTC`
+    user && selectedMessageUserId
+      ? `/messages/conversation/${user.id}/${selectedMessageUserId}?timezone=UTC`
       : null,
     async (url) => {
       console.log({ url }, "messages");
@@ -80,7 +78,9 @@ export default function ProjectOwnerMessagePage() {
     isLoading: otherUserDetailLoading,
     mutate: mutateOtherUserDetails,
   } = useSWR(
-    otherUserId ? `/messages/other-user-details/${otherUserId}` : null,
+    selectedMessageUserId
+      ? `/messages/other-user-details/${selectedMessageUserId}`
+      : null,
     async (url) => {
       console.log({ url });
       const { data } = await mutualAPI.get(url);
@@ -89,14 +89,8 @@ export default function ProjectOwnerMessagePage() {
   );
 
   console.log({ otherUserDetail });
-
   console.log({ conversations });
   console.log({ conversationDetail });
-
-  useEffect(() => {
-    if (!influencerId) return;
-    setSelectedMessageUserId(influencerId);
-  }, [influencerId]);
 
   useEffect(() => {
     if (!user) return;
@@ -112,7 +106,11 @@ export default function ProjectOwnerMessagePage() {
 
     socket.on("connect", () => {
       socket.emit("join", { userId: user.id });
-      toast.success("Connected to server");
+      setSocketConnected(true);
+    });
+
+    socket.on("error", (error) => {
+      setSocketError(error);
     });
 
     socket.on("userStatusChange", () => {
@@ -121,33 +119,27 @@ export default function ProjectOwnerMessagePage() {
     });
 
     socket.on("personal-message", (data) => {
-      // TODO implement conversation filtering
-      // if (
-      //   (data.senderId === selectedMessageUserId &&
-      //     data.receiverId === user.id) ||
-      //   (data.receiverId === selectedMessageUserId && data.senderId === user.id)
-      // ) {
-      // Only add the message if it belongs to the current conversation
-      const optimisticMessage = {
-        id: Date.now(),
-        content: data.content,
-        senderId: data.senderId,
-        receiverId: data.receiverId,
-        role: data.senderId === user.id ? "user" : "other",
-        sentAt: new Date().toISOString(),
-      };
+      toast(JSON.stringify(data));
 
-      setMessages((currentMessages) => ({
-        ...currentMessages,
-        [dayjs().format("YYYY-MM-DD")]: [
-          ...(currentMessages?.[dayjs().format("YYYY-MM-DD")] || []),
-          optimisticMessage,
-        ],
-      }));
+      setMessages((currentMessages) => {
+        const currentDate = dayjs().format("YYYY-MM-DD");
+        return {
+          ...currentMessages,
+          [currentDate]: [
+            ...(currentMessages?.[currentDate] || []),
+            {
+              id: Date.now(),
+              content: data.content,
+              senderId: data.senderId,
+              receiverId: data.receiverId,
+              role: data.senderId === user.id ? "user" : "other",
+              sentAt: new Date().toISOString(),
+            },
+          ],
+        };
+      });
+      // mutateMessagesHistory();
       mutateConversations();
-      // } else {
-      //   mutateConversations();
-      // }
     });
 
     return () => {
@@ -155,10 +147,23 @@ export default function ProjectOwnerMessagePage() {
     };
   }, [socket, user]);
 
+  function selectConversation(conversation) {
+    setSelectedMessageUserId(conversation.userId);
+    setSelectedMessageConversationId(conversation.id);
+    if (conversation.id !== selectedMessageConversationId) {
+      setMessages([]);
+    }
+    mutateMessagesHistory();
+    socket.emit("on-conversation", {
+      conversationId: conversation.userId,
+      userId: user.id,
+    });
+  }
+
   function sendMessage() {
     console.log({ newMessage });
 
-    if (!otherUserId) {
+    if (!selectedMessageUserId) {
       return toast.error("Select a user");
     }
 
@@ -166,26 +171,9 @@ export default function ProjectOwnerMessagePage() {
       return toast.error("Please enter a message or select a user");
     }
 
-    const optimisticMessage = {
-      id: Date.now(),
-      content: newMessage,
-      senderId: user.id,
-      receiverId: otherUserId,
-      role: "user",
-      sentAt: new Date().toISOString(),
-    };
-
-    setMessages((currentMessages) => ({
-      ...currentMessages,
-      [dayjs().format("YYYY-MM-DD")]: [
-        ...(currentMessages?.[dayjs().format("YYYY-MM-DD")] || []),
-        optimisticMessage,
-      ],
-    }));
-
     socket.emit("personal-message", {
       senderId: user.id,
-      receiverId: otherUserId,
+      receiverId: selectedMessageUserId,
       content: newMessage,
       role: "user",
     });
@@ -194,6 +182,27 @@ export default function ProjectOwnerMessagePage() {
   }
 
   console.log({ selectedMessageConversationId, selectedMessageUserId });
+
+  if (!socketConnected) {
+    return (
+      <div className="h-full overflow-y-auto w-full flex items-center justify-center">
+        <Spinner size="md" color="primary" />
+      </div>
+    );
+  }
+
+  if (socketError) {
+    return (
+      <div className="h-full w-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-center text-neutral-500">
+            Can&apos;t connect to message service, please try again
+          </p>
+          <Button onClick={() => window.location.reload()}>Reload</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
@@ -210,7 +219,9 @@ export default function ProjectOwnerMessagePage() {
           >
             {!conversations || conversations.length === 0 ? (
               <div className="w-full h-full flex items-center justify-center">
-                <p className="text-center text-neutral-500">No messages yet</p>
+                <p className="text-center text-neutral-500">
+                  No conversation yet
+                </p>
               </div>
             ) : (
               <div>
@@ -226,14 +237,7 @@ export default function ProjectOwnerMessagePage() {
                           ? "bg-neutral-100"
                           : "hover:bg-neutral-200"
                       )}
-                      onClick={() => {
-                        console.log({ conversation });
-                        setSelectedMessageUserId(conversation.userId);
-                        setSelectedMessageConversationId(conversation.id);
-                        if (conversation.id !== selectedMessageConversationId) {
-                          setMessages([]);
-                        }
-                      }}
+                      onClick={() => selectConversation(conversation)}
                     >
                       <div className="flex items-center gap-4">
                         <div className="size-10 bg-neutral-200 rounded-full">
@@ -341,7 +345,6 @@ function MessageChat({
   setNewMessage,
   newMessage,
   isLoading,
-  selectedMessageUserId,
 }) {
   const chatEndRef = useRef(null); // Reference to the bottom of the chat container
 
@@ -356,15 +359,13 @@ function MessageChat({
     sendMessage();
   };
 
-  const { user } = useMCAuth();
-
   return (
     <div className="mt-4 rounded-2xl bg-creamy-300 h-[412px] relative overflow-hidden">
-      {isLoading ? (
+      {isLoading || typeof messages === "undefined" ? (
         <div className="absolute inset-0 flex items-center justify-center">
           <Spinner size="md" color="primary" />
         </div>
-      ) : !messages || Object.keys(messages).length === 0 ? (
+      ) : Object.keys(messages).length === 0 ? (
         <div className="w-full h-full flex items-center justify-center">
           <p className="text-center text-neutral-500">No messages yet</p>
         </div>
