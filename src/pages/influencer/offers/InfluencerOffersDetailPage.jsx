@@ -1,7 +1,7 @@
 import { Button } from "@nextui-org/react";
 import { useParams } from "react-router-dom";
 import { shortenAddress } from ".././../../utils/string";
-import { Clock } from "lucide-react";
+import { Check, Clock } from "lucide-react";
 import { cnm } from "../../../utils/style.js";
 import dayjs from "dayjs";
 import { DUMMY_LOGS } from "../../project-owner/offers/ProjectOwnerOffersDetailsPage.jsx";
@@ -137,10 +137,17 @@ function EventLogs({ events }) {
             <div key={event.id} className="flex flex-col w-full px-4">
               <div className="flex flex-row items-start gap-4 h-full w-full">
                 <div className="flex flex-col h-full items-center mt-0.5">
-                  <div className="size-4 rounded-full bg-orangy aspect-square"></div>
                   <div
                     className={cnm(
-                      "h-full w-[2px] bg-orangy/50",
+                      "flex items-center justify-center size-4 rounded-full  aspect-square",
+                      `${index === 0 ? "bg-orangy" : "bg-[#D9D9D9]"}`
+                    )}
+                  >
+                    {index === 0 && <Check color="white" size={10} />}
+                  </div>
+                  <div
+                    className={cnm(
+                      "h-full w-[2px] bg-[#D9D9D9]",
                       `${index === events.length - 1 ? "hidden" : ""}`
                     )}
                   />
