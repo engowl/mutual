@@ -496,6 +496,45 @@ export const campaignRoutes = (app, _, done) => {
     }
   );
 
+  app.get('/:orderId/detail', {
+    preHandler: [authMiddleware]
+  }, async (req, reply) => {
+    try {
+      const { user } = req
+      const { orderId } = req.params
+
+      const order = await prismaClient.campaignOrder.findUnique({
+        where: {
+          id: orderId
+        },
+        include: {
+          influencer: {
+            include: {
+              user: true
+            }
+          },
+          projectOwner: {
+            include: {
+              user: true
+            }
+          },
+          token: true
+        }
+      })
+
+      if (!order) {
+        return reply.status(400).send({ message: "Order not found" });
+      }
+
+      return reply.send(order)
+    } catch (error) {
+      console.error("Error fetching order detail:", error);
+      return reply.status(500).send({
+        message: error?.message || "Internal server error",
+      });
+    }
+  });
+
   app.get("/:orderId/contract-logs", async (req, reply) => {
     try {
       const { orderId } = req.params;
