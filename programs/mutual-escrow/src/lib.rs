@@ -70,6 +70,8 @@ pub mod mutual_escrow {
         let deal = &mut ctx.accounts.deal;
         let deal_bump: u8 = ctx.bumps.deal; // Accessing bump directly for the 'deal' account
 
+        // TODO: make the order_id always unique
+
         deal.order_id = order_id.clone();
         deal.project_owner = ctx.accounts.project_owner.key();
         deal.kol = ctx.accounts.kol.key();
@@ -293,6 +295,63 @@ pub mod mutual_escrow {
         });
 
         Ok(())
+    }
+
+    // To check how much KOL can claim
+    // pub fn check_claimable_amount(ctx: Context<CheckClaimableAmount>) -> Result<u64> {
+    //     let deal = &ctx.accounts.deal;
+    //     let current_time = Clock::get()?.unix_timestamp;
+
+    //     // Calculate how much the KOL can claim
+    //     let vested_amount = calculate_vested_amount(
+    //         deal,
+    //         current_time,
+    //         ctx.accounts.escrow.max_claimable_after_obligation,
+    //     )?;
+
+    //     // Return the claimable amount
+    //     let claimable_amount = vested_amount
+    //         .checked_sub(deal.released_amount)
+    //         .ok_or(ErrorCode::ExceedsVestedAmount)?;
+
+    //     Ok(claimable_amount)
+    // }
+
+    // To check how much KOL can claim
+    pub fn check_claimable_amount(ctx: Context<CheckClaimableAmount>) -> Result<u64> {
+        let deal = &ctx.accounts.deal;
+        let current_time = Clock::get()?.unix_timestamp;
+
+        // Log the current time and vesting status
+        msg!(
+            "Checking claimable amount at current time: {}",
+            current_time
+        );
+        msg!("Deal order_id: {:?}", deal.order_id);
+
+        // Calculate how much the KOL can claim
+        let vested_amount = calculate_vested_amount(
+            deal,
+            current_time,
+            ctx.accounts.escrow.max_claimable_after_obligation,
+        )?;
+
+        // Log the vested amount calculated
+        msg!(
+            "Vested amount based on vesting conditions: {}",
+            vested_amount
+        );
+
+        // Calculate the claimable amount by subtracting the released amount from the vested amount
+        let claimable_amount = vested_amount
+            .checked_sub(deal.released_amount)
+            .ok_or(ErrorCode::ExceedsVestedAmount)?;
+
+        // Log the final claimable amount that will be returned
+        msg!("Final claimable amount for the KOL: {}", claimable_amount);
+
+        // Return the claimable amount
+        Ok(claimable_amount)
     }
 
 }
@@ -619,7 +678,7 @@ fn calculate_vested_amount(
             );
 
             match deal.eligibility_status {
-                // Partially eligible scenario
+                // Partially eligible scenario,
                 EligibilityStatus::PartiallyEligible => {
                     msg!("Partially eligible claim.");
 
@@ -691,7 +750,6 @@ fn calculate_vested_amount(
                 }
             }
         }
-
         VestingType::Marketcap => {
             // For Marketcap, check eligibility status
             match deal.eligibility_status {
@@ -708,31 +766,21 @@ fn calculate_vested_amount(
                     Ok(claimable.checked_sub(deal.released_amount).unwrap())
                 }
                 EligibilityStatus::FullyEligible => {
-                    // Fully eligible, so return the full amount minus already released
-                    Ok(deal.amount.checked_sub(deal.released_amount).unwrap())
+                    // In Full eligibility, the remaining amount should be:
+                    // Total deal amount minus the already claimed amount during partial eligibility
+                    let remaining_amount =
+                        deal.amount.checked_sub(deal.released_amount).unwrap_or(0);
+
+                    msg!(
+                        "Full eligibility claim: remaining amount after partial release: {}",
+                        remaining_amount
+                    );
+
+                    // Return the remaining amount
+                    Ok(remaining_amount)
                 }
                 _ => Ok(0), // Not eligible to claim yet
             }
         }
     }
-}
-
-// To check how much KOL can claim
-pub fn check_claimable_amount(ctx: Context<CheckClaimableAmount>) -> Result<u64> {
-    let deal = &ctx.accounts.deal;
-    let current_time = Clock::get()?.unix_timestamp;
-
-    // Calculate how much the KOL can claim
-    let vested_amount = calculate_vested_amount(
-        deal,
-        current_time,
-        ctx.accounts.escrow.max_claimable_after_obligation,
-    )?;
-
-    // Return the claimable amount
-    let claimable_amount = vested_amount
-        .checked_sub(deal.released_amount)
-        .ok_or(ErrorCode::ExceedsVestedAmount)?;
-
-    Ok(claimable_amount)
 }
