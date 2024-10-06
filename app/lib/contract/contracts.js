@@ -16,6 +16,7 @@ const MUTUAL_ESCROW_IDL = JSON.parse(
 );
 
 export const MUTUAL_ESCROW_PROGRAM = (chainId) => {
+  console.log('Chain ID', chainId);
   const chain = CHAINS.find((c) => c.id === chainId);
   if (!chain) {
     throw new Error('Chain not found');

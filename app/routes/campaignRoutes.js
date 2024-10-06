@@ -8,6 +8,7 @@ import { adminKp, MUTUAL_ESCROW_PROGRAM } from "../lib/contract/contracts.js"
 import { PublicKey, SystemProgram } from "@solana/web3.js"
 import * as splToken from "@solana/spl-token"
 import * as anchor from "@project-serum/anchor"
+import { BN } from "bn.js"
 
 /**
  *
@@ -387,6 +388,36 @@ export const campaignRoutes = (app, _, done) => {
     }
   });
 
+  app.get('/:orderId/contract-logs', async (req, reply) => {
+    try {
+      const { orderId } = req.params;
+      const { chainId = 'devnet' } = req.query;
+
+      const chain = CHAINS.find(c => c.id === chainId);
+      if (!chain) {
+        return reply.status(400).send({ message: 'Invalid chain ID' });
+      }
+
+      // Fetch contract logs for the order
+      const events = await prismaClient.escrowEventLog.findMany({
+        where: {
+          campaignOrderId: orderId,
+          chainId: chain.dbChainId
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+
+      reply.send(events);
+    } catch (error) {
+      console.error('Error fetching contract logs:', error)
+      return reply.status(500).send({
+        message: error?.message || 'Internal server error'
+      })
+    }
+  })
+
   // KOL confirms that the obligated task is done
   app.post('/confirm-task', { preHandler: [authMiddleware] }, async (request, reply) => {
     // KOL confirms the task (tweet, post, etc.). On-demand verification is done here.
@@ -474,12 +505,12 @@ export const campaignRoutes = (app, _, done) => {
   });
 
   // TODO: Check claimable tokens
-  app.get('/claimable', {
+  app.get('/:orderId/claimable', {
     preHandler: [authMiddleware]
   }, async (req, reply) => {
     try {
       // Check if the KOL can claim tokens (fully or partially). Show the amount of tokens that can be claimed.
-      const { orderId } = req.query;
+      const { orderId } = req.params;
 
       const order = await prismaClient.campaignOrder.findUnique({
         where: {
@@ -504,7 +535,16 @@ export const campaignRoutes = (app, _, done) => {
               }
             }
           },
-          token: true
+          token: {
+            select: {
+              mintAddress: true,
+              chainId: true,
+              decimals: true,
+              imageUrl: true,
+              name: true,
+              symbol: true
+            }
+          }
         }
       });
       if (!order) {
@@ -515,11 +555,51 @@ export const campaignRoutes = (app, _, done) => {
       if (!chain) {
         return reply.status(400).send({ message: 'Invalid chain ID' });
       }
+      const orderIdBuffer = prepareOrderId(order.id);
+      const kolPublicKey = new PublicKey(order.influencer.user.wallet.address);
+      const projectOwnerPublicKey = new PublicKey(order.projectOwner.user.wallet.address);
+      const mintPublicKey = new PublicKey(order.token.mintAddress);
 
-      const program = MUTUAL_ESCROW_PROGRAM(order.chainId);
+      const program = MUTUAL_ESCROW_PROGRAM(chain.id);
 
-      // TODO: read or calculates it here
-      reply.send('OK');
+      const [dealPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('deal'),
+          orderIdBuffer,
+          projectOwnerPublicKey.toBuffer(),
+          kolPublicKey.toBuffer(),
+          mintPublicKey.toBuffer()
+        ],
+        program.programId
+      );
+      const [escrowPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("escrow")
+        ],
+        program.programId
+      );
+
+      // Call the check_claimable_amount instruction on the program
+      const claimableAmount = await program.methods
+        .checkClaimableAmount()
+        .accounts({
+          deal: dealPda,
+          escrow: escrowPda,
+        })
+        .view({
+          commitment: 'confirmed'
+        })
+
+      console.log('Claimable amount:', claimableAmount.toString());
+
+      // Format it into the token { mintAddress: ..., amount: claimableAmount/10^decimals, ...}
+      const formattedAmount = new BN(claimableAmount).div(new BN(10).pow(new BN(order.token.decimals)));
+      const claimable = {
+        token: order.token,
+        amount: formattedAmount.toNumber()
+      }
+
+      reply.send(claimable);
     } catch (error) {
       console.error('Error checking claimable tokens:', error)
       return reply.status(500).send({
