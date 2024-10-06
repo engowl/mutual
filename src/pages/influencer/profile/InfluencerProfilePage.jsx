@@ -1,5 +1,5 @@
 import RandomAvatar from "../../../components/ui/RandomAvatar.jsx";
-import { useMCAuth } from "../../../lib/mconnect/hooks/useMcAuth.jsx";
+import { useMCAuth } from "../../../lib/mconnect/hooks/useMCAuth.jsx";
 import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
 
 export default function InfluencerProfilePage() {

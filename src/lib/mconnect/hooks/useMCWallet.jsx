@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useMCAuth } from "./useMcAuth.jsx";
+import { useMCAuth } from "./useMCAuth.jsx";
 
 export default function useMCWallet() {
   const { portal, isLoggedIn, walletType } = useMCAuth();

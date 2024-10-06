@@ -21,6 +21,7 @@
     "@solana/wallet-adapter-react-ui": "^0.9.35",
     "@solana/wallet-adapter-wallets": "^0.19.32",
     "@solana/web3.js": "^1.95.3",
+    "@thirdweb-dev/storage": "^2.0.15",
     "@uidotdev/usehooks": "^2.4.1",
     "@web3auth/sign-in-with-solana": "^4.0.0",
     "axios": "^1.7.7",

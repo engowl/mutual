@@ -1,6 +1,6 @@
 import { Navigate, useLoaderData, useNavigate } from "react-router-dom";
 import MCWidget from "../lib/mconnect/components/MCWidget.jsx";
-import { useMCAuth } from "../lib/mconnect/hooks/useMcAuth.jsx";
+import { useMCAuth } from "../lib/mconnect/hooks/useMCAuth.jsx";
 import { useEffect, useState } from "react";
 import influencerSvg from "../assets/register-page/influencer.svg";
 import projectOwnerSvg from "../assets/register-page/project-owner.svg";

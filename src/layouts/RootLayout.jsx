@@ -1,6 +1,6 @@
 import { Outlet, useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "../components/shared/Navbar";
-import { useMCAuth } from "../lib/mconnect/hooks/useMcAuth.jsx";
+import { useMCAuth } from "../lib/mconnect/hooks/useMCAuth.jsx";
 import { useEffect } from "react";
 import RootProvider from "../providers/RootProvider.jsx";
 import { Spinner } from "@nextui-org/react";

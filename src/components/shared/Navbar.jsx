@@ -1,7 +1,7 @@
 import { Link, NavLink } from "react-router-dom";
 import SignInButton from "./SignInButton";
 import { cnm } from "../../utils/style";
-import { useMCAuth } from "../../lib/mconnect/hooks/useMcAuth.jsx";
+import { useMCAuth } from "../../lib/mconnect/hooks/useMCAuth.jsx";
 
 export default function Navbar() {
   const { user, isLoggedIn } = useMCAuth();

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
 import { Button, Input, Spinner } from "@nextui-org/react";
 import IconicButton from "../../components/ui/IconicButton";
-import { useMCAuth } from "../../lib/mconnect/hooks/useMcAuth.jsx";
+import { useMCAuth } from "../../lib/mconnect/hooks/useMCAuth.jsx";
 import { useNavigate } from "react-router-dom";
 import Lottie from "react-lottie";
 import { mutualAPI } from "../../api/mutual.js";
