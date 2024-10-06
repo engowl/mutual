@@ -390,18 +390,147 @@ export const campaignRoutes = (app, _, done) => {
   // KOL confirms that the obligated task is done
   app.post('/confirm-task', { preHandler: [authMiddleware] }, async (request, reply) => {
     // KOL confirms the task (tweet, post, etc.). On-demand verification is done here.
+
+    // TODO: If the task is done, call the contract to make the eligibility partial (for vesting), for none, full eligibility
+
+    const order = await prismaClient.campaignOrder.findUnique({
+      where: {
+        id: request.body.orderId
+      },
+      include: {
+        projectOwner: {
+          include: {
+            user: {
+              include: {
+                wallet: true
+              }
+            }
+          }
+        },
+        influencer: {
+          include: {
+            user: {
+              include: {
+                wallet: true
+              }
+            }
+          }
+        },
+        token: true
+      }
+    });
+    if (!order) {
+      return reply.status(400).send({ message: 'Order not found' });
+    }
+
+    const chain = CHAINS.find(c => c.dbChainId === order.chainId);
+    if (!chain) {
+      return reply.status(400).send({ message: 'Invalid chain ID' });
+    }
+
+    const program = MUTUAL_ESCROW_PROGRAM(order.chainId);
+
+    const [dealPda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from('deal'),
+        prepareOrderId(order.id),
+        new PublicKey(order.projectOwner.user.wallet.address).toBuffer(),
+        new PublicKey(order.influencer.user.wallet.address).toBuffer(),
+        new PublicKey(order.token.mintAddress).toBuffer()
+      ],
+      program.programId
+    );
+
+    const [escrowPda] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("escrow")
+      ],
+      program.programId
+    );
+
+    // // Become partially eligible
+    // const txHash = await program.methods
+    //   .setEligibilityStatus({ partiallyEligible: {} })
+    //   .accounts({
+    //     deal: dealPda,
+    //     escrow: escrowPda,
+    //     signer: adminKp.publicKey,
+    //   })
+    //   .signers([adminKp])
+    //   .rpc({ commitment: "confirmed" });
+
+    // // Become fully eligible
+    // const txHash = await program.methods
+    //   .setEligibilityStatus({ fullyEligible: {} })
+    //   .accounts({
+    //     deal: dealPda,
+    //     escrow: escrowPda,
+    //     signer: adminKp.publicKey,
+    //   })
+    //   .signers([adminKp])
+    //   .rpc({ commitment: "confirmed" });
+
     reply.send('OK');
   });
+
+  // TODO: Check claimable tokens
+  app.get('/claimable', {
+    preHandler: [authMiddleware]
+  }, async (req, reply) => {
+    try {
+      // Check if the KOL can claim tokens (fully or partially). Show the amount of tokens that can be claimed.
+      const { orderId } = req.query;
+
+      const order = await prismaClient.campaignOrder.findUnique({
+        where: {
+          id: orderId
+        },
+        include: {
+          projectOwner: {
+            include: {
+              user: {
+                include: {
+                  wallet: true
+                }
+              }
+            }
+          },
+          influencer: {
+            include: {
+              user: {
+                include: {
+                  wallet: true
+                }
+              }
+            }
+          },
+          token: true
+        }
+      });
+      if (!order) {
+        return reply.status(400).send({ message: 'Order not found' });
+      }
+
+      const chain = CHAINS.find(c => c.dbChainId === order.chainId);
+      if (!chain) {
+        return reply.status(400).send({ message: 'Invalid chain ID' });
+      }
+
+      const program = MUTUAL_ESCROW_PROGRAM(order.chainId);
+
+      // TODO: read or calculates it here
+      reply.send('OK');
+    } catch (error) {
+      console.error('Error checking claimable tokens:', error)
+      return reply.status(500).send({
+        message: error?.message || 'Internal server error'
+      })
+    }
+  })
 
   // Check if the task was fulfilled (backend admin verifies)
   app.post('/verify-task', { preHandler: [authMiddleware] }, async (request, reply) => {
     // Backend verifies if the task was fulfilled and calls partial eligibility on the contract
-    reply.send('OK');
-  });
-
-  // KOL claims tokens (partially or fully)
-  app.post('/claim-tokens', { preHandler: [authMiddleware] }, async (request, reply) => {
-    // KOL claims tokens (either fully or partially based on conditions)
     reply.send('OK');
   });
 
