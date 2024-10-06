@@ -127,9 +127,9 @@ model TwitterAccount {
   unfluencer     Influencer[]
   projectDetails ProjectDetails[]
 
-  followersCount Int?
-  description String?
-  profileImageUrl String? 
+  followersCount  Int?
+  description     String?
+  profileImageUrl String?
 }
 
 enum UserWalletType {
@@ -198,10 +198,10 @@ model Token {
 // }
 
 model CampaignOrder {
-  id String @id
-  chainId CHAIN @default(DEVNET)
+  id      String @id
+  chainId CHAIN  @default(DEVNET)
 
-  projectOwnerId String 
+  projectOwnerId String
   projectOwner   ProjectOwner @relation(fields: [projectOwnerId], references: [id])
 
   influencerId String
@@ -211,8 +211,8 @@ model CampaignOrder {
   tokenId String
   token   Token  @relation(fields: [tokenId], references: [id], onDelete: Cascade)
 
-  tokenAmount Float
-  expiredAtUnix Int @default(0)
+  tokenAmount   Float
+  expiredAtUnix Int   @default(0)
 
   channel CampaignChannel
 
@@ -234,6 +234,7 @@ model EscrowEventLog {
   eventName       String
   signature       String
   data            Json
+  slot            Int @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -244,15 +245,14 @@ enum ProjectOwnerStatus {
   APPROVED
 }
 
-
 model UserConversation {
-  id           String   @id @default(cuid())
-  lastMessage  String
+  id          String @id @default(cuid())
+  lastMessage String
 
-  userId       String
-  user      UserMessage   @relation("UserConversations", fields: [userId], references: [userId])
-  otherUserId  String
-  otherUser UserMessage   @relation("OtherUserConversations", fields: [otherUserId], references: [userId])
+  userId      String
+  user        UserMessage @relation("UserConversations", fields: [userId], references: [userId])
+  otherUserId String
+  otherUser   UserMessage @relation("OtherUserConversations", fields: [otherUserId], references: [userId])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -272,7 +272,7 @@ model UserMessage {
   receivedMessages Message[] @relation("ReceivedMessages")
 
   conversations      UserConversation[] @relation("UserConversations")
-  otherConversations  UserConversation[] @relation("OtherUserConversations")
+  otherConversations UserConversation[] @relation("OtherUserConversations")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -284,9 +284,9 @@ enum UserOnlineStatus {
 }
 
 model Message {
-  id             Int         @id @default(autoincrement())
-  content        String
-  status MessageStatus @default(UNREAD)
+  id      Int           @id @default(autoincrement())
+  content String
+  status  MessageStatus @default(UNREAD)
 
   sentAt         DateTime    @default(now())
   senderTimezone String
@@ -294,7 +294,6 @@ model Message {
   senderId       String
   receiver       UserMessage @relation("ReceivedMessages", fields: [receiverId], references: [id])
   receiverId     String
-
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -610,6 +610,11 @@
                     "index": false
                 },
                 {
+                    "name": "claimAmount",
+                    "type": "u64",
+                    "index": false
+                },
+                {
                     "name": "status",
                     "type": {
                         "defined": "DealStatus"

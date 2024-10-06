@@ -13,6 +13,7 @@ import * as splToken from "@solana/spl-token";
 import * as anchor from "@project-serum/anchor";
 import { BN } from "bn.js";
 import { manyMinutesFromNowUnix } from "../utils/miscUtils.js";
+import { generateEventLogs } from "../workers/helpers/campaignHelpers.js";
 
 /**
  *
@@ -498,25 +499,23 @@ export const campaignRoutes = (app, _, done) => {
   app.get("/:orderId/contract-logs", async (req, reply) => {
     try {
       const { orderId } = req.params;
-      const { chainId = "devnet" } = req.query;
 
-      const chain = CHAINS.find((c) => c.id === chainId);
-      if (!chain) {
-        return reply.status(400).send({ message: "Invalid chain ID" });
-      }
-
-      // Fetch contract logs for the order
-      const events = await prismaClient.escrowEventLog.findMany({
+      const order = await prismaClient.campaignOrder.findUnique({
+        select: {
+          id: true
+        },
         where: {
-          campaignOrderId: orderId,
-          chainId: chain.dbChainId,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
+          id: orderId,
+        }
       });
 
-      reply.send(events);
+      if (!order) {
+        return reply.status(400).send({ message: "Order not found" });
+      }
+
+      const logs = await generateEventLogs(order.id)
+
+      return reply.send(logs);
     } catch (error) {
       console.error("Error fetching contract logs:", error);
       return reply.status(500).send({

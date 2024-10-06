@@ -32,6 +32,7 @@ export const campaignWorkers = (app, _, done) => {
     eventName,
     signature,
     parsedEvent,
+    slot
   }) => {
     try {
       await prismaClient.escrowEventLog.create({
@@ -42,11 +43,50 @@ export const campaignWorkers = (app, _, done) => {
           eventName: eventName,
           signature: signature,
           data: parsedEvent,
+          slot: slot
         }
       })
       console.log('Escrow event log saved successfully');
     } catch (error) {
       console.error('Error saving escrow event log:', error.stack || error);
+    }
+  }
+
+  const handleEvent = async ({
+    chain,
+    program,
+    eventName,
+    event,
+    slot,
+    signature,
+  }) => {
+    try {
+      console.group(`Event: ${eventName}`);
+      console.log(`New event detected: ${eventName}`);
+      console.log('Event data:', event);
+      console.log('Slot:', slot);
+      console.log('Transaction signature:', signature);
+      console.groupEnd();
+
+      // Parse the event data
+      const parsedEvent = parseEventData(event, program.idl.events.find((e) => e.name === eventName));
+      console.log('New Event Detected:', {
+        name: eventName,
+        signature: signature,
+        data: parsedEvent,
+      });
+
+      // Save the event log
+      await saveEscrowEventLog({
+        chainId: chain.dbChainId,
+        programId: program.programId.toBase58(),
+        eventName: eventName,
+        signature: signature,
+        parsedEvent: parsedEvent,
+        slot: slot,
+      });
+    } catch (error) {
+      console.error(`Error handling event ${eventName} on chain ${chain.id}:`, error.stack || error);
     }
   }
 
@@ -62,29 +102,14 @@ export const campaignWorkers = (app, _, done) => {
         console.groupEnd();
 
         eventNames.forEach((eventName) => {
-          program.addEventListener(eventName, (event, slot, signature) => {
-            console.group(`Event: ${eventName}`);
-            console.log(`New event detected: ${eventName}`);
-            console.log('Event data:', event);
-            console.log('Slot:', slot);
-            console.log('Transaction signature:', signature);
-            console.groupEnd();
-
-            // Parse the event data
-            const parsedEvent = parseEventData(event, program.idl.events.find((e) => e.name === eventName));
-            console.log('New Event Detected:', {
-              name: eventName,
-              signature: signature,
-              data: parsedEvent,
-            });
-
-            // Save the event log
-            saveEscrowEventLog({
-              chainId: chain.dbChainId,
-              programId: program.programId.toBase58(),
-              eventName: eventName,
-              signature: signature,
-              parsedEvent: parsedEvent,
+          program.addEventListener(eventName, async (event, slot, signature) => {
+            await handleEvent({
+              chain,
+              program,
+              eventName,
+              event,
+              slot,
+              signature,
             });
           });
         });
@@ -115,7 +140,7 @@ export const campaignWorkers = (app, _, done) => {
         }
       })
 
-      for(const offer of expiredOffers) {
+      for (const offer of expiredOffers) {
         // console.log('Expired Offer:', offer);
         await handleExpiredOffer(offer.id);
       }
