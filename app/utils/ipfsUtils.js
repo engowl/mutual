@@ -32,3 +32,11 @@ export const getIPFSData = async (link) => {
     data: await data.json()
   };
 }
+
+export const ipfsConvertToThirdwebLink = async (link) => {
+  const cid = extractCID(link);
+  const _link = storage.resolveScheme(`ipfs://${cid}`)
+  console.log('Thirdweb Link:', _link);
+}
+
+ipfsConvertToThirdwebLink('https://ipfs.io/ipfs/Qma3yB7Ef6GhYAyjYEadGuLzFqRo8GbUH3cThau5BiagAG');
