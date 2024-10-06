@@ -129,10 +129,18 @@ function InfluencerCard({ influencerData }) {
     <div className="bg-white rounded-2xl border p-4 w-full">
       <div className="flex w-full gap-2 md:gap-4">
         <div className="shrink-0 size-16 md:size-20 rounded-full bg-neutral-200 overflow-hidden">
-          <RandomAvatar
-            seed={influencerData.twitterAccount.username}
-            className={"w-full h-full"}
-          />
+          {influencerData.twitterAccount.profileImageUrl ? (
+            <img
+              src={influencerData.twitterAccount.profileImageUrl}
+              alt="profile"
+              className="w-full h-full"
+            />
+          ) : (
+            <RandomAvatar
+              seed={influencerData.twitterAccount.username ?? "1"}
+              className="w-full h-full"
+            />
+          )}
         </div>
         <div className="flex-1">
           <div className="w-full flex items-center justify-between">

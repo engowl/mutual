@@ -10,10 +10,18 @@ export default function InfluencerProfilePage() {
     <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
       <div className="w-full max-w-3xl flex flex-col py-20">
         <div className="size-24 rounded-full bg-neutral-200 overflow-hidden">
-          <RandomAvatar
-            seed={user.influencer.twitterAccount.username ?? "1"}
-            className="w-full h-full"
-          />
+          {user.influencer.twitterAccount.profileImageUrl ? (
+            <img
+              src={user.influencer.twitterAccount.profileImageUrl}
+              alt="profile"
+              className="w-full h-full"
+            />
+          ) : (
+            <RandomAvatar
+              seed={user.influencer.twitterAccount.username ?? "1"}
+              className="w-full h-full"
+            />
+          )}
         </div>
         <div className="mt-4">
           <p className="text-3xl lg:text-[2.5rem] leading-tight">
