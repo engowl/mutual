@@ -22,10 +22,23 @@ import { mutualAPI } from "../../api/mutual";
 import RandomAvatar from "../../components/ui/RandomAvatar";
 
 export default function ProjectOwnerBrowsePage() {
+  const [searchQuery, setSearchQuery] = useState("");
+
   const { data, isLoading } = useSWR("/influencer/all", async (url) => {
     const { data } = await mutualAPI.get(url);
     return data;
   });
+
+  const filteredInfluencers = data?.data?.filter(
+    (influencer) =>
+      influencer.twitterAccount.username
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      influencer.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      influencer.twitterAccount.name
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase())
+  );
 
   if (isLoading) {
     return (
@@ -52,6 +65,8 @@ export default function ProjectOwnerBrowsePage() {
             className="w-full max-w-xs"
             startContent={<Search className="size-5" />}
             placeholder="KOL Name or username"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <div className="w-full flex gap-6 mt-6">
@@ -86,13 +101,13 @@ export default function ProjectOwnerBrowsePage() {
 
           {/* Influencer list */}
           <div className="flex-1">
-            {data.data.length === 0 ? (
+            {filteredInfluencers.length === 0 ? (
               <div className="w-full flex items-center justify-center min-h-full">
                 <p>No influencers found</p>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-3">
-                {data.data.map((influencer) => (
+                {filteredInfluencers.map((influencer) => (
                   <InfluencerCard
                     key={influencer.id}
                     influencerData={influencer}
@@ -134,7 +149,7 @@ function InfluencerCard({ influencerData }) {
             <OffersTokenDealsModal influencerData={influencerData} />
             <Button
               onClick={() => {
-                navigate(`/influencer/profile/${2112233}`);
+                navigate(`/influencer/profile/${influencerData.id}`);
               }}
               variant="bordered"
               className="text-[10px] lg:text-xs bg-transparent border text-black rounded-full h-8 flex-1"
