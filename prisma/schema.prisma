@@ -60,6 +60,7 @@ model ProjectOwner {
   user           User             @relation(fields: [userId], references: [id])
   telegramAdmin  String?
   projectDetails ProjectDetails[]
+  orders         CampaignOrder[]
 
   status ProjectOwnerStatus?
 }
@@ -197,6 +198,10 @@ model Token {
 
 model CampaignOrder {
   id String @id
+  chainId CHAIN @default(DEVNET)
+
+  projectOwnerId String 
+  projectOwner   ProjectOwner @relation(fields: [projectOwnerId], references: [id])
 
   influencerId String
   influencer   Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)

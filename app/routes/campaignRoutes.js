@@ -4,6 +4,12 @@ import { authMiddleware } from "../middleware/authMiddleware.js"
 import { validateOfferData, validateVestingCondition } from "../utils/campaignUtils.js"
 import { getCreateDealTxDetails } from "../lib/contract/mutualEscrowContract.js"
 import { prepareOrderId, validateTokenAmount } from "../utils/contractUtils.js"
+import { adminKp, MUTUAL_ESCROW_PROGRAM } from "../lib/contract/contracts.js"
+import { PublicKey, SystemProgram } from "@solana/web3.js"
+import * as splToken from "@solana/spl-token"
+import * as anchor from "@project-serum/anchor"
+import { BN } from "bn.js"
+
 /**
  *
  * @param {import("fastify").FastifyInstance} app
@@ -20,12 +26,12 @@ export const campaignRoutes = (app, _, done) => {
     const validationResult = await validateOfferData(req, reply);
 
     if (!validationResult.success) {
-      return reply.status(400).send({ 
-        message: validationResult.message 
+      return reply.status(400).send({
+        message: validationResult.message
       })
-    }else{
-      return reply.status(200).send({ 
-        message: 'Offer data is valid' 
+    } else {
+      return reply.status(200).send({
+        message: 'Offer data is valid'
       })
     }
   });
@@ -98,11 +104,24 @@ export const campaignRoutes = (app, _, done) => {
         return reply.status(400).send({ message: validateAmount.message });
       }
 
+      const projectOwner = await prismaClient.projectOwner.findUnique({
+        where: {
+          userId: user.id
+        }
+      });
+      if (!projectOwner) {
+        return reply.status(400).send({ message: 'Project owner not found' });
+      }
+
+      console.log('Project Owner:', projectOwner);
+
       // Insert the offer to the database
       const offer = await prismaClient.campaignOrder.create({
         data: {
           id: orderId,
           influencerId: influencerId,
+          projectOwnerId: projectOwner.id,
+          chainId: chain.dbChainId,
           tokenId: token.id,
           tokenAmount: tokenAmount,
           channel: campaignChannel.toUpperCase(),
@@ -121,32 +140,530 @@ export const campaignRoutes = (app, _, done) => {
   })
 
   // KOL accepts the deal
-  app.post('/accept-deal', { preHandler: [authMiddleware] }, async (request, reply) => {
-    // KOL accepts the deal
-    reply.send('OK');
+  app.post('/accept-offer', { preHandler: [authMiddleware] }, async (request, reply) => {
+    try {
+      const { user } = request;
+      const { orderId } = request.body;
+
+      const kol = await prismaClient.influencer.findUnique({
+        where: {
+          userId: user.id
+        },
+        include: {
+          user: {
+            include: {
+              wallet: true
+            }
+          }
+        }
+      });
+      if (!kol) {
+        return reply.status(400).send({ message: 'KOL not found' });
+      }
+
+      const order = await prismaClient.campaignOrder.findUnique({
+        where: {
+          id: orderId,
+          influencerId: kol.id
+        },
+        include: {
+          projectOwner: {
+            include: {
+              user: {
+                include: {
+                  wallet: true
+                }
+              }
+            }
+          },
+          token: true
+        }
+      });
+
+      if (!order) {
+        return reply.status(400).send({ message: 'Order not found' });
+      }
+
+      // Call the contract to accept the deal
+      const orderChain = CHAINS.find(c => c.dbChainId === order.chainId);
+      const program = MUTUAL_ESCROW_PROGRAM(orderChain.id);
+
+      const orderIdBuffer = prepareOrderId(order.id);
+      const kolPublicKey = new PublicKey(kol.user.wallet.address);
+      const projectOwnerPublicKey = new PublicKey(order.projectOwner.user.wallet.address);
+      const mintPublicKey = new PublicKey(order.token.mintAddress);
+
+      console.log({
+        orderIdBuffer,
+        kolPublicKey,
+        projectOwnerPublicKey,
+        mintPublicKey
+      })
+
+      const [dealPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('deal'),
+          orderIdBuffer,
+          projectOwnerPublicKey.toBuffer(),
+          kolPublicKey.toBuffer(),
+          mintPublicKey.toBuffer()
+        ],
+        program.programId
+      );
+      const [escrowPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("escrow")
+        ],
+        program.programId
+      );
+
+      console.log('dealPda:', dealPda.toBase58());
+      console.log('escrowPda:', escrowPda.toBase58());
+
+      // Call the accept deal function on the contract
+      const txHash = await program.methods
+        .acceptDeal()
+        .accounts({
+          deal: dealPda,
+          escrow: escrowPda,
+          signer: adminKp.publicKey
+        })
+        .signers(adminKp)
+        .rpc({
+          commitment: 'confirmed'
+        })
+      console.log('accept deal txHash:', txHash);
+
+      // Update the order status to accepted
+      const acceptedOrder = await prismaClient.campaignOrder.update({
+        where: {
+          id: order.id
+        },
+        data: {
+          status: 'ACCEPTED'
+        }
+      })
+
+      reply.send(acceptedOrder);
+    } catch (error) {
+      console.error('Error accepting offer:', error)
+      return reply.status(500).send({ message: error?.message || 'Internal server error' })
+    }
   });
 
   // KOL rejects the deal
-  app.post('/reject-deal', { preHandler: [authMiddleware] }, async (request, reply) => {
-    // KOL rejects the deal (backend admin handles the contract interaction)
-    reply.send('OK');
+  app.post('/reject-offer', { preHandler: [authMiddleware] }, async (request, reply) => {
+    try {
+      const { user } = request;
+      const { orderId } = request.body;
+
+      const kol = await prismaClient.influencer.findUnique({
+        where: {
+          userId: user.id
+        },
+        include: {
+          user: {
+            include: {
+              wallet: true
+            }
+          }
+        }
+      });
+      if (!kol) {
+        return reply.status(400).send({ message: 'KOL not found' });
+      }
+
+      const order = await prismaClient.campaignOrder.findUnique({
+        where: {
+          id: orderId,
+          influencerId: kol.id
+        },
+        include: {
+          projectOwner: {
+            include: {
+              user: {
+                include: {
+                  wallet: true
+                }
+              }
+            }
+          },
+          token: true
+        }
+      });
+
+      if (!order) {
+        return reply.status(400).send({ message: 'Order not found' });
+      }
+
+      // Call the contract to reject the deal
+      const orderChain = CHAINS.find(c => c.dbChainId === order.chainId);
+      const program = MUTUAL_ESCROW_PROGRAM(orderChain.id);
+
+      const orderIdBuffer = prepareOrderId(order.id);
+      const kolPublicKey = new PublicKey(kol.user.wallet.address);
+      const projectOwnerPublicKey = new PublicKey(order.projectOwner.user.wallet.address);
+      const mintPublicKey = new PublicKey(order.token.mintAddress);
+
+      console.log({
+        orderIdBuffer,
+        kolPublicKey,
+        projectOwnerPublicKey,
+        mintPublicKey
+      })
+
+      const [dealPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('deal'),
+          orderIdBuffer,
+          projectOwnerPublicKey.toBuffer(),
+          kolPublicKey.toBuffer(),
+          mintPublicKey.toBuffer()
+        ],
+        program.programId
+      );
+      const [escrowPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("escrow")
+        ],
+        program.programId
+      );
+
+      const [vaultTokenAccountPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("vault_token_account"),
+          mintPublicKey.toBuffer(),
+        ],
+        program.programId
+      );
+
+      const [vaultAuthorityPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("vault_authority")],
+        program.programId
+      );
+
+      const projectOwnerTokenAccount = await splToken.getAssociatedTokenAddress(
+        mintPublicKey,
+        projectOwnerPublicKey
+      )
+      console.log('projectOwnerTokenAccount:', projectOwnerTokenAccount);
+
+      console.log('dealPda:', dealPda.toBase58());
+      console.log('escrowPda:', escrowPda.toBase58());
+
+      // Call the reject deal function on the contract
+      const txHash = await program.methods
+        .rejectDeal()
+        .accounts({
+          deal: dealPda,
+          escrow: escrowPda,
+          signer: adminKp.publicKey,
+          projectOwner: projectOwnerPublicKey,
+          vaultTokenAccount: vaultTokenAccountPda,
+          vaultAuthority: vaultAuthorityPda,
+          projectOwnerTokenAccount: projectOwnerTokenAccount,
+          mint: mintPublicKey,
+          tokenProgram: splToken.TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        })
+        .signers([adminKp]) // Admin or KOL can sign
+        .rpc({ commitment: "confirmed" });
+      console.log('reject deal txHash:', txHash);
+
+      // Update the order status to rejected
+      const rejectedOrder = await prismaClient.campaignOrder.update({
+        where: {
+          id: order.id
+        },
+        data: {
+          status: 'REJECTED'
+        }
+      })
+
+      reply.send(rejectedOrder);
+    } catch (error) {
+      console.error('Error rejecting deal:', error)
+      return reply.status(500).send({ message: error?.message || 'Internal server error' })
+    }
+  });
+
+  app.get('/:orderId/contract-logs', async (req, reply) => {
+    try {
+      const { orderId } = req.params;
+      const { chainId = 'devnet' } = req.query;
+
+      const chain = CHAINS.find(c => c.id === chainId);
+      if (!chain) {
+        return reply.status(400).send({ message: 'Invalid chain ID' });
+      }
+
+      // Fetch contract logs for the order
+      const events = await prismaClient.escrowEventLog.findMany({
+        where: {
+          campaignOrderId: orderId,
+          chainId: chain.dbChainId
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+
+      reply.send(events);
+    } catch (error) {
+      console.error('Error fetching contract logs:', error)
+      return reply.status(500).send({
+        message: error?.message || 'Internal server error'
+      })
+    }
+  })
+
+  // TODO: Submit work, for KOL to submit the work done (tweet, post, etc.)
+  app.post('/submit-work', { 
+    preHandler: [authMiddleware]
+  }, async (request, reply) => {
+    try {
+      const { user } = request;
+      // KOL submits the task (tweet, post, etc.) for verification by the Project Owner
+
+      return reply.send('OK');
+    } catch (error) {
+      console.error('Error submitting work:', error)
+      return reply.status(500).send({
+        message: error?.message || 'Internal server error'
+      })
+    }
   });
 
   // KOL confirms that the obligated task is done
-  app.post('/confirm-task', { preHandler: [authMiddleware] }, async (request, reply) => {
-    // KOL confirms the task (tweet, post, etc.). On-demand verification is done here.
-    reply.send('OK');
+  app.post('/confirm-work', {
+    preHandler: [authMiddleware]
+  }, async (request, reply) => {
+    try {
+      const { user } = request;
+      // Project Owner confirms the task (tweet, post, etc.). On-demand verification is done here.
+
+      // If the task is done, call the contract to make the eligibility partial (for vesting), for none, full eligibility
+
+      const order = await prismaClient.campaignOrder.findUnique({
+        where: {
+          id: request.body.orderId,
+          influencer: {
+            userId: user.id
+          }
+        },
+        include: {
+          projectOwner: {
+            include: {
+              user: {
+                include: {
+                  wallet: true
+                }
+              }
+            }
+          },
+          influencer: {
+            include: {
+              user: {
+                include: {
+                  wallet: true
+                }
+              }
+            }
+          },
+          token: true
+        }
+      });
+      if (!order) {
+        return reply.status(400).send({ message: 'Order not found' });
+      }
+
+      const chain = CHAINS.find(c => c.dbChainId === order.chainId);
+      if (!chain) {
+        return reply.status(400).send({ message: 'Invalid chain ID' });
+      }
+
+      const program = MUTUAL_ESCROW_PROGRAM(order.chainId);
+
+      const [dealPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('deal'),
+          prepareOrderId(order.id),
+          new PublicKey(order.projectOwner.user.wallet.address).toBuffer(),
+          new PublicKey(order.influencer.user.wallet.address).toBuffer(),
+          new PublicKey(order.token.mintAddress).toBuffer()
+        ],
+        program.programId
+      );
+
+      const [escrowPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("escrow")
+        ],
+        program.programId
+      );
+
+      if (order.vestingType === 'NONE') {
+        // Become fully eligible
+        const txHash = await program.methods
+          .setEligibilityStatus({ fullyEligible: {} })
+          .accounts({
+            deal: dealPda,
+            escrow: escrowPda,
+            signer: adminKp.publicKey,
+          })
+          .signers([adminKp])
+          .rpc({ commitment: "confirmed" });
+
+        console.log('Fully eligibility txHash:', txHash);
+
+        const fullyCompleted = await prismaClient.campaignOrder.update({
+          where: {
+            id: order.id
+          },
+          data: {
+            status: 'COMPLETED'
+          }
+        })
+
+        reply.send(fullyCompleted);
+      } else {
+        // Become partially eligible, to claim the 20% of the tokens
+        const txHash = await program.methods
+          .setEligibilityStatus({ partiallyEligible: {} })
+          .accounts({
+            deal: dealPda,
+            escrow: escrowPda,
+            signer: adminKp.publicKey,
+          })
+          .signers([adminKp])
+          .rpc({ commitment: "confirmed" });
+
+        console.log('Partial eligibility txHash:', txHash);
+
+        const partialCompleted = await prismaClient.campaignOrder.update({
+          where: {
+            id: order.id
+          },
+          data: {
+            status: 'PARTIALCOMPLETED'
+          }
+        })
+
+        reply.send(partialCompleted);
+      }
+    } catch (error) {
+      console.error('Error confirming work:', error)
+    }
   });
+
+  // TODO: Check claimable tokens
+  app.get('/:orderId/claimable', {
+    preHandler: [authMiddleware]
+  }, async (req, reply) => {
+    try {
+      // Check if the KOL can claim tokens (fully or partially). Show the amount of tokens that can be claimed.
+      const { orderId } = req.params;
+
+      const order = await prismaClient.campaignOrder.findUnique({
+        where: {
+          id: orderId
+        },
+        include: {
+          projectOwner: {
+            include: {
+              user: {
+                include: {
+                  wallet: true
+                }
+              }
+            }
+          },
+          influencer: {
+            include: {
+              user: {
+                include: {
+                  wallet: true
+                }
+              }
+            }
+          },
+          token: {
+            select: {
+              mintAddress: true,
+              chainId: true,
+              decimals: true,
+              imageUrl: true,
+              name: true,
+              symbol: true
+            }
+          }
+        }
+      });
+      if (!order) {
+        return reply.status(400).send({ message: 'Order not found' });
+      }
+
+      const chain = CHAINS.find(c => c.dbChainId === order.chainId);
+      if (!chain) {
+        return reply.status(400).send({ message: 'Invalid chain ID' });
+      }
+      const orderIdBuffer = prepareOrderId(order.id);
+      const kolPublicKey = new PublicKey(order.influencer.user.wallet.address);
+      const projectOwnerPublicKey = new PublicKey(order.projectOwner.user.wallet.address);
+      const mintPublicKey = new PublicKey(order.token.mintAddress);
+
+      const program = MUTUAL_ESCROW_PROGRAM(chain.id);
+
+      const [dealPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('deal'),
+          orderIdBuffer,
+          projectOwnerPublicKey.toBuffer(),
+          kolPublicKey.toBuffer(),
+          mintPublicKey.toBuffer()
+        ],
+        program.programId
+      );
+      const [escrowPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("escrow")
+        ],
+        program.programId
+      );
+
+      // Call the check_claimable_amount instruction on the program
+      const claimableAmount = await program.methods
+        .checkClaimableAmount()
+        .accounts({
+          deal: dealPda,
+          escrow: escrowPda,
+        })
+        .view({
+          commitment: 'confirmed'
+        })
+
+      console.log('Claimable amount:', claimableAmount.toString());
+
+      // Format it into the token { mintAddress: ..., amount: claimableAmount/10^decimals, ...}
+      const formattedAmount = new BN(claimableAmount).div(new BN(10).pow(new BN(order.token.decimals)));
+      const claimable = {
+        token: order.token,
+        amount: formattedAmount.toNumber()
+      }
+
+      reply.send(claimable);
+    } catch (error) {
+      console.error('Error checking claimable tokens:', error)
+      return reply.status(500).send({
+        message: error?.message || 'Internal server error'
+      })
+    }
+  })
 
   // Check if the task was fulfilled (backend admin verifies)
   app.post('/verify-task', { preHandler: [authMiddleware] }, async (request, reply) => {
     // Backend verifies if the task was fulfilled and calls partial eligibility on the contract
-    reply.send('OK');
-  });
-
-  // KOL claims tokens (partially or fully)
-  app.post('/claim-tokens', { preHandler: [authMiddleware] }, async (request, reply) => {
-    // KOL claims tokens (either fully or partially based on conditions)
     reply.send('OK');
   });
 

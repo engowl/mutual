@@ -68,7 +68,7 @@ fastify.ready(async (err) => {
 });
 
 /* --------------------------------- Workers -------------------------------- */
-// fastify.register(campaignWorkers);
+fastify.register(campaignWorkers);
 
 const start = async () => {
   try {
