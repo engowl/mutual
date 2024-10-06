@@ -19,6 +19,7 @@ import MarketVestingSvg from "../../assets/project-owner/browse/market-vest.svg"
 import { Link, useNavigate } from "react-router-dom";
 import useSWR from "swr";
 import { mutualAPI } from "../../api/mutual";
+import RandomAvatar from "../../components/ui/RandomAvatar";
 
 export default function ProjectOwnerBrowsePage() {
   const { data, isLoading } = useSWR("/influencer/all", async (url) => {
@@ -113,12 +114,9 @@ function InfluencerCard({ influencerData }) {
     <div className="bg-white rounded-2xl border p-4 w-full">
       <div className="flex w-full gap-2 md:gap-4">
         <div className="shrink-0 size-16 md:size-20 rounded-full bg-neutral-200 overflow-hidden">
-          <img
-            className="w-full h-full object-cover"
-            alt="demo"
-            src="/assets/demo/angga.png"
-            width={80}
-            height={80}
+          <RandomAvatar
+            seed={influencerData.twitterAccount.username}
+            className={"w-full h-full"}
           />
         </div>
         <div className="flex-1">

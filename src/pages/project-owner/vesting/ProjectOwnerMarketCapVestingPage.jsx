@@ -15,7 +15,7 @@ import { CHAINS } from "../../../config";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK";
 import { getAlphanumericId, sleep } from "../../../utils/misc";
 import { shortenAddress } from "../../../utils/string";
-import { atom, useAtom } from "jotai";
+import { atom, useAtom, useAtomValue } from "jotai";
 
 const marketCapVestingFormAtom = atom({
   key: "marketCapVestingFormAtom",
@@ -43,11 +43,15 @@ export default function ProjectOwnerMarketCapVestingPage() {
 function MarketCapVestingConfirmation() {
   const { wallet } = useWallet();
   const [cookies] = useCookies(["session_token"]);
+  const formData = useAtomValue(marketCapVestingFormAtom);
+  // TODO: Add loading state
 
   const [isLoading, setIsLoading] = useState(false);
   const handleCreateOffer = async () => {
     try {
       setIsLoading(true);
+
+      console.log("formData:", formData);
 
       console.log("cookies:", cookies);
       const escrowSDK = new MutualEscrowSDK({

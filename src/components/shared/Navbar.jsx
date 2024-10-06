@@ -19,7 +19,7 @@ export default function Navbar() {
           />
         </Link>
 
-        <div className="h-full hidden lg:inline">
+        <div className="h-full hidden md:inline">
           {user && isLoggedIn && user.role === "PROJECT_OWNER" ? (
             <ProjectOwnerNav />
           ) : user && isLoggedIn && user.role === "INFLUENCER" ? (

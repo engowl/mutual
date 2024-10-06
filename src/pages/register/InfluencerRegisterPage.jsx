@@ -8,8 +8,8 @@ import { useNavigate } from "react-router-dom";
 import twitterSvg from "../../assets/twitter.svg";
 import { useCallback, useEffect, useState } from "react";
 import { mutualAPI } from "../../api/mutual.js";
-import { useMCAuth } from "../../lib/mconnect/hooks/useMcAuth.jsx";
 import IconicButton from "../../components/ui/IconicButton.jsx";
+import { useMCAuth } from "../../lib/mconnect/hooks/useMCAuth.jsx";
 
 export default function InfluencerRegisterPage() {
   const [step, setStep] = useAtom(influencerRegisterStepAtom);

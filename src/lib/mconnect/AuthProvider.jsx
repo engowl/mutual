@@ -154,7 +154,9 @@ export const AuthProvider = ({ children }) => {
         },
       });
 
-      setCookie("session_token", res.data.data.session_token);
+      setCookie("session_token", res.data.data.session_token, {
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+      });
 
       // Set state
       setPortal(portalInstance);
@@ -288,7 +290,9 @@ export const AuthProvider = ({ children }) => {
         type: _type,
       });
 
-      setCookie("session_token", res.data.data.session_token);
+      setCookie("session_token", res.data.data.session_token, {
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+      });
 
       // Set state
       setIsLoggedIn(true);
