@@ -66,7 +66,12 @@ class MutualEscrowSDK {
       const transaction = new Transaction();
 
       const ix = await program.methods
-        .createDeal(new BN(amount), { [vestingType.toLowerCase()]: {} }, new BN(0), Array.from(orderIdBuffer))
+        .createDeal(
+          new BN(amount),
+          { [vestingType.toLowerCase()]: {} },
+          new BN(0),
+          Array.from(orderIdBuffer)
+        )
         .accounts({
           escrow: escrowPda,
           deal: dealPda,
@@ -92,6 +97,95 @@ class MutualEscrowSDK {
       return transaction;
     } catch (error) {
       console.error('Error preparing create deal transaction:', error);
+      throw error;
+    }
+  }
+
+  async prepareNativeCreateDealTransaction({ orderId, kolAddress, userAddress, vestingType, amount }) {
+    try {
+      const program = this.getProgram();
+      const orderIdBuffer = this.prepareOrderId(orderId);
+
+      const userPublicKey = new PublicKey(userAddress);
+      const kolPublicKey = new PublicKey(kolAddress);
+      const wsolMint = splToken.NATIVE_MINT; // WSOL mint address using the latest spl-token version
+
+      const [escrowPda] = PublicKey.findProgramAddressSync([Buffer.from("escrow")], program.programId);
+      const [dealPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('deal'), orderIdBuffer, userPublicKey.toBuffer(), kolPublicKey.toBuffer(), wsolMint.toBuffer()],
+        program.programId
+      );
+      const [vaultTokenAccountPda] = PublicKey.findProgramAddressSync([Buffer.from("vault_token_account"), wsolMint.toBuffer()], program.programId);
+      const [vaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from("vault_authority")], program.programId);
+
+      // Create a temporary WSOL token account for the project owner using the latest SPL-Token API
+      const projectOwnerTokenAccount = await splToken.getAssociatedTokenAddress(
+        wsolMint,
+        userPublicKey
+      );
+
+      const transaction = new Transaction();
+
+      // Step 1: Wrap SOL by transferring it to the WSOL account
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey: userPublicKey,
+          toPubkey: projectOwnerTokenAccount,
+          lamports: amount // Amount of SOL to wrap into WSOL
+        })
+      );
+
+      // Step 2: Ensure the WSOL account is rent-exempt using createSyncNativeInstruction
+      transaction.add(
+        splToken.createSyncNativeInstruction(
+          projectOwnerTokenAccount
+        )
+      );
+
+      // Step 3: Create the deal using the WSOL mint
+      const ix = await program.methods
+        .createDeal(
+          new BN(amount),
+          { [vestingType.toLowerCase()]: {} },
+          new BN(0),
+          Array.from(orderIdBuffer)
+        )
+        .accounts({
+          escrow: escrowPda,
+          deal: dealPda,
+          projectOwner: userPublicKey,
+          kol: kolPublicKey,
+          mint: wsolMint,
+          projectOwnerTokenAccount: projectOwnerTokenAccount.toBase58(),
+          vaultTokenAccount: vaultTokenAccountPda,
+          vaultAuthority: vaultAuthorityPda,
+          tokenProgram: splToken.TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        })
+        .instruction();
+
+      transaction.add(ix);
+
+      // Step 4: Close the WSOL account to refund remaining SOL back to the user
+      transaction.add(
+        splToken.createCloseAccountInstruction(
+          projectOwnerTokenAccount,
+          userPublicKey,
+          userPublicKey,
+          []
+        )
+      );
+
+      // Finalize the transaction
+      const connection = program.provider.connection;
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = userPublicKey;
+
+      return transaction;
+    } catch (error) {
+      console.error('Error preparing native create deal transaction:', error);
       throw error;
     }
   }
