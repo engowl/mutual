@@ -61,16 +61,31 @@ function MarketCapVestingConfirmation() {
         chains: CHAINS,
       });
 
+      // const DUMMY_DEAL_DATA = {
+      //   orderId: getAlphanumericId(16), // Random orderId, must be 16 characters alphanumeric
+      //   influencerId: "cm1woosyd0002s3rywklvtzik",
+      //   vestingType: "TIME",
+      //   vestingCondition: {
+      //     vestingDuration: "1-month"
+      //   },
+      //   chainId: "devnet",
+      //   mintAddress: "6EXeGq2NuPUyB9UFWhbs35DBieQjhLrSfY2FU3o9gtr7",
+      //   tokenAmount: 1,
+      //   campaignChannel: "TWITTER",
+      //   promotionalPostText: "heheheh",
+      //   postDateAndTime: "2024-10-05T09:38:20.972Z"
+      // };
+
       const DUMMY_DEAL_DATA = {
-        orderId: "abcd1234abcd1235",
-        influencerId: "1",
-        vestingType: "TIME",
+        orderId: getAlphanumericId(16), // Random orderId, must be 16 characters alphanumeric
+        influencerId: "cm1woosyd0002s3rywklvtzik",
+        vestingType: "MARKETCAP",
         vestingCondition: {
-          vestingDuration: "1-month",
+          marketcapThreshold: 100_000
         },
         chainId: "devnet",
         mintAddress: "6EXeGq2NuPUyB9UFWhbs35DBieQjhLrSfY2FU3o9gtr7",
-        tokenAmount: 1000000,
+        tokenAmount: 1,
         campaignChannel: "TWITTER",
         promotionalPostText: "heheheh",
         postDateAndTime: "2024-10-05T09:38:20.972Z",
@@ -82,12 +97,12 @@ function MarketCapVestingConfirmation() {
 
       // Step 2: Prepare the transaction to create the deal
       const createDealTx = await escrowSDK.prepareCreateDealTransaction({
-        orderId: getAlphanumericId(16), // Random orderId, must be 16 characters alphanumeric
+        orderId: DUMMY_DEAL_DATA.orderId,
         mintAddress: DUMMY_DEAL_DATA.mintAddress,
-        kolAddress: "3AYyQGgCCZXNhagbBBcYRM47jvzBw1Ev5XvaAR31Nrap",
-        userAddress: "BhBjfxB7NvG4FugPg8d1HCtjRuj5UqDGgsEMxxRo1k3H",
+        kolAddress: "BhBjfxB7NvG4FugPg8d1HCtjRuj5UqDGgsEMxxRo1k3H",
+        userAddress: "3mvJDqu2ubdGR8V8aRsxhaKSDyJunjFvospfgBdobUXs",
         vestingType: DUMMY_DEAL_DATA.vestingType,
-        amount: DUMMY_DEAL_DATA.tokenAmount, // Must be in base unit (e.g., 1000 for 1 token if token has 3 decimals)
+        amount: DUMMY_DEAL_DATA.tokenAmount * 10 ** 6
       });
       console.log("createDealTx:", createDealTx);
 
@@ -96,7 +111,14 @@ function MarketCapVestingConfirmation() {
 
       // Step 4: Send the transaction
       const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
-      console.log("Deal created successfully. Tx:", txHash);
+      console.log('Deal created successfully. Tx:', txHash);
+
+      const created = await escrowSDK.createOffer({
+        dealData: DUMMY_DEAL_DATA,
+        txHash: txHash
+      })
+
+      console.log('Offer created:', created);
     } catch (error) {
       console.error("Error creating deal:", error);
     } finally {

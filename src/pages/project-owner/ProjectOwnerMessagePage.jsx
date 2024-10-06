@@ -198,7 +198,7 @@ export default function ProjectOwnerMessagePage() {
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
       <div className="w-full max-w-5xl flex flex-col py-20">
-        <div className="w-full flex">
+        <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6 h-full">
           {/* Sidebar */}
           <div
             className={cnm(
@@ -356,6 +356,8 @@ function MessageChat({
     sendMessage();
   };
 
+  const { user } = useMCAuth();
+
   return (
     <div className="mt-4 rounded-2xl bg-creamy-300 h-[412px] relative overflow-hidden">
       {isLoading ? (
@@ -430,7 +432,7 @@ function MessageChat({
         <div className="flex gap-4 bg-white border rounded-xl items-center pr-4 h-12 focus-within:border-orangy/50">
           <input
             type="text"
-            placeholder="Type a message"
+            placeholder="Enter your message here"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}

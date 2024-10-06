@@ -16,3 +16,57 @@
     font-family: "ClashGrotesk-Variable", sans-serif;
   }
 }
+
+/* Override default WalletModal styles */
+
+.wallet-adapter-modal-wrapper,
+.wallet-adapter-modal-header,
+.wallet-adapter-modal-content,
+.wallet-adapter-modal-list,
+.wallet-adapter-button,
+.wallet-adapter-modal-title,
+.wallet-adapter-modal-button-close,
+.wallet-adapter-modal-list-more {
+  font-family: "ClashGrotesk-Variable", sans-serif;
+}
+
+.wallet-adapter-modal-wrapper {
+  background-color: #f7f8fa !important;
+  color: #161616 !important;
+}
+
+.wallet-adapter-modal-header,
+.wallet-adapter-modal-content,
+.wallet-adapter-modal-list {
+  background-color: #f7f8fa !important;
+  color: #161616 !important;
+}
+
+.wallet-adapter-button {
+  background-color: #f7f8fa !important;
+  color: #161616 !important;
+}
+
+.wallet-adapter-modal-close {
+  color: #161616 !important;
+}
+
+.wallet-adapter-modal-list li:hover {
+  background-color: #f7f8fa !important;
+}
+
+.wallet-adapter-modal-title {
+  color: #161616;
+}
+.wallet-adapter-modal-button-close {
+  background-color: #e6e6e6;
+  color: #161616;
+}
+
+.wallet-adapter-modal-list-more {
+  color: #161616 !important;
+}
+
+.wallet-adapter-modal-list-more svg {
+  fill: currentColor;
+}

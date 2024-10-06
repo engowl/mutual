@@ -59,7 +59,7 @@ export default function AdminNavbar({ handleLogout }) {
                 </>
               )}
             </NavLink>
-            <NavLink
+            {/* <NavLink
               to={"/__admin/kol"}
               className={({ isActive }) =>
                 cnm(
@@ -79,7 +79,7 @@ export default function AdminNavbar({ handleLogout }) {
                   KOL
                 </>
               )}
-            </NavLink>
+            </NavLink> */}
           </div>
         </div>
       </div>
