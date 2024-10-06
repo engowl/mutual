@@ -129,6 +129,7 @@ model TwitterAccount {
 
   followersCount Int?
   description String?
+  profileImageUrl String? 
 }
 
 enum UserWalletType {

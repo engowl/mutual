@@ -184,6 +184,7 @@ export const userRoutes = (app, _, done) => {
                           username: userTwitter.username,
                           followersCount: unUserTwitter.followers_count,
                           description: unUserTwitter.description,
+                          profileImageUrl: unUserTwitter.profile_image_url_https,
                         },
                         create: {
                           accountId: userTwitter.id,
@@ -191,6 +192,7 @@ export const userRoutes = (app, _, done) => {
                           username: userTwitter.username,
                           followersCount: unUserTwitter.followers_count,
                           description: unUserTwitter.description,
+                          profileImageUrl: unUserTwitter.profile_image_url_https,
                         },
                       },
                     },

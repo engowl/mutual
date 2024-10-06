@@ -35,6 +35,7 @@ export const twitterWorkers = (app, _, done) => {
             data: {
               followersCount: twitterData.followers_count,
               description: twitterData.description,
+              profileImageUrl: twitterData.profile_image_url_https,
             },
           });
           console.log(`Updated Twitter data for ${username}`);
@@ -59,6 +60,8 @@ export const twitterWorkers = (app, _, done) => {
 
     updateTwitterAccounts();
   });
+
+  updateTwitterAccounts();
 
   done();
 };
