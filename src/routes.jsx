@@ -35,14 +35,20 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "influencer",
-            element: <InfluencerRegisterPage />,
+            element: (
+              <RolesAuthRouteGuard roles={["INFLUENCER"]}>
+                <InfluencerRegisterPage />
+              </RolesAuthRouteGuard>
+            ),
           },
           {
             path: "project-owner",
             element: (
-              <ProjectOwnerRegisterRouteGuard>
-                <ProjectOwnerRegisterPage />
-              </ProjectOwnerRegisterRouteGuard>
+              <RolesAuthRouteGuard roles={["PROJECT_OWNER"]}>
+                <ProjectOwnerRegisterRouteGuard>
+                  <ProjectOwnerRegisterPage />
+                </ProjectOwnerRegisterRouteGuard>
+              </RolesAuthRouteGuard>
             ),
           },
         ],

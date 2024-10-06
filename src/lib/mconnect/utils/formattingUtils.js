@@ -14,3 +14,10 @@ export function toFixed(num, fixed) {
   const re = new RegExp(`^-?\\d+(?:\\.\\d{0,${fixed || -1}})?`);
   return num.toString().match(re)[0];
 }
+
+export const handleNumericChange = (setter) => (e) => {
+  const value = e.target.value.replace(/,/g, '');
+  if (!isNaN(value)) {
+    setter(new Intl.NumberFormat().format(value)); 
+  }
+};

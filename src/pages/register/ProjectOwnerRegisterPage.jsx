@@ -65,7 +65,7 @@ export default function ProjectOwnerRegisterPage() {
     try {
       const res = await mutualAPI.get("/users/twitter/authorize");
 
-      window.open(res.data.data.redirectUrl, "_blank");
+      window.location.replace(res.data.data.redirectUrl, "_blank");
     } catch (error) {
       console.log(error);
     } finally {
@@ -324,6 +324,7 @@ const OnProcessBanner = () => {
         <p className="text-neutral-500 mt-8">Need help?</p>
         <Button
           size="lg"
+          onClick={() => window.open("https://t.me/drbuwono")}
           className="bg-orangy text-white mt-5 rounded-full font-medium"
         >
           Contact Admin

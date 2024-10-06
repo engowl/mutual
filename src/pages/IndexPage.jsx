@@ -1,4 +1,4 @@
-import { Navigate, useLoaderData, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import MCWidget from "../lib/mconnect/components/MCWidget.jsx";
 import { useMCAuth } from "../lib/mconnect/hooks/useMCAuth.jsx";
 import { useEffect, useState } from "react";
@@ -8,7 +8,6 @@ import { mutualAPI } from "../api/mutual.js";
 import { Spinner } from "@nextui-org/react";
 
 export default function IndexPage() {
-  // const user = useLoaderData();
   const {
     isLoggedIn,
     getUser,
@@ -78,7 +77,8 @@ function ChooseRole({ getUser }) {
       await mutualAPI.post("/users/update", {
         role,
       });
-      await getUser();
+
+      await getUser({ silentLoad: true });
     } catch (error) {
       console.log("ERROR_UPDATE_ROLE: ", error);
     } finally {

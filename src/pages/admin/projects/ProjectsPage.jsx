@@ -18,9 +18,11 @@ function ProjectsList() {
   const [projectOwners, setProjectOwners] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchProjects = async (status) => {
+  const fetchProjects = async ({ status, withLoading = true }) => {
     try {
-      setLoading(true);
+      if (withLoading) {
+        setLoading(true);
+      }
       const response = await mutualPublicAPI.get(
         `/__admin/projects?status=${status === "new" ? "PENDING" : "APPROVED"}`
       );
@@ -33,7 +35,16 @@ function ProjectsList() {
   };
 
   useEffect(() => {
-    fetchProjects(status);
+    fetchProjects({ status });
+
+    const interval = setInterval(() => {
+      fetchProjects({
+        status,
+        withLoading: false,
+      });
+    }, 8000);
+
+    return () => clearInterval(interval);
   }, [status]);
 
   return (
@@ -92,7 +103,10 @@ function ProjecCard({ owner, setStatus, fetchProjects }) {
     try {
       await mutualPublicAPI.post(`/__admin/projects/${owner.id}/approve`);
       setStatus("new");
-      fetchProjects("new");
+      fetchProjects({
+        status: "new",
+        withLoading: false,
+      });
     } catch (error) {
       console.log(error);
     } finally {
