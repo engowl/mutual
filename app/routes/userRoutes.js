@@ -1,7 +1,4 @@
-import {
-  authorizeTwitter,
-  getTwitterUser,
-} from "../api/twitterApi.js";
+import { authorizeTwitter, getTwitterUser } from "../api/twitterApi.js";
 import { formatGetUserResponse } from "../api/unTwitterApi/helpers.js";
 import { unTwitterApiGetUser } from "../api/unTwitterApi/unTwitterApi.js";
 import { prismaClient } from "../db/prisma.js";
@@ -55,7 +52,11 @@ export const userRoutes = (app, _, done) => {
             influencer: {
               include: {
                 projectCriterias: true,
-                packages: true,
+                packages: {
+                  orderBy: {
+                    type: "asc",
+                  },
+                },
                 twitterAccount: true,
               },
             },
@@ -184,7 +185,8 @@ export const userRoutes = (app, _, done) => {
                           username: userTwitter.username,
                           followersCount: unUserTwitter.followers_count,
                           description: unUserTwitter.description,
-                          profileImageUrl: unUserTwitter.profile_image_url_https,
+                          profileImageUrl:
+                            unUserTwitter.profile_image_url_https,
                         },
                         create: {
                           accountId: userTwitter.id,
@@ -192,7 +194,8 @@ export const userRoutes = (app, _, done) => {
                           username: userTwitter.username,
                           followersCount: unUserTwitter.followers_count,
                           description: unUserTwitter.description,
-                          profileImageUrl: unUserTwitter.profile_image_url_https,
+                          profileImageUrl:
+                            unUserTwitter.profile_image_url_https,
                         },
                       },
                     },
