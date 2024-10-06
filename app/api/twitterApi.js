@@ -3,9 +3,6 @@ import { RateLimiterMemory } from "rate-limiter-flexible";
 
 const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID;
 const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET;
-const TWITTER_RAPID_API_KEY = process.env.TWITTER_RAPID_API_KEY;
-
-const BASE_URL = "https://twttrapi.p.rapidapi.com";
 
 export const UnTwitterApiLimiter = new RateLimiterMemory({
   duration: 2,
@@ -56,34 +53,6 @@ export const getTwitterUser = async ({ accessToken }) => {
       "Error exchanging authorization code for token:",
       error.response?.data || error.message
     );
-    throw error;
-  }
-};
-
-export const unTwitterApiGetUser = async ({ userId }) => {
-  try {
-    try {
-      await UnTwitterApiLimiter.consume(1);
-    } catch (error) {
-      console.error("Rate limit exceeded for unofficial Twitter API:", error);
-    }
-
-    const response = await axios({
-      method: "GET",
-      url: BASE_URL + "/get-user-by-id",
-      headers: {
-        "Content-Type": "application/json",
-        "X-RapidAPI-Host": "twttrapi.p.rapidapi.com",
-        "X-RapidAPI-Key": TWITTER_RAPID_API_KEY,
-      },
-      params: {
-        user_id: userId,
-      },
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching user:", error);
     throw error;
   }
 };
