@@ -7,27 +7,32 @@ import {
 } from "@nextui-org/react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import IconicButton from "../../../components/ui/IconicButton";
 import { CHAINS } from "../../../config";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK";
 import { getAlphanumericId, sleep } from "../../../utils/misc";
 import { shortenAddress } from "../../../utils/string";
 import { atom, useAtom, useAtomValue } from "jotai";
+import { cnm } from "../../../utils/style";
+import { parseDate, parseTime } from "@internationalized/date";
+import { useDateFormatter } from "@react-aria/i18n";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+
+dayjs.extend(utc);
 
 const marketCapVestingFormAtom = atom({
   key: "marketCapVestingFormAtom",
-  default: {
-    tokenOfferAmount: "",
-    percentageOfSupply: "",
-    marketCapMilestone: "",
-    telegramAdminUsername: "",
-    marketingChannel: "",
-    promotionalPostText: "",
-    postDateAndTime: "",
-  },
+  tokenOfferAmount: "",
+  percentageOfSupply: "",
+  marketCapMilestone: "",
+  telegramAdminUsername: "",
+  marketingChannel: "",
+  promotionalPostText: "",
+  postDateAndTime: "",
 });
 
 export default function ProjectOwnerMarketCapVestingPage() {
@@ -43,11 +48,17 @@ export default function ProjectOwnerMarketCapVestingPage() {
 function MarketCapVestingConfirmation() {
   const { wallet } = useWallet();
   const [cookies] = useCookies(["session_token"]);
+  const params = useParams();
+  const influencerId = params.influencerId;
+
   const formData = useAtomValue(marketCapVestingFormAtom);
   // TODO: Add loading state
 
+  console.log("formData:", formData);
+
   const [isLoading, setIsLoading] = useState(false);
   const handleCreateOffer = async () => {
+    // TODO complete validation and data
     try {
       setIsLoading(true);
 
@@ -76,33 +87,37 @@ function MarketCapVestingConfirmation() {
       //   postDateAndTime: "2024-10-05T09:38:20.972Z"
       // };
 
-      const DUMMY_DEAL_DATA = {
+      const DATA = {
         orderId: getAlphanumericId(16), // Random orderId, must be 16 characters alphanumeric
-        influencerId: "cm1woosyd0002s3rywklvtzik",
+        influencerId: influencerId,
         vestingType: "MARKETCAP",
         vestingCondition: {
-          marketcapThreshold: 100_000
+          marketcapThreshold: 100_000,
         },
         chainId: "devnet",
         mintAddress: "6EXeGq2NuPUyB9UFWhbs35DBieQjhLrSfY2FU3o9gtr7",
         tokenAmount: 1,
-        campaignChannel: "TWITTER",
-        promotionalPostText: "heheheh",
-        postDateAndTime: "2024-10-05T09:38:20.972Z",
+        campaignChannel: formData.marketingChannel,
+        promotionalPostText: formData.promotionalPostText,
+        postDateAndTime: new Date(formData.postDateAndTime),
       };
 
+      console.log("DATA:", DATA);
+
+      // return;
+
       // Step 1: Verify the offer
-      await escrowSDK.verifyOffer(DUMMY_DEAL_DATA);
+      await escrowSDK.verifyOffer(DATA);
       console.log("Offer is valid!");
 
       // Step 2: Prepare the transaction to create the deal
       const createDealTx = await escrowSDK.prepareCreateDealTransaction({
-        orderId: DUMMY_DEAL_DATA.orderId,
-        mintAddress: DUMMY_DEAL_DATA.mintAddress,
-        kolAddress: "BhBjfxB7NvG4FugPg8d1HCtjRuj5UqDGgsEMxxRo1k3H",
-        userAddress: "3mvJDqu2ubdGR8V8aRsxhaKSDyJunjFvospfgBdobUXs",
-        vestingType: DUMMY_DEAL_DATA.vestingType,
-        amount: DUMMY_DEAL_DATA.tokenAmount * 10 ** 6
+        orderId: DATA.orderId,
+        mintAddress: DATA.mintAddress,
+        kolAddress: "95CTp5B82XanjZ6LCg4w4bW9Gak4p9A8P4uUfriVFjWF",
+        userAddress: wallet.adapter.publicKey.toBase58(),
+        vestingType: DATA.vestingType,
+        amount: DATA.tokenAmount * 10 ** 6,
       });
       console.log("createDealTx:", createDealTx);
 
@@ -111,14 +126,14 @@ function MarketCapVestingConfirmation() {
 
       // Step 4: Send the transaction
       const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
-      console.log('Deal created successfully. Tx:', txHash);
+      console.log("Deal created successfully. Tx:", txHash);
 
       const created = await escrowSDK.createOffer({
-        dealData: DUMMY_DEAL_DATA,
-        txHash: txHash
-      })
+        dealData: DATA,
+        txHash: txHash,
+      });
 
-      console.log('Offer created:', created);
+      console.log("Offer created:", created);
     } catch (error) {
       console.error("Error creating deal:", error);
     } finally {
@@ -164,7 +179,7 @@ function MarketCapVestingConfirmation() {
             <div className="flex flex-col gap-3 text-sm">
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Offer Amount</p>
-                <p className="font-medium">20 SOL</p>
+                <p className="font-medium">{formData.tokenOfferAmount} SOL</p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Payment Terms</p>
@@ -190,19 +205,24 @@ function MarketCapVestingConfirmation() {
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Marketing Channel</p>
-                <p className="font-medium">Twitter Post</p>
+                <p className="font-medium">
+                  {formData.marketingChannel === "twitter"
+                    ? "Twitter"
+                    : "Telegram"}{" "}
+                  Post
+                </p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Schedule</p>
-                <p className="font-medium">15 October 2024 : 18:00 UTC</p>
+                <p className="font-medium">
+                  {dayjs(new Date(formData.postDateAndTime))
+                    .utc()
+                    .format("D MMMM YYYY : HH:mm [UTC]")}
+                </p>
               </div>
             </div>
             <p className="font-medium mt-8">Promotional post text</p>
-            <p className="mt-4">
-              🚀 $Michi is ready to take over the crypto space!🔥 Join the
-              $Michi revolution and be part of the most exciting meme coin of
-              the year! 📈 Strong community, rapid growth, and big plans ahead!
-            </p>
+            <p className="mt-4">{formData.promotionalPostText}</p>
           </div>
         </div>
 
@@ -225,6 +245,50 @@ function MarketCapVestingConfirmation() {
 
 function MarketCapVestingForm({ setStep }) {
   const [formValues, setFormValues] = useAtom(marketCapVestingFormAtom);
+
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = String(currentDate.getMonth() + 1).padStart(2, "0");
+  const currentDay = String(currentDate.getDate()).padStart(2, "0");
+
+  const [selectedDate, setSelectedDate] = useState(
+    parseDate(`${currentYear}-${currentMonth}-${currentDay}`)
+  );
+  const [selectedTime, setSelectedTime] = useState(parseTime("12:00:00"));
+
+  const handleInputChange = (field, value) => {
+    setFormValues((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const combineDateAndTime = (dateISO, timeObject) => {
+    console.log("date:", dateISO);
+    console.log("time:", timeObject);
+
+    if (!dateISO || !timeObject) return null;
+
+    const date = new Date(dateISO);
+
+    date.setHours(timeObject.hour);
+    date.setMinutes(timeObject.minute);
+    date.setSeconds(timeObject.second);
+    date.setMilliseconds(timeObject.millisecond || 0); // Set milliseconds, default to 0 if not provided
+
+    return date;
+  };
+
+  console.log({ selectedDate, selectedTime });
+
+  useEffect(() => {
+    if (selectedDate && selectedTime) {
+      const combinedDateTime = combineDateAndTime(selectedDate, selectedTime);
+      console.log("combinedDateTime:", combinedDateTime);
+      handleInputChange("postDateAndTime", combinedDateTime);
+    }
+  }, [selectedDate, selectedTime]);
+
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center">
       <div className="w-full max-w-2xl flex flex-col py-20">
@@ -272,6 +336,10 @@ function MarketCapVestingForm({ setStep }) {
                   <input
                     className="outline-none text-2xl"
                     placeholder="1.000.000"
+                    value={formValues.tokenOfferAmount}
+                    onChange={(e) =>
+                      handleInputChange("tokenOfferAmount", e.target.value)
+                    }
                   />
                 </div>
                 <div className="mt-2 w-full flex items-center justify-between">
@@ -286,7 +354,7 @@ function MarketCapVestingForm({ setStep }) {
                 </div>
               </div>
             </div>
-            <div className="flex-1">
+            {/* <div className="flex-1">
               <p>Percentage of supply</p>
               <div className="bg-white rounded-xl border mt-1">
                 <div className="px-2 py-7 w-full flex justify-center">
@@ -307,7 +375,7 @@ function MarketCapVestingForm({ setStep }) {
                   ))}
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Market cap milestone */}
@@ -318,7 +386,15 @@ function MarketCapVestingForm({ setStep }) {
                 (marketCap, idx) => (
                   <Button
                     key={idx}
-                    className="bg-white rounded-xl border p-2 h-14 flex items-center gap-2 flex-1 justify-center"
+                    className={cnm(
+                      "bg-white rounded-xl border p-2 h-14 flex items-center gap-2 flex-1 justify-center",
+                      formValues.marketCapMilestone === marketCap
+                        ? "bg-orangy/10 text-orangy border-orangy"
+                        : "text-black"
+                    )}
+                    onClick={() =>
+                      handleInputChange("marketCapMilestone", marketCap)
+                    }
                   >
                     <p>${marketCap.toLocaleString("en-US")}</p>
                   </Button>
@@ -334,6 +410,10 @@ function MarketCapVestingForm({ setStep }) {
               <Input
                 variant="bordered"
                 placeholder="Enter admin username"
+                value={formValues.telegramAdminUsername}
+                onChange={(e) =>
+                  handleInputChange("telegramAdminUsername", e.target.value)
+                }
                 classNames={{
                   inputWrapper: "h-12 bg-white shadow-none border",
                 }}
@@ -346,14 +426,26 @@ function MarketCapVestingForm({ setStep }) {
             <p>Marketing Channel</p>
             <div className="w-full flex flex-wrap gap-2">
               <Button
-                className="flex-1 bg-white h-20 border"
+                className={cnm(
+                  "flex-1 bg-white h-20 border",
+                  formValues.marketingChannel === "twitter" &&
+                    "bg-orangy/10 border-orangy"
+                )}
                 variant="bordered"
+                onClick={() => handleInputChange("marketingChannel", "twitter")}
               >
                 X (Twitter) Post
               </Button>
               <Button
-                className="flex-1 bg-white h-20 border"
+                className={cnm(
+                  "flex-1 bg-white h-20 border",
+                  formValues.marketingChannel === "telegram" &&
+                    "bg-orangy/10 border-orangy"
+                )}
                 variant="bordered"
+                onClick={() =>
+                  handleInputChange("marketingChannel", "telegram")
+                }
               >
                 Telegram Channel Post
               </Button>
@@ -367,6 +459,10 @@ function MarketCapVestingForm({ setStep }) {
               <Textarea
                 variant="bordered"
                 placeholder="Enter admin username"
+                value={formValues.promotionalPostText}
+                onChange={(e) =>
+                  handleInputChange("promotionalPostText", e.target.value)
+                }
                 classNames={{
                   inputWrapper: "bg-white shadow-none border p-4",
                 }}
@@ -384,6 +480,8 @@ function MarketCapVestingForm({ setStep }) {
                 dateInputClassNames={{
                   inputWrapper: "h-12 bg-white shadow-none border",
                 }}
+                value={selectedDate}
+                onChange={setSelectedDate}
               />
               <TimeInput
                 classNames={{
@@ -391,6 +489,8 @@ function MarketCapVestingForm({ setStep }) {
                 }}
                 className="max-w-32"
                 variant="bordered"
+                value={selectedTime}
+                onChange={setSelectedTime}
               />
             </div>
           </div>
