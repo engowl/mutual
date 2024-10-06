@@ -418,90 +418,143 @@ export const campaignRoutes = (app, _, done) => {
     }
   })
 
+  // TODO: Submit work, for KOL to submit the work done (tweet, post, etc.)
+  app.post('/submit-work', { 
+    preHandler: [authMiddleware]
+  }, async (request, reply) => {
+    try {
+      const { user } = request;
+      // KOL submits the task (tweet, post, etc.) for verification by the Project Owner
+
+      return reply.send('OK');
+    } catch (error) {
+      console.error('Error submitting work:', error)
+      return reply.status(500).send({
+        message: error?.message || 'Internal server error'
+      })
+    }
+  });
+
   // KOL confirms that the obligated task is done
-  app.post('/confirm-task', { preHandler: [authMiddleware] }, async (request, reply) => {
-    // KOL confirms the task (tweet, post, etc.). On-demand verification is done here.
+  app.post('/confirm-work', {
+    preHandler: [authMiddleware]
+  }, async (request, reply) => {
+    try {
+      const { user } = request;
+      // Project Owner confirms the task (tweet, post, etc.). On-demand verification is done here.
 
-    // TODO: If the task is done, call the contract to make the eligibility partial (for vesting), for none, full eligibility
+      // If the task is done, call the contract to make the eligibility partial (for vesting), for none, full eligibility
 
-    const order = await prismaClient.campaignOrder.findUnique({
-      where: {
-        id: request.body.orderId
-      },
-      include: {
-        projectOwner: {
-          include: {
-            user: {
-              include: {
-                wallet: true
-              }
-            }
+      const order = await prismaClient.campaignOrder.findUnique({
+        where: {
+          id: request.body.orderId,
+          influencer: {
+            userId: user.id
           }
         },
-        influencer: {
-          include: {
-            user: {
-              include: {
-                wallet: true
+        include: {
+          projectOwner: {
+            include: {
+              user: {
+                include: {
+                  wallet: true
+                }
               }
             }
-          }
-        },
-        token: true
+          },
+          influencer: {
+            include: {
+              user: {
+                include: {
+                  wallet: true
+                }
+              }
+            }
+          },
+          token: true
+        }
+      });
+      if (!order) {
+        return reply.status(400).send({ message: 'Order not found' });
       }
-    });
-    if (!order) {
-      return reply.status(400).send({ message: 'Order not found' });
+
+      const chain = CHAINS.find(c => c.dbChainId === order.chainId);
+      if (!chain) {
+        return reply.status(400).send({ message: 'Invalid chain ID' });
+      }
+
+      const program = MUTUAL_ESCROW_PROGRAM(order.chainId);
+
+      const [dealPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('deal'),
+          prepareOrderId(order.id),
+          new PublicKey(order.projectOwner.user.wallet.address).toBuffer(),
+          new PublicKey(order.influencer.user.wallet.address).toBuffer(),
+          new PublicKey(order.token.mintAddress).toBuffer()
+        ],
+        program.programId
+      );
+
+      const [escrowPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("escrow")
+        ],
+        program.programId
+      );
+
+      if (order.vestingType === 'NONE') {
+        // Become fully eligible
+        const txHash = await program.methods
+          .setEligibilityStatus({ fullyEligible: {} })
+          .accounts({
+            deal: dealPda,
+            escrow: escrowPda,
+            signer: adminKp.publicKey,
+          })
+          .signers([adminKp])
+          .rpc({ commitment: "confirmed" });
+
+        console.log('Fully eligibility txHash:', txHash);
+
+        const fullyCompleted = await prismaClient.campaignOrder.update({
+          where: {
+            id: order.id
+          },
+          data: {
+            status: 'COMPLETED'
+          }
+        })
+
+        reply.send(fullyCompleted);
+      } else {
+        // Become partially eligible, to claim the 20% of the tokens
+        const txHash = await program.methods
+          .setEligibilityStatus({ partiallyEligible: {} })
+          .accounts({
+            deal: dealPda,
+            escrow: escrowPda,
+            signer: adminKp.publicKey,
+          })
+          .signers([adminKp])
+          .rpc({ commitment: "confirmed" });
+
+        console.log('Partial eligibility txHash:', txHash);
+
+        const partialCompleted = await prismaClient.campaignOrder.update({
+          where: {
+            id: order.id
+          },
+          data: {
+            status: 'PARTIALCOMPLETED'
+          }
+        })
+
+        reply.send(partialCompleted);
+      }
+    } catch (error) {
+      console.error('Error confirming work:', error)
     }
-
-    const chain = CHAINS.find(c => c.dbChainId === order.chainId);
-    if (!chain) {
-      return reply.status(400).send({ message: 'Invalid chain ID' });
-    }
-
-    const program = MUTUAL_ESCROW_PROGRAM(order.chainId);
-
-    const [dealPda] = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from('deal'),
-        prepareOrderId(order.id),
-        new PublicKey(order.projectOwner.user.wallet.address).toBuffer(),
-        new PublicKey(order.influencer.user.wallet.address).toBuffer(),
-        new PublicKey(order.token.mintAddress).toBuffer()
-      ],
-      program.programId
-    );
-
-    const [escrowPda] = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("escrow")
-      ],
-      program.programId
-    );
-
-    // // Become partially eligible
-    // const txHash = await program.methods
-    //   .setEligibilityStatus({ partiallyEligible: {} })
-    //   .accounts({
-    //     deal: dealPda,
-    //     escrow: escrowPda,
-    //     signer: adminKp.publicKey,
-    //   })
-    //   .signers([adminKp])
-    //   .rpc({ commitment: "confirmed" });
-
-    // // Become fully eligible
-    // const txHash = await program.methods
-    //   .setEligibilityStatus({ fullyEligible: {} })
-    //   .accounts({
-    //     deal: dealPda,
-    //     escrow: escrowPda,
-    //     signer: adminKp.publicKey,
-    //   })
-    //   .signers([adminKp])
-    //   .rpc({ commitment: "confirmed" });
-
-    reply.send('OK');
   });
 
   // TODO: Check claimable tokens
