@@ -75,7 +75,7 @@ function ProjectsList() {
           })
         ) : (
           <div className="w-full flex items-center justify-center min-h-full">
-            <p>Empty</p>
+            <p>No items to display.</p>
           </div>
         )}
       </div>

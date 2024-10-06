@@ -27,7 +27,7 @@ export default function InfluencerProfilePage() {
               <p className="font-medium">
                 {user.influencer.twitterAccount.followersCount}
               </p>
-              <p className="text-sm">Followers</p>
+              <p className="text-sm">Twitter Followers</p>
             </div>
             <div>
               <p className="font-medium">0%</p>
