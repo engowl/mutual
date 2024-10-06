@@ -15,7 +15,6 @@ export const tokenRoutes = (app, _, done) => {
     }
 
     // TODO fetch token info from API
-
     return reply.send({
       mintAddress: "5mbK36SZ7J19An8jFochhQS4of8g6BwUjbeCSxBSoWdp",
       chainId: "MAINNET_BETA",

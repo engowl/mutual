@@ -24,6 +24,7 @@ export const messagesRoutes = (app, _, done) => {
   });
 
   const activeUsers = new Map();
+  const activeConversations = new Map();
 
   io.on("connection", (socket) => {
     console.log("A user connected", socket.id);
@@ -35,49 +36,61 @@ export const messagesRoutes = (app, _, done) => {
       console.log(`User ${userId} joined`);
     });
 
-    // socket.on("userActive", async ({ userId }) => {
-    //   activeUsers.set(userId, socket.id);
-    //   // await updateUserStatus(userId, "online");
-    //   console.log(`User ${userId} is now active`);
-    // });
-
-    // socket.on("userInactive", async ({ userId }) => {
-    //   activeUsers.delete(userId);
-    //   // await updateUserStatus(userId, "offline");
-    //   console.log(`User ${userId} is now inactive`);
-    // });
+    socket.on("on-conversation", async ({ conversationId, userId }) => {
+      activeConversations.set(userId, { conversationId, userId });
+      console.log(`${userId} is on conversation id ${conversationId} joined`);
+    });
 
     socket.on(
       "personal-message",
       async ({ senderId, receiverId, content, role }) => {
-        const receiverSocketId = activeUsers.get(receiverId);
-
-        console.log({ senderId, receiverId, content, role });
+        const sortedId = [senderId, receiverId].sort().join("_");
 
         const messageData = {
           senderId,
           receiverId,
           content,
-          sentAt: new Date(),
+          sentAt: new Date().toISOString(),
           status: "pending",
         };
 
-        const sortedUserIds = [senderId, receiverId].sort().join("_");
-        const messageId = `${Date.now()}`; // Unique message ID based on timestamp
-        const res = await redis.hmset(
-          `message:conversation:${sortedUserIds}:${messageId}`,
-          messageData
-        );
-        await redis.expire(messageId, 3600); // Expire after 1 hour
+        const messageId = `${Date.now()}`;
+        const messageKey = `message:conversation:${sortedId}:${messageId}`;
 
-        console.log({ res }, "redis message");
+        const res = await redis.hmset(messageKey, messageData);
+        console.log({ res });
+        await redis.expire(messageKey, 3600);
+
+        console.log({ messageKey, content, senderId, receiverId });
+
+        const receiverSocketId = activeUsers.get(receiverId);
+        const senderSocketId = activeUsers.get(senderId);
+
+        console.log({ activeConversations });
+
         if (receiverSocketId) {
-          io.to(receiverSocketId).emit("personal-message", {
+          if (activeConversations.has(receiverId)) {
+            const conversation = activeConversations.get(receiverId);
+            if (conversation.conversationId === senderId) {
+              io.to(receiverSocketId).emit("personal-message", {
+                senderId,
+                receiverId,
+                content,
+                role,
+              });
+            }
+          }
+        }
+
+        if (senderSocketId) {
+          io.to(senderSocketId).emit("personal-message", {
             senderId,
             receiverId,
             content,
+            role,
           });
         }
+
         await updateConversation(senderId, receiverId, content);
       }
     );
@@ -88,7 +101,6 @@ export const messagesRoutes = (app, _, done) => {
           activeUsers.delete(userId);
           socket.emit("userStatusChange", {});
           await updateUserStatus(userId, "OFFLINE");
-          break;
         }
       }
     });
@@ -164,16 +176,17 @@ export const messagesRoutes = (app, _, done) => {
 
       try {
         const sortedUserIds = [userId, otherUserId].sort().join("_");
+
         const redisMessageKeys = await redis.keys(
           `message:conversation:${sortedUserIds}:*`
         );
-        console.log({ redisMessageKeys });
+        // console.log({ redisMessageKeys });
 
         let redisMessages = [];
 
         for (const key of redisMessageKeys) {
           const message = await redis.hgetall(key);
-          console.log({ message }, "from redis");
+          // console.log({ message }, "from redis");
           redisMessages.push({
             ...message,
             sentAt: new Date(message.sentAt), // Convert timestamp to Date
@@ -335,7 +348,7 @@ export const messagesRoutes = (app, _, done) => {
     try {
       const messageKeys = await redis.keys("message:*");
 
-      console.log({ messageKeys });
+      // console.log({ messageKeys });
 
       for (const key of messageKeys) {
         const messageData = await redis.hgetall(key);
@@ -348,7 +361,7 @@ export const messagesRoutes = (app, _, done) => {
           continue;
         }
 
-        console.log({ messageData });
+        // console.log({ messageData });
 
         await prismaClient.message.create({
           data: {

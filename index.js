@@ -15,6 +15,7 @@ import { influencerRoutes } from "./app/routes/influencerRoutes.js";
 import { adminRoutes } from "./app/routes/adminRoutes.js";
 import fastifyRedis from "@fastify/redis";
 import { twitterWorkers } from "./app/workers/twitterWorkers.js";
+import { walletRoutes } from "./app/routes/walletRoutes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,6 +57,9 @@ fastify.register(messagesRoutes, {
 fastify.register(influencerRoutes, {
   prefix: "/influencer",
 });
+fastify.register(walletRoutes, {
+  prefix: "/wallet",
+});
 fastify.register(adminRoutes, { prefix: "/__admin" });
 
 fastify.ready(async (err) => {
@@ -69,8 +73,8 @@ fastify.ready(async (err) => {
 });
 
 /* --------------------------------- Workers -------------------------------- */
-fastify.register(campaignWorkers);
-fastify.register(twitterWorkers);
+// fastify.register(campaignWorkers);
+// fastify.register(twitterWorkers);
 
 const start = async () => {
   try {
