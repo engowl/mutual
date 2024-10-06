@@ -19,6 +19,8 @@ export const authMiddleware = async (request, reply) => {
       return reply.status(401).send({ message: "Please provide Bearer token" });
     }
 
+    console.log("authHeaderToken", authHeaderToken);
+
     const decodedToken = jwt.verify(authHeaderToken, process.env.JWT_SECRET);
 
     if (!decodedToken) {
