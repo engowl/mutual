@@ -158,6 +158,7 @@ export const generateEventLogs = async (orderId) => {
   let events = await prismaClient.escrowEventLog.findMany({
     where: {
       campaignOrderId: order.id,
+      // campaignOrderId: 'marketcaporderz',
       chainId: order.chainId
     },
     orderBy: [
