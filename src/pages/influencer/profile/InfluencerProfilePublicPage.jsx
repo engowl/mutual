@@ -29,7 +29,7 @@ export default function InfluencerProfilePublicPage() {
     async function fetchInfluencer() {
       setIsLoading(true);
       try {
-        const res = await mutualAPI.get(`/influencer/detail/${id}`);
+        const res = await mutualAPI.get(`/influencer/${id}`);
 
         setInfluencer(res.data.data);
       } catch (error) {
