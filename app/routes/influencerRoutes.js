@@ -1,4 +1,5 @@
 import { prismaClient } from "../db/prisma.js";
+import { authMiddleware } from "../middleware/authMiddleware.js";
 
 export const influencerRoutes = (app, _, done) => {
   app.get("/all", async (request, reply) => {
@@ -12,7 +13,11 @@ export const influencerRoutes = (app, _, done) => {
         include: {
           user: true,
           twitterAccount: true,
-          packages: true,
+          packages: {
+            orderBy: {
+              type: "asc",
+            },
+          },
         },
       });
 
@@ -64,7 +69,11 @@ export const influencerRoutes = (app, _, done) => {
             },
           },
           twitterAccount: true,
-          packages: true,
+          packages: {
+            orderBy: {
+              type: "asc",
+            },
+          },
         },
       });
 
@@ -82,6 +91,42 @@ export const influencerRoutes = (app, _, done) => {
       });
     }
   });
+
+  app.post(
+    "/package/:id/update",
+    {
+      preHandler: [authMiddleware],
+    },
+    async (request, reply) => {
+      const id = request.params.id;
+      const { price, description } = request.body;
+
+      try {
+        const updatedPackage = await prismaClient.package.update({
+          where: {
+            id: id,
+          },
+          data: {
+            price: price,
+            description: description,
+          },
+        });
+
+        return reply.status(200).send({
+          message: "Package updated successfully",
+          error: null,
+          data: updatedPackage,
+        });
+      } catch (e) {
+        console.error(e);
+        return reply.status(500).send({
+          message: "Error while update package",
+          error: e,
+          data: null,
+        });
+      }
+    }
+  );
 
   done();
 };
