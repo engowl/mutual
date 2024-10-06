@@ -77,7 +77,6 @@ export const campaignRoutes = (app, _, done) => {
         if (!chain) {
           return reply.status(400).send({ message: "Invalid chain ID" });
         }
-        console.log("Chain:", chain);
 
         console.log(
           "Order Validated, proceed to confirm the deal on the contract"
@@ -92,7 +91,6 @@ export const campaignRoutes = (app, _, done) => {
             message: `Invalid create deal transaction. Please check if the transaction hash is correct and the transaction is confirmed. TxHash: ${createDealTxHash}`,
           });
         });
-        console.log("Deal Account Data:", dealAccountData);
 
         // Check if the orderId is the same as the one in the contract
         if (orderId !== dealAccountData.orderId) {

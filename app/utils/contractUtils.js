@@ -103,15 +103,43 @@ function isEmptyObject(obj) {
     Object.keys(obj).length === 0;
 }
 
+// Helper function to handle client amount with decimals
+const calculateClientAmount = (tokenAmount, decimals) => {
+  const [wholePart, fractionalPart] = tokenAmount.toString().split('.');
+
+  // Handle the whole part as a BN
+  const wholePartBN = new BN(wholePart);
+
+  // Initialize fractional part BN to 0
+  let fractionalPartBN = new BN(0);
+
+  if (fractionalPart) {
+    // Pad or truncate fractional part to match the token's decimals
+    const fractionalStr = fractionalPart.padEnd(decimals, '0').slice(0, decimals);
+    fractionalPartBN = new BN(fractionalStr);
+  }
+
+  // Calculate the final client amount as a BN
+  const clientAmount = wholePartBN.mul(new BN(10).pow(new BN(decimals))).add(fractionalPartBN);
+
+  return clientAmount;
+};
+
+// Modified validateTokenAmount function
 export const validateTokenAmount = (clientAmount, contractAmount, tokenDecimals) => {
-  // Convert client amount to BN, considering token decimals
-  const clientBN = new BN(clientAmount).mul(new BN(10).pow(new BN(tokenDecimals)));
+  // Use the helper function to convert clientAmount properly with decimals
+  const clientBN = calculateClientAmount(clientAmount, tokenDecimals);
 
   // Assuming contractAmount is already a string (from parsing account data)
   const contractBN = new BN(contractAmount);
 
   let isValid = false;
   let message = '';
+
+  console.log({
+    clientAmount: clientBN.toString(),
+    contractAmount: contractBN.toString()
+  });
 
   if (clientBN.eq(contractBN)) {
     isValid = true;
@@ -129,6 +157,7 @@ export const validateTokenAmount = (clientAmount, contractAmount, tokenDecimals)
     contractAmount: contractBN.toString()
   };
 };
+
 
 export function prepareOrderId(orderId) {
   let orderIdBuffer = Buffer.from(orderId, "utf-8");
