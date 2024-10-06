@@ -4,9 +4,9 @@ import { useNavigate } from "react-router-dom";
 export default function OfferSubmittedSuccessPage() {
   const navigate = useNavigate();
   return (
-    <div className="w-full min-h-full flex items-center justify-center">
+    <div className="w-full min-h-full flex items-center justify-center px-6">
       <div className="w-full max-w-2xl text-center flex flex-col items-center">
-        <h1 className="text-[40px] font-medium">
+        <h1 className="text-4xl md:text-[40px] font-medium">
           Your Offer Has Been Submitted! 🎉
         </h1>
         <div className="mt-8 max-w-lg text-start">

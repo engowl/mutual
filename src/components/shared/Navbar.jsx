@@ -23,7 +23,7 @@ export default function Navbar() {
   }, [user, isLoggedIn, setIsRegistered]);
 
   return (
-    <nav className="flex items-center px-8 h-12 justify-between border-b border-black/20">
+    <nav className="flex items-center px-5 md:px-8 h-12 justify-between border-b border-black/20">
       <div className="flex h-full items-center">
         <Link to={"/"} className="text-xl font-medium">
           <img
