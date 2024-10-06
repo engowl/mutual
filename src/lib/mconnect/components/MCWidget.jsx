@@ -2,7 +2,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { GoogleIcon, WalletIcon } from "./ui/Icons.jsx";
 import { Spinner } from "@nextui-org/react";
-import { useMCAuth } from "../hooks/useMcAuth.jsx";
+import { useMCAuth } from "../hooks/useMCAuth.jsx";
 
 export default function MCWidget() {
   const { isLoggedIn, loginWithGoogle, isWalletLoading, isGoogleLoading } =

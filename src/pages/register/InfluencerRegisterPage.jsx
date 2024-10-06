@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { mutualAPI } from "../../api/mutual.js";
 import IconicButton from "../../components/ui/IconicButton.jsx";
 import { useMCAuth } from "../../lib/mconnect/hooks/useMCAuth.jsx";
+import { handleNumericChange } from "../../lib/mconnect/utils/formattingUtils.js";
 
 export default function InfluencerRegisterPage() {
   const [step, setStep] = useAtom(influencerRegisterStepAtom);
@@ -162,7 +163,8 @@ function ConnectSocialMedia() {
             telegramLink: telegramLink,
           },
         });
-        await getUser();
+
+        await getUser({ silentLoad: true });
       } catch (error) {
         console.log(error);
       } finally {
@@ -254,16 +256,16 @@ function ProjectCriteria() {
           projectCriteria: {
             riskPreference: selectedRisk.id,
             tokenAge: selectedTokenAge.id,
-            minMarketCap: parseFloat(minMc),
-            maxMarketCap: parseFloat(maxMc),
-            min24hVolume: parseFloat(min24Vol),
-            tokenHolder: parseInt(tokenHolder),
-            liquiditySize: parseFloat(liquiditySize),
+            minMarketCap: parseFloat(minMc.replace(/,/g, "")),
+            maxMarketCap: parseFloat(maxMc.replace(/,/g, "")),
+            min24hVolume: parseFloat(min24Vol.replace(/,/g, "")),
+            tokenHolder: parseInt(tokenHolder.replace(/,/g, "")),
+            liquiditySize: parseFloat(liquiditySize.replace(/,/g, "")),
           },
         },
       });
 
-      getUser();
+      await getUser({ silentLoad: true });
     } catch (error) {
       console.log(error);
     } finally {
@@ -306,9 +308,9 @@ function ProjectCriteria() {
             <Input
               placeholder="Min"
               className="flex-1"
-              type="number"
+              type="text"
               value={minMc}
-              onChange={(e) => setMinMc(e.target.value)}
+              onChange={handleNumericChange(setMinMc)}
               classNames={{
                 inputWrapper: "border border-black/10 rounded-lg h-12",
               }}
@@ -317,9 +319,9 @@ function ProjectCriteria() {
             <Input
               placeholder="Max"
               className="flex-1"
-              type="number"
+              type="text"
               value={maxMc}
-              onChange={(e) => setMaxMc(e.target.value)}
+              onChange={handleNumericChange(setMaxMc)}
               classNames={{
                 inputWrapper: "border border-black/10 rounded-lg h-12",
               }}
@@ -348,9 +350,9 @@ function ProjectCriteria() {
             <Input
               placeholder="e.g 1000000"
               className="flex-1"
-              type="number"
+              type="text"
               value={min24Vol}
-              onChange={(e) => setMin24Vol(e.target.value)}
+              onChange={handleNumericChange(setMin24Vol)}
               classNames={{
                 inputWrapper: "border border-black/10 rounded-lg h-12",
               }}
@@ -363,9 +365,9 @@ function ProjectCriteria() {
             <Input
               placeholder="Enter Token Holder"
               className="flex-1"
-              type="number"
+              type="text"
               value={tokenHolder}
-              onChange={(e) => setTokenHolder(e.target.value)}
+              onChange={handleNumericChange(setTokenHolder)}
               classNames={{
                 inputWrapper: "border border-black/10 rounded-lg h-12",
               }}
@@ -378,9 +380,9 @@ function ProjectCriteria() {
             <Input
               placeholder="Enter Liquidity Size"
               className="flex-1"
-              type="number"
+              type="text"
               value={liquiditySize}
-              onChange={(e) => setLiquiditySize(e.target.value)}
+              onChange={handleNumericChange(setLiquiditySize)}
               classNames={{
                 inputWrapper: "border border-black/10 rounded-lg h-12",
               }}
@@ -449,7 +451,7 @@ function PackageAndPricing() {
         },
       });
 
-      await getUser();
+      await getUser({ silentLoad: true });
     } catch (error) {
       console.log(error);
     } finally {

@@ -1,6 +1,6 @@
 import { Navigate } from "react-router-dom";
-import { useMCAuth } from "../../../lib/mconnect/hooks/useMcAuth";
 import { Spinner } from "@nextui-org/react";
+import { useMCAuth } from "../../../lib/mconnect/hooks/useMCAuth.jsx";
 
 export default function ProjectOwnerRegisterRouteGuard({ children }) {
   const { user, isUserLoading } = useMCAuth();

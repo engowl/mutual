@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
 import { Button, Input, Spinner } from "@nextui-org/react";
 import IconicButton from "../../components/ui/IconicButton";
-import { useMCAuth } from "../../lib/mconnect/hooks/useMcAuth.jsx";
+import { useMCAuth } from "../../lib/mconnect/hooks/useMCAuth.jsx";
 import { useNavigate } from "react-router-dom";
 import Lottie from "react-lottie";
 import { mutualAPI } from "../../api/mutual.js";
@@ -65,7 +65,7 @@ export default function ProjectOwnerRegisterPage() {
     try {
       const res = await mutualAPI.get("/users/twitter/authorize");
 
-      window.open(res.data.data.redirectUrl, "_blank");
+      window.location.replace(res.data.data.redirectUrl, "_blank");
     } catch (error) {
       console.log(error);
     } finally {
@@ -189,7 +189,7 @@ export default function ProjectOwnerRegisterPage() {
 
 function Banner() {
   return (
-    <div className="hidden lg:flex h-full w-[610px] overflow-hidden relative">
+    <div className="order-2 lg:order-1 h-full lg:max-w-3xl overflow-hidden relative">
       <img
         src="/assets/register-page/project-owner-banner.png"
         alt="project-owner-banner"
@@ -210,8 +210,8 @@ function FormContent({
   isTwitterLoading,
 }) {
   return (
-    <div className="flex-1 lg:overflow-y-auto">
-      <div className="w-full max-w-3xl flex flex-col items-start px-8 py-12">
+    <div className="order-1 md:order-2 flex-1 lg:overflow-y-auto">
+      <div className="w-full max-w-4xl flex flex-col items-start px-8 py-12">
         <h1 className="text-4xl font-medium">Your Project Details</h1>
         <form
           onSubmit={handleSubmit}
@@ -324,6 +324,7 @@ const OnProcessBanner = () => {
         <p className="text-neutral-500 mt-8">Need help?</p>
         <Button
           size="lg"
+          onClick={() => window.open("https://t.me/drbuwono")}
           className="bg-orangy text-white mt-5 rounded-full font-medium"
         >
           Contact Admin

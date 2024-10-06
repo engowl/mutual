@@ -1,10 +1,26 @@
 import { Link, NavLink } from "react-router-dom";
 import SignInButton from "./SignInButton";
 import { cnm } from "../../utils/style";
-import { useMCAuth } from "../../lib/mconnect/hooks/useMcAuth.jsx";
+import { useMCAuth } from "../../lib/mconnect/hooks/useMCAuth.jsx";
+import { useEffect, useState } from "react";
 
 export default function Navbar() {
   const { user, isLoggedIn } = useMCAuth();
+  const [isRegistered, setIsRegistered] = useState(false);
+
+  console.log({ user, isLoggedIn });
+
+  useEffect(() => {
+    if (user && isLoggedIn && user.role) {
+      if (user.role === "INFLUENCER") {
+        setIsRegistered(user.influencer && user.influencer.packages.length > 0);
+      } else if (user.role === "PROJECT_OWNER") {
+        setIsRegistered(
+          user.projectOwner && user.projectOwner.status === "APPROVED"
+        );
+      }
+    }
+  }, [user, isLoggedIn, setIsRegistered]);
 
   return (
     <nav className="flex items-center px-5 md:px-8 h-12 justify-between border-b border-black/20">
@@ -18,9 +34,15 @@ export default function Navbar() {
         </Link>
 
         <div className="h-full hidden md:inline">
-          {user && isLoggedIn && user.role === "PROJECT_OWNER" ? (
+          {user &&
+          isLoggedIn &&
+          isRegistered &&
+          user.role === "PROJECT_OWNER" ? (
             <ProjectOwnerNav />
-          ) : user && isLoggedIn && user.role === "INFLUENCER" ? (
+          ) : user &&
+            isLoggedIn &&
+            isRegistered &&
+            user.role === "INFLUENCER" ? (
             <InfluencerNav />
           ) : null}
         </div>

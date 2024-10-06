@@ -4,7 +4,7 @@ import { DropdownIcon, GoogleIcon } from "./ui/Icons.jsx";
 import { Menu, MenuButton, MenuItems, Transition } from "@headlessui/react";
 import { Fragment, useState } from "react";
 import { Spinner } from "@nextui-org/react";
-import { useMCAuth } from "../hooks/useMcAuth.jsx";
+import { useMCAuth } from "../hooks/useMCAuth.jsx";
 
 export default function MCWalletWidget() {
   const { address, wallet, isWalletLoading } = useMCWallet();
