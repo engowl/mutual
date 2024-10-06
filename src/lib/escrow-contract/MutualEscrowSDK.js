@@ -7,7 +7,7 @@ import MUTUAL_ESCROW_IDL from './mutual-escrow-idl.json'; // Import the IDL dire
 import axios from 'axios';
 
 class MutualEscrowSDK {
-  constructor({ backendEndpoint, bearerToken, chainId, chains }) {
+  constructor({ backendEndpoint, bearerToken, chainId = 'devnet', chains }) {
     this.backendEndpoint = backendEndpoint;
     this.bearerToken = bearerToken;
     this.chainId = chainId;
@@ -121,6 +121,7 @@ class MutualEscrowSDK {
     }
   }
 
+  // For KOL to accept the offer
   async acceptOffer(orderId) {
     try {
       const response = await axios.post(
@@ -141,6 +142,7 @@ class MutualEscrowSDK {
     }
   }
 
+  // For KOL to reject the offer
   async rejectOffer(orderId) {
     try {
       const response = await axios.post(
@@ -157,6 +159,47 @@ class MutualEscrowSDK {
       return response.data;
     } catch (error) {
       console.error('Error verifying offer:', error);
+      throw error;
+    }
+  }
+
+  // Get the contract logs for a specific offer
+  async getOfferContractLogs(orderId) {
+    try {
+      const response = await axios.get(
+        `${this.backendEndpoint}/campaign/${orderId}/contract-logs`,
+        {
+          headers: this.getHeaders(),
+          params: {
+            chainId: this.chainId
+          }
+        }
+      )
+
+      console.log('Offer contract logs:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting offer contract logs:', error);
+      throw error;
+    }
+  }
+
+  async getOfferClaimableAmount(orderId) {
+    try {
+      const response = await axios.get(
+        `${this.backendEndpoint}/campaign/${orderId}/claimable`,
+        {
+          headers: this.getHeaders(),
+          params: {
+            chainId: this.chainId
+          }
+        }
+      )
+
+      console.log('Offer claimable amount:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting offer claimable amount:', error);
       throw error;
     }
   }

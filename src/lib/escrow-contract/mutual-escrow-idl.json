@@ -284,6 +284,23 @@
                   "type": "u8"
               }
           ]
+      },
+      {
+          "name": "checkClaimableAmount",
+          "accounts": [
+              {
+                  "name": "deal",
+                  "isMut": false,
+                  "isSigner": false
+              },
+              {
+                  "name": "escrow",
+                  "isMut": false,
+                  "isSigner": false
+              }
+          ],
+          "args": [],
+          "returns": "u64"
       }
   ],
   "accounts": [
