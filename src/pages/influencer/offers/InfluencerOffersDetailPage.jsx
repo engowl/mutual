@@ -1,7 +1,10 @@
 import { Button } from "@nextui-org/react";
 import { useParams } from "react-router-dom";
 import { shortenAddress } from ".././../../utils/string";
-import { Clock } from "lucide-react";
+import { Check, Clock } from "lucide-react";
+import { cnm } from "../../../utils/style.js";
+import dayjs from "dayjs";
+import { DUMMY_LOGS } from "../../project-owner/offers/ProjectOwnerOffersDetailsPage.jsx";
 
 export default function InfluencerOffersDetailPage() {
   const params = useParams();
@@ -28,6 +31,7 @@ export default function InfluencerOffersDetailPage() {
           </div>
           <div className="font-medium">12:04:05</div>
         </div>
+
         <div className="mt-4 p-4 rounded-xl bg-white border">
           <div className="w-full flex items-center justify-between">
             <p className="text-2xl font-medium">MICHI ($MICHI)</p>
@@ -50,6 +54,9 @@ export default function InfluencerOffersDetailPage() {
             </div>
           </div>
         </div>
+
+        <Unlock unlocks={DUMMY_UNLOCKS} />
+
         {/* Details */}
         <div className="mt-4 py-5 px-4 rounded-xl bg-white border flex items-center justify-between">
           <div>
@@ -85,7 +92,106 @@ export default function InfluencerOffersDetailPage() {
             </p>
           </div>
         </div>
+
+        <EventLogs events={DUMMY_LOGS} />
       </div>
     </div>
   );
 }
+
+function Unlock({ unlocks }) {
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      {unlocks.map((unlock, index) => {
+        return (
+          <div
+            key={index}
+            className="relative flex gap-5 w-full items-center justify-between mt-4 bg-white rounded-xl border p-4"
+          >
+            <div className="flex flex-col gap-0.5 text-[#161616]">
+              <h1 className="font-medium">{unlock.title}</h1>
+              <p>
+                {unlock.value} {unlock.symbol}
+              </p>
+              <p>{unlock.conditionLabel}</p>
+            </div>
+
+            <Button className="bg-[#C9C9C9] rounded-full text-white font-medium text-sm w-24">
+              Claim
+            </Button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function EventLogs({ events }) {
+  return (
+    <div className="relative flex flex-col gap-5 w-full mt-4 bg-white rounded-xl border p-4">
+      <p className="font-medium">Activity</p>
+
+      <div className="flex flex-col">
+        {events.map((event, index) => {
+          return (
+            <div key={event.id} className="flex flex-col w-full px-4">
+              <div className="flex flex-row items-start gap-4 h-full w-full">
+                <div className="flex flex-col h-full items-center mt-0.5">
+                  <div
+                    className={cnm(
+                      "flex items-center justify-center size-4 rounded-full  aspect-square",
+                      `${index === 0 ? "bg-orangy" : "bg-[#D9D9D9]"}`
+                    )}
+                  >
+                    {index === 0 && <Check color="white" size={10} />}
+                  </div>
+                  <div
+                    className={cnm(
+                      "h-full w-[2px] bg-[#D9D9D9]",
+                      `${index === events.length - 1 ? "hidden" : ""}`
+                    )}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2 pb-5">
+                  <p className="text-sm text-[#161616]">
+                    {dayjs(event.time).format("MMM D, YYYY [at] h:mm A")}
+                  </p>
+                  <h1 className="text-md font-medium text-[#161616]">
+                    {event.description}
+                  </h1>
+                </div>
+
+                {event.txHash && (
+                  <button
+                    onClick={() =>
+                      window.open(`https://solscan.io/tx/${event.txHash}`)
+                    }
+                    className="my-auto ml-auto text-xs text-[#161616] hover:text-[#161616]/70 font-medium whitespace-nowrap underline"
+                  >
+                    View Transaction
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const DUMMY_UNLOCKS = [
+  {
+    title: "First Unlock",
+    value: 1000,
+    symbol: "$MICHI",
+    conditionLabel: "Claim after first tweet",
+  },
+  {
+    title: "Second Unlock",
+    value: 8000,
+    symbol: "$MICHI",
+    conditionLabel: "Unlocks at $200M market cap",
+  },
+];
