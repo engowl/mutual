@@ -9,9 +9,9 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import IconicButton from "../../../components/ui/IconicButton";
-import { CHAINS } from "../../../config";
+import { CHAINS, OFFER_CONFIG } from "../../../config";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK";
 import { getAlphanumericId, sleep } from "../../../utils/misc";
 import { shortenAddress } from "../../../utils/string";
@@ -21,6 +21,9 @@ import { parseDate, parseTime } from "@internationalized/date";
 import { useDateFormatter } from "@react-aria/i18n";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import { BN } from "bn.js";
+import useSWR from "swr";
+import { mutualAPI } from "../../../api/mutual";
 
 dayjs.extend(utc);
 
@@ -41,15 +44,49 @@ export default function ProjectOwnerMarketCapVestingPage() {
     case 1:
       return <MarketCapVestingForm setStep={setStep} />;
     case 2:
-      return <MarketCapVestingConfirmation />;
+      return <MarketCapVestingConfirmation setStep={setStep} />;
   }
 }
 
-function MarketCapVestingConfirmation() {
+function formatNumberToKMB(number) {
+  if (number >= 1_000_000_000) {
+    return (
+      (number / 1_000_000_000).toLocaleString(undefined, {
+        maximumFractionDigits: 1,
+      }) + "B"
+    ); // Billions
+  } else if (number >= 1_000_000) {
+    return (
+      (number / 1_000_000).toLocaleString(undefined, {
+        maximumFractionDigits: 1,
+      }) + "M"
+    ); // Millions
+  } else if (number >= 1_000) {
+    return (
+      (number / 1_000).toLocaleString(undefined, { maximumFractionDigits: 1 }) +
+      "K"
+    ); // Thousands
+  } else {
+    return number.toLocaleString(); // Less than a thousand
+  }
+}
+
+function MarketCapVestingConfirmation({ setStep }) {
   const { wallet } = useWallet();
   const [cookies] = useCookies(["session_token"]);
   const params = useParams();
   const influencerId = params.influencerId;
+  const navigate = useNavigate();
+
+  const { data: influencerData, isLoading: isInfluencerDataLoading } = useSWR(
+    `/influencer/${influencerId}`,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      return data;
+    }
+  );
+
+  console.log({ influencerData });
 
   const formData = useAtomValue(marketCapVestingFormAtom);
   // TODO: Add loading state
@@ -57,8 +94,16 @@ function MarketCapVestingConfirmation() {
   console.log("formData:", formData);
 
   const [isLoading, setIsLoading] = useState(false);
+
+  console.log(
+    influencerData.data.user.wallet.address,
+    "influencerData.data.user.wallet.address"
+  );
+
   const handleCreateOffer = async () => {
     // TODO complete validation and data
+    if (isLoading || isInfluencerDataLoading) return;
+
     try {
       setIsLoading(true);
 
@@ -72,31 +117,16 @@ function MarketCapVestingConfirmation() {
         chains: CHAINS,
       });
 
-      // const DUMMY_DEAL_DATA = {
-      //   orderId: getAlphanumericId(16), // Random orderId, must be 16 characters alphanumeric
-      //   influencerId: "cm1woosyd0002s3rywklvtzik",
-      //   vestingType: "TIME",
-      //   vestingCondition: {
-      //     vestingDuration: "1-month"
-      //   },
-      //   chainId: "devnet",
-      //   mintAddress: "6EXeGq2NuPUyB9UFWhbs35DBieQjhLrSfY2FU3o9gtr7",
-      //   tokenAmount: 1,
-      //   campaignChannel: "TWITTER",
-      //   promotionalPostText: "heheheh",
-      //   postDateAndTime: "2024-10-05T09:38:20.972Z"
-      // };
-
       const DATA = {
         orderId: getAlphanumericId(16), // Random orderId, must be 16 characters alphanumeric
         influencerId: influencerId,
         vestingType: "MARKETCAP",
         vestingCondition: {
-          marketcapThreshold: 100_000,
+          marketcapThreshold: formData.marketCapMilestone,
         },
         chainId: "devnet",
         mintAddress: "6EXeGq2NuPUyB9UFWhbs35DBieQjhLrSfY2FU3o9gtr7",
-        tokenAmount: 1,
+        tokenAmount: formData.tokenOfferAmount,
         campaignChannel: formData.marketingChannel,
         promotionalPostText: formData.promotionalPostText,
         postDateAndTime: new Date(formData.postDateAndTime),
@@ -110,14 +140,16 @@ function MarketCapVestingConfirmation() {
       await escrowSDK.verifyOffer(DATA);
       console.log("Offer is valid!");
 
+      // TODO get token and KOL details data
       // Step 2: Prepare the transaction to create the deal
       const createDealTx = await escrowSDK.prepareCreateDealTransaction({
         orderId: DATA.orderId,
         mintAddress: DATA.mintAddress,
-        kolAddress: "95CTp5B82XanjZ6LCg4w4bW9Gak4p9A8P4uUfriVFjWF",
+        kolAddress: influencerData.data.user.wallet.address,
         userAddress: wallet.adapter.publicKey.toBase58(),
         vestingType: DATA.vestingType,
-        amount: DATA.tokenAmount * 10 ** 6,
+        // amount: DATA.tokenAmount * 10 ** 6,
+        amount: new BN(DATA.tokenAmount).mul(new BN(10).pow(new BN(9))),
       });
       console.log("createDealTx:", createDealTx);
 
@@ -134,6 +166,7 @@ function MarketCapVestingConfirmation() {
       });
 
       console.log("Offer created:", created);
+      navigate("/success/offer-submit");
     } catch (error) {
       console.error("Error creating deal:", error);
     } finally {
@@ -142,9 +175,9 @@ function MarketCapVestingConfirmation() {
   };
 
   return (
-    <div className="h-full overflow-y-auto w-full flex flex-col items-center">
+    <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
       <div className="w-full max-w-2xl flex flex-col py-20">
-        <h1 className="text-4xl font-medium">Confirm Deal Offer</h1>
+        <h1 className="text-3xl lg:text-4xl font-medium">Confirm Deal Offer</h1>
         <div className="mt-3">
           <p>
             Unlock 20% of tokens right after the promotion is live. The
@@ -154,54 +187,69 @@ function MarketCapVestingConfirmation() {
         </div>
         <div className="mt-4 p-4 rounded-xl bg-white border">
           <div className="w-full flex items-center justify-between">
-            <p className="text-2xl font-medium">MICHI ($MICHI)</p>
+            <p className="text-xl lg:text-2xl font-medium">MICHI ($MICHI)</p>
             <div className="font-medium">DexScreener</div>
           </div>
-          <div className="flex gap-7 mt-3">
+          <div className="flex gap-7 mt-3 text-sm md:text-base">
             <div>
               <p className="text-orangy font-medium">$150M</p>
-              <p className="text-sm text-neutral-500">Market Cap</p>
+              <p className="text-xs md:text-sm text-neutral-500">Market Cap</p>
             </div>
             <div>
               <p className="text-orangy font-medium">
                 {shortenAddress("0x8ad8asfha8f8iaf")}
               </p>
-              <p className="text-sm text-neutral-500">Contract Address</p>
+              <p className="text-xs md:text-sm text-neutral-500">
+                Contract Address
+              </p>
             </div>
             <div>
               <p className="text-orangy font-medium">821,893,121</p>
-              <p className="text-sm text-neutral-500">Total Supply</p>
+              <p className="text-xs md:text-sm text-neutral-500">
+                Total Supply
+              </p>
             </div>
           </div>
         </div>
         <div className="mt-4 py-5 px-4 rounded-xl bg-white border flex items-center justify-between">
           <div>
-            <div className="flex flex-col gap-3 text-sm">
-              <div className="flex items-center">
+            <div className="flex flex-col gap-3 text-xs md:text-sm">
+              {/* <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Offer Amount</p>
                 <p className="font-medium">{formData.tokenOfferAmount} SOL</p>
+              </div> */}
+              <div className="flex items-center">
+                <p className="w-48 text-neutral-400">Total Payment</p>
+                <p className="font-medium">{formData.tokenOfferAmount} MICHI</p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Payment Terms</p>
                 <p className="font-medium">Market Cap Vesting</p>
               </div>
               <div className="flex items-center">
-                <p className="w-48 text-neutral-400">Total Payment</p>
-                <p className="font-medium">1,000,000 MICHI</p>
-              </div>
-              <div className="flex items-center">
                 <p className="w-48 text-neutral-400">First Unlock</p>
-                <p className="font-medium">200,000 MICHI</p>
+                <p className="font-medium">
+                  {formData.tokenOfferAmount *
+                    OFFER_CONFIG.firstUnlockPercentage}{" "}
+                  MICHI
+                </p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Second Unlock</p>
-                <p className="font-medium">800,000 MICHI</p>
+                <p className="font-medium">
+                  {formData.tokenOfferAmount *
+                    OFFER_CONFIG.secondUnlockPercentage}
+                  0 MICHI
+                </p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">
                   Second Unlock to Trigger
                 </p>
-                <p className="font-medium">$MICHI reached $200M Marketcap</p>
+                <p className="font-medium">
+                  $MICHI reached $
+                  {formatNumberToKMB(formData.marketCapMilestone)} Marketcap
+                </p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Marketing Channel</p>
@@ -226,12 +274,21 @@ function MarketCapVestingConfirmation() {
           </div>
         </div>
 
-        <div className="w-full flex justify-end mt-8">
+        <div className="w-full flex justify-end mt-8 gap-4">
+          <Button
+            size="lg"
+            color="default"
+            className="rounded-full"
+            onClick={() => setStep(1)}
+          >
+            Back
+          </Button>
           <IconicButton
             className={"rounded-full border-orangy"}
             arrowBoxClassName={"rounded-full bg-orangy"}
             onClick={handleCreateOffer}
-            isLoading={isLoading}
+            disabled={isLoading || isInfluencerDataLoading}
+            isLoading={isLoading || isInfluencerDataLoading}
           >
             <p className="group-hover:text-white transition-colors text-orangy pl-3 pr-4">
               Send Offer
@@ -290,13 +347,15 @@ function MarketCapVestingForm({ setStep }) {
   }, [selectedDate, selectedTime]);
 
   return (
-    <div className="h-full overflow-y-auto w-full flex flex-col items-center">
+    <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
       <div className="w-full max-w-2xl flex flex-col py-20">
         <div className="flex items-center gap-3">
           <Link to="/project-owner/browse">
-            <ArrowLeft className="size-8" />
+            <ArrowLeft className="size-7 lg:size-8" />
           </Link>
-          <h1 className="text-4xl font-medium">Marketcap Vesting</h1>
+          <h1 className="text-3xl lg:text-4xl font-medium">
+            Marketcap Vesting
+          </h1>
         </div>
         <div className="mt-6">
           <p>
@@ -306,7 +365,7 @@ function MarketCapVestingForm({ setStep }) {
           </p>
           <div className="mt-4 p-4 rounded-xl bg-white border">
             <div className="w-full flex items-center justify-between">
-              <p className="text-2xl font-medium">MICHI ($MICHI)</p>
+              <p className="text-xl lg:text-2xl font-medium">MICHI ($MICHI)</p>
               <div className="font-medium">DexScreener</div>
             </div>
             <div className="flex gap-7 mt-3">
@@ -387,7 +446,7 @@ function MarketCapVestingForm({ setStep }) {
                   <Button
                     key={idx}
                     className={cnm(
-                      "bg-white rounded-xl border p-2 h-14 flex items-center gap-2 flex-1 justify-center",
+                      "bg-white rounded-xl border py-2 px-4 h-14 flex items-center gap-2 lg:flex-1 justify-center",
                       formValues.marketCapMilestone === marketCap
                         ? "bg-orangy/10 text-orangy border-orangy"
                         : "text-black"

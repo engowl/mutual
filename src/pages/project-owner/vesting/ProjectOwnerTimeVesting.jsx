@@ -1,5 +1,5 @@
 import { ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { shortenAddress } from "../../../utils/string";
 import {
   Button,
@@ -10,6 +10,12 @@ import {
 } from "@nextui-org/react";
 import { useState } from "react";
 import IconicButton from "../../../components/ui/IconicButton";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useCookies } from "react-cookie";
+import { atom, useAtomValue } from "jotai";
+import { getAlphanumericId } from "../../../utils/misc";
+import { CHAINS } from "../../../config";
+import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK";
 
 const vestingPeriods = [
   {
@@ -34,6 +40,17 @@ const vestingPeriods = [
   },
 ];
 
+const timeVestingFormAtom = atom({
+  key: "timeVestingFormAtom",
+  tokenOfferAmount: "",
+  percentageOfSupply: "",
+  marketCapMilestone: "",
+  telegramAdminUsername: "",
+  marketingChannel: "",
+  promotionalPostText: "",
+  postDateAndTime: "",
+});
+
 export default function ProjectOwnerTimeVestingPage() {
   const [step, setStep] = useState(1);
   switch (step) {
@@ -45,6 +62,89 @@ export default function ProjectOwnerTimeVestingPage() {
 }
 
 function TimeVestingConfirmation() {
+  const { wallet } = useWallet();
+  const [cookies] = useCookies(["session_token"]);
+  const params = useParams();
+  const influencerId = params.influencerId;
+  const navigate = useNavigate();
+
+  const formData = useAtomValue(timeVestingFormAtom);
+  // TODO: Add loading state
+
+  console.log("formData:", formData);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const handleCreateOffer = async () => {
+    // TODO complete validation and data
+
+    try {
+      setIsLoading(true);
+
+      console.log("formData:", formData);
+
+      console.log("cookies:", cookies);
+      const escrowSDK = new MutualEscrowSDK({
+        backendEndpoint: import.meta.env.VITE_BACKEND_URL,
+        bearerToken: cookies.session_token,
+        chainId: "devnet",
+        chains: CHAINS,
+      });
+
+      const DATA = {
+        orderId: getAlphanumericId(16), // Random orderId, must be 16 characters alphanumeric
+        influencerId: influencerId,
+        vestingType: "MARKETCAP",
+        vestingCondition: {
+          marketcapThreshold: formData.marketCapMilestone,
+        },
+        chainId: "devnet",
+        mintAddress: "6EXeGq2NuPUyB9UFWhbs35DBieQjhLrSfY2FU3o9gtr7",
+        tokenAmount: 1,
+        campaignChannel: formData.marketingChannel,
+        promotionalPostText: formData.promotionalPostText,
+        postDateAndTime: new Date(formData.postDateAndTime),
+      };
+
+      console.log("DATA:", DATA);
+
+      // return;
+
+      // Step 1: Verify the offer
+      await escrowSDK.verifyOffer(DATA);
+      console.log("Offer is valid!");
+
+      // Step 2: Prepare the transaction to create the deal
+      const createDealTx = await escrowSDK.prepareCreateDealTransaction({
+        orderId: DATA.orderId,
+        mintAddress: DATA.mintAddress,
+        kolAddress: "95CTp5B82XanjZ6LCg4w4bW9Gak4p9A8P4uUfriVFjWF",
+        userAddress: wallet.adapter.publicKey.toBase58(),
+        vestingType: DATA.vestingType,
+        amount: DATA.tokenAmount * 10 ** 6,
+      });
+      console.log("createDealTx:", createDealTx);
+
+      // Step 3: Sign and send the transaction
+      const signedTx = await wallet.adapter.signTransaction(createDealTx);
+
+      // Step 4: Send the transaction
+      const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
+      console.log("Deal created successfully. Tx:", txHash);
+
+      const created = await escrowSDK.createOffer({
+        dealData: DATA,
+        txHash: txHash,
+      });
+
+      console.log("Offer created:", created);
+      navigate("/success/offer-submit");
+    } catch (error) {
+      console.error("Error creating deal:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center">
       <div className="w-full max-w-2xl flex flex-col py-20">
