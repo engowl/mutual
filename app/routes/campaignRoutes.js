@@ -1,4 +1,4 @@
-import { CHAINS, VESTING_CONFIG } from "../../config.js";
+import { CHAINS, OFFER_EXPIRY_IN_MINUTES, VESTING_CONFIG } from "../../config.js";
 import { prismaClient } from "../db/prisma.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import {
@@ -12,6 +12,7 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 import * as splToken from "@solana/spl-token";
 import * as anchor from "@project-serum/anchor";
 import { BN } from "bn.js";
+import { manyMinutesFromNowUnix } from "../utils/miscUtils.js";
 
 /**
  *
@@ -146,6 +147,8 @@ export const campaignRoutes = (app, _, done) => {
 
         console.log("Project Owner:", projectOwner);
 
+        const expiry = manyMinutesFromNowUnix(OFFER_EXPIRY_IN_MINUTES);
+
         // Insert the offer to the database
         const offer = await prismaClient.campaignOrder.create({
           data: {
@@ -158,6 +161,7 @@ export const campaignRoutes = (app, _, done) => {
             channel: campaignChannel.toUpperCase(),
             vestingType: vestingType.toUpperCase(),
             vestingCondition: vestingCondition,
+            expiredAtUnix: expiry,
           },
         });
 

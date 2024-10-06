@@ -61,7 +61,7 @@ export const twitterWorkers = (app, _, done) => {
     updateTwitterAccounts();
   });
 
-  updateTwitterAccounts();
+  // updateTwitterAccounts();
 
   done();
 };

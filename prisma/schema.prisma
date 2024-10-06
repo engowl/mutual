@@ -212,6 +212,7 @@ model CampaignOrder {
   token   Token  @relation(fields: [tokenId], references: [id], onDelete: Cascade)
 
   tokenAmount Float
+  expiredAtUnix Int @default(0)
 
   channel CampaignChannel
 

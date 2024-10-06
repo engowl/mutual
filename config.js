@@ -44,3 +44,5 @@ export const VESTING_CONFIG = [
     allowCustom: false,  // No custom conditions allowed
   },
 ];
+
+export const OFFER_EXPIRY_IN_MINUTES = 60 * 24; // 24 hours

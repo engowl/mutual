@@ -1,15 +1,18 @@
 import bs58 from 'bs58';
 import solanaWeb3 from '@solana/web3.js';
-import { CHAINS } from '../../config.js';
+import cron from 'node-cron';
+import { CHAINS, OFFER_EXPIRY_IN_MINUTES } from '../../config.js';
 import { MUTUAL_ESCROW_PROGRAM } from '../lib/contract/contracts.js';
-import { getAlphanumericId } from '../utils/miscUtils.js';
+import { getAlphanumericId, manyMinutesFromNowUnix } from '../utils/miscUtils.js';
 import { parseEventData } from '../utils/contractUtils.js';
 import { prismaClient } from '../db/prisma.js';
+import { handleExpiredOffer } from './helpers/campaignHelpers.js';
 
 /**
  *
  * @param {import("fastify").FastifyInstance} app
- * @param {*} _
+ * @param {import { cron } from 'node-cron';
+*} _
  * @param {Function} done
  */
 export const campaignWorkers = (app, _, done) => {
@@ -54,8 +57,8 @@ export const campaignWorkers = (app, _, done) => {
         const program = MUTUAL_ESCROW_PROGRAM(chain.id);
         const eventNames = program.idl.events.map((e) => e.name);
 
-        console.group(`Listening for events on chain ${chain.id}`);
-        console.log('Detected event names:', eventNames);
+        // console.group(`Listening for events on chain ${chain.id}`);
+        // console.log('Detected event names:', eventNames);
         console.groupEnd();
 
         eventNames.forEach((eventName) => {
@@ -94,6 +97,40 @@ export const campaignWorkers = (app, _, done) => {
   // TODO: Scans for MC Threshold reached or not. For the devnet, just make it reached after 1 minute
 
   // TODO: Scans for Token price updates. For the devnet, just make everything $1 for the price
+
+
+  // TODO: Handle offer expiry, if the order createdAt more than expiry time threshold, auto reject it, and refund the tokens
+  const handleCheckExpiredOffer = async () => {
+    try {
+      const nowUnix = manyMinutesFromNowUnix(0);
+      const expiredOffers = await prismaClient.campaignOrder.findMany({
+        where: {
+          expiredAtUnix: {
+            lt: nowUnix
+          },
+          status: 'CREATED'
+        },
+        orderBy: {
+          expiredAtUnix: 'asc'
+        }
+      })
+
+      for(const offer of expiredOffers) {
+        // console.log('Expired Offer:', offer);
+        await handleExpiredOffer(offer.id);
+      }
+
+      console.log('Expired Offers:', expiredOffers.length);
+    } catch (error) {
+      console.error('Error checking expired offers:', error.stack || error);
+    }
+  }
+
+  // Check every 1 minute
+  cron.schedule(`*/1 * * * *`, async () => {
+    console.log('Checking for expired offers...');
+    await handleCheckExpiredOffer();
+  });
 
   // Graceful Shutdown: Ensure proper cleanup on exit
   const handleExit = () => {

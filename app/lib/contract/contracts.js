@@ -16,13 +16,10 @@ const MUTUAL_ESCROW_IDL = JSON.parse(
 );
 
 export const MUTUAL_ESCROW_PROGRAM = (chainId) => {
-  console.log('Chain ID', chainId);
   const chain = CHAINS.find((c) => c.id === chainId);
   if (!chain) {
     throw new Error('Chain not found');
   }
-
-  console.log('Chain', chain);
 
   // Convert secret key to keypair
   const adminKp = solanaWeb3.Keypair.fromSecretKey(bs58.decode(process.env.ADMIN_WALLET_PK));
