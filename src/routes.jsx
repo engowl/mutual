@@ -67,11 +67,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "offers/:id",
-            element: (
-              <RolesAuthRouteGuard roles={["INFLUENCER"]}>
-                <InfluencerOffersDetailPage />
-              </RolesAuthRouteGuard>
-            ),
+            element: <InfluencerOffersDetailPage />,
           },
           {
             path: "profile",
