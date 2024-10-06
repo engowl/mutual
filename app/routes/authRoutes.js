@@ -87,7 +87,7 @@ export const authRoutes = (app, _, done) => {
   });
 
   app.post("/register", async (request, reply) => {
-    const { name, email, address, portalClientApiKey, portalClientId, wallet } =
+    const { name, email, portalClientApiKey, portalClientId, wallet } =
       request.body;
 
     try {
@@ -115,7 +115,7 @@ export const authRoutes = (app, _, done) => {
 
       const token = jwt.sign(
         {
-          address: address,
+          address: wallet.address,
         },
         process.env.JWT_SECRET,
         {
