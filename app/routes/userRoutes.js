@@ -1,11 +1,11 @@
 import {
   authorizeTwitter,
   getTwitterUser,
-  unTwitterApiGetUser,
 } from "../api/twitterApi.js";
+import { formatGetUserResponse } from "../api/unTwitterApi/helpers.js";
+import { unTwitterApiGetUser } from "../api/unTwitterApi/unTwitterApi.js";
 import { prismaClient } from "../db/prisma.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
-import { formatGetUserResponse } from "../utils/unOfficialTwitterApiUtils.js";
 /**
  *
  * @param {import("fastify").FastifyInstance} app

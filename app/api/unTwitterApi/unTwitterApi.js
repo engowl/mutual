@@ -1,26 +1,30 @@
 import axios from "axios";
 import { RateLimiterMemory } from "rate-limiter-flexible";
-import { extractGetTweetData, formatGetUserTweetsResponse, formatLatestSearchResponse } from './helpers.js';
+import {
+  extractGetTweetData,
+  formatGetUserTweetsResponse,
+  formatLatestSearchResponse,
+} from "./helpers.js";
 import { sleep } from "../../utils/miscUtils.js";
 
-const BASE_URL = "https://twttrapi.p.rapidapi.com"
+const BASE_URL = "https://twttrapi.p.rapidapi.com";
 const API_KEY = process.env.TWITTER_RAPID_API_KEY;
 
 export const UnTwitterApiLimiter = new RateLimiterMemory({
   duration: 2,
-  points: 2
-})
+  points: 2,
+});
 
 export const unTwitterApiSearch = async ({
   searchQuery,
   cursor,
   untilUnixTimestamp,
-  type = 'latest' // latest | top
+  type = "latest", // latest | top
 }) => {
   try {
     const params = {
       query: searchQuery,
-      cursor: cursor
+      cursor: cursor,
     };
 
     let allTweets = [];
@@ -30,35 +34,35 @@ export const unTwitterApiSearch = async ({
       try {
         await UnTwitterApiLimiter.consume(1);
       } catch (error) {
-        console.error('Rate limit exceeded for unofficial Twitter API:', error);
+        console.error("Rate limit exceeded for unofficial Twitter API:", error);
         await sleep(error.msBeforeNext);
       }
 
       // const response = await axios.get(API_URL, { headers, params });
 
       let endpoint = "/search-latest";
-      if (type === 'top') {
+      if (type === "top") {
         endpoint = "/search-top";
       }
 
       const response = await axios({
-        method: 'GET',
+        method: "GET",
         url: BASE_URL + endpoint,
         // url: BASE_URL + "/search-top",
         headers: {
-          'Content-Type': 'application/json',
-          'X-RapidAPI-Host': 'twttrapi.p.rapidapi.com',
-          'X-RapidAPI-Key': API_KEY
+          "Content-Type": "application/json",
+          "X-RapidAPI-Host": "twttrapi.p.rapidapi.com",
+          "X-RapidAPI-Key": API_KEY,
         },
         params: {
           query: params.query,
-          cursor: params.cursor || undefined
-        }
-      })
+          cursor: params.cursor || undefined,
+        },
+      });
 
       // Get the final link
       const finalUrl = response.request.res.responseUrl;
-      console.log('finalUrl', finalUrl);
+      console.log("finalUrl", finalUrl);
 
       // console.log("================================ \n\n")
       // console.log(JSON.stringify(response.data));
@@ -74,7 +78,9 @@ export const unTwitterApiSearch = async ({
 
       allTweets = [...allTweets, ...restructuredData.tweets];
 
-      const lastTweetTimestamp = restructuredData.tweets[restructuredData.tweets.length - 1].tweet.created_at;
+      const lastTweetTimestamp =
+        restructuredData.tweets[restructuredData.tweets.length - 1].tweet
+          .created_at;
 
       if (untilUnixTimestamp > 0 && lastTweetTimestamp <= untilUnixTimestamp) {
         // Found tweets older than untilUnixTimestamp
@@ -98,59 +104,55 @@ export const unTwitterApiSearch = async ({
     // Filter tweets that is older than untilUnixTimestamp
     let tweets = allTweets;
     if (untilUnixTimestamp > 0) {
-      tweets = tweets.filter(tweet => tweet.tweet.created_at >= untilUnixTimestamp);
+      tweets = tweets.filter(
+        (tweet) => tweet.tweet.created_at >= untilUnixTimestamp
+      );
     }
 
     return tweets;
   } catch (error) {
-    console.error('Error fetching tweets:', error);
+    console.error("Error fetching tweets:", error);
     throw error;
   }
-}
+};
 
-export const unTwitterApiGetTweet = async ({
-  tweetId
-}) => {
+export const unTwitterApiGetTweet = async ({ tweetId }) => {
   try {
     try {
       await UnTwitterApiLimiter.consume(1);
     } catch (error) {
-      console.error('Rate limit exceeded for unofficial Twitter API:', error);
+      console.error("Rate limit exceeded for unofficial Twitter API:", error);
       await sleep(error.msBeforeNext);
     }
 
-
-    console.log('tweetId', tweetId);
+    console.log("tweetId", tweetId);
     const response = await axios({
-      method: 'GET',
+      method: "GET",
       url: BASE_URL + "/get-tweet",
       headers: {
-        'Content-Type': 'application/json',
-        'X-RapidAPI-Host': 'twttrapi.p.rapidapi.com',
-        'X-RapidAPI-Key': API_KEY
+        "Content-Type": "application/json",
+        "X-RapidAPI-Host": "twttrapi.p.rapidapi.com",
+        "X-RapidAPI-Key": API_KEY,
       },
       params: {
-        tweet_id: tweetId
-      }
-    })
+        tweet_id: tweetId,
+      },
+    });
 
     const restructuredData = extractGetTweetData(response.data, tweetId);
     return restructuredData;
   } catch (error) {
-    console.error('Error fetching tweet:', error);
+    console.error("Error fetching tweet:", error);
     throw error;
   }
-}
+};
 
-export const unTwitterApiGetUser = async ({
-  userId,
-  username
-}) => {
+export const unTwitterApiGetUser = async ({ userId, username }) => {
   try {
     try {
       await UnTwitterApiLimiter.consume(1);
     } catch (error) {
-      console.error('Rate limit exceeded for unofficial Twitter API:', error);
+      console.error("Rate limit exceeded for unofficial Twitter API:", error);
       await sleep(error.msBeforeNext);
     }
 
@@ -159,49 +161,49 @@ export const unTwitterApiGetUser = async ({
     if (userId) {
       url = BASE_URL + "/get-user-by-id";
       params = {
-        user_id: userId
-      }
+        user_id: userId,
+      };
     } else if (username) {
       url = BASE_URL + "/get-user";
       params = {
-        username: username
-      }
+        username: username,
+      };
     } else {
-      throw new Error('Missing userId or username');
+      throw new Error("Missing userId or username");
     }
 
     const response = await axios({
-      method: 'GET',
+      method: "GET",
       url: url,
       headers: {
-        'Content-Type': 'application/json',
-        'X-RapidAPI-Host': 'twttrapi.p.rapidapi.com',
-        'X-RapidAPI-Key': API_KEY
+        "Content-Type": "application/json",
+        "X-RapidAPI-Host": "twttrapi.p.rapidapi.com",
+        "X-RapidAPI-Key": API_KEY,
       },
       params: {
-        ...params
-      }
-    })
+        ...params,
+      },
+    });
 
     return response.data;
   } catch (error) {
-    console.error('Error fetching user:', error);
+    console.error("Error fetching user:", error);
     throw error;
   }
-}
+};
 
 export const unTwitterApiGetUserPosts = async ({
   userId,
   username,
   cursor,
   untilUnixTimestamp,
-  dontLimitWithTimestamp = false
+  dontLimitWithTimestamp = false,
 }) => {
   try {
     try {
       await UnTwitterApiLimiter.consume(1);
     } catch (error) {
-      console.error('Rate limit exceeded for unofficial Twitter API:', error);
+      console.error("Rate limit exceeded for unofficial Twitter API:", error);
       await sleep(error.msBeforeNext);
     }
 
@@ -212,7 +214,7 @@ export const unTwitterApiGetUserPosts = async ({
       try {
         await UnTwitterApiLimiter.consume(1);
       } catch (error) {
-        console.error('Rate limit exceeded for unofficial Twitter API:', error);
+        console.error("Rate limit exceeded for unofficial Twitter API:", error);
         await sleep(error.msBeforeNext);
       }
 
@@ -220,33 +222,33 @@ export const unTwitterApiGetUserPosts = async ({
       if (userId) {
         params = {
           user_id: userId,
-          cursor: cursor || undefined
-        }
+          cursor: cursor || undefined,
+        };
       } else if (username) {
         params = {
           username: username,
-          cursor: cursor || undefined
-        }
+          cursor: cursor || undefined,
+        };
       } else {
-        throw new Error('Missing userId or username');
+        throw new Error("Missing userId or username");
       }
 
       const response = await axios({
-        method: 'GET',
+        method: "GET",
         url: BASE_URL + "/user-tweets",
         headers: {
-          'Content-Type': 'application/json',
-          'X-RapidAPI-Host': 'twttrapi.p.rapidapi.com',
-          'X-RapidAPI-Key': API_KEY
+          "Content-Type": "application/json",
+          "X-RapidAPI-Host": "twttrapi.p.rapidapi.com",
+          "X-RapidAPI-Key": API_KEY,
         },
         params: {
-          ...params
-        }
-      })
+          ...params,
+        },
+      });
 
       const restructuredData = formatGetUserTweetsResponse(response.data);
 
-      console.log('restructuredData', restructuredData);
+      console.log("restructuredData", restructuredData);
 
       if (restructuredData.tweets.length === 0) {
         // No more tweets available
@@ -256,7 +258,9 @@ export const unTwitterApiGetUserPosts = async ({
 
       allTweets = [...allTweets, ...restructuredData.tweets];
 
-      const lastTweetTimestamp = restructuredData.tweets[restructuredData.tweets.length - 1].tweet.created_at;
+      const lastTweetTimestamp =
+        restructuredData.tweets[restructuredData.tweets.length - 1].tweet
+          .created_at;
 
       if (untilUnixTimestamp > 0 && lastTweetTimestamp <= untilUnixTimestamp) {
         // Found tweets older than untilUnixTimestamp
@@ -283,9 +287,11 @@ export const unTwitterApiGetUserPosts = async ({
     if (dontLimitWithTimestamp === false) {
       if (untilUnixTimestamp > 0) {
         console.log({
-          untilUnixTimestamp
-        })
-        tweets = tweets.filter(tweet => tweet.tweet.created_at >= untilUnixTimestamp);
+          untilUnixTimestamp,
+        });
+        tweets = tweets.filter(
+          (tweet) => tweet.tweet.created_at >= untilUnixTimestamp
+        );
       }
     }
 
@@ -293,10 +299,10 @@ export const unTwitterApiGetUserPosts = async ({
 
     return {
       tweets: tweets,
-      lastCursor: cursor
-    }
+      lastCursor: cursor,
+    };
   } catch (error) {
-    console.error('Error fetching tweets:', error);
+    console.error("Error fetching tweets:", error);
     throw error;
   }
-}
+};

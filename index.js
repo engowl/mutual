@@ -13,6 +13,7 @@ import { messagesRoutes } from "./app/routes/messagesRoutes.js";
 import { campaignWorkers } from "./app/workers/campaignWorkers.js";
 import { influencerRoutes } from "./app/routes/influencerRoutes.js";
 import { adminRoutes } from "./app/routes/adminRoutes.js";
+import { twitterWorkers } from "./app/workers/twitterWorkers.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,6 +58,7 @@ fastify.register(adminRoutes, { prefix: "/__admin" });
 
 /* --------------------------------- Workers -------------------------------- */
 fastify.register(campaignWorkers);
+fastify.register(twitterWorkers);
 
 const start = async () => {
   try {
