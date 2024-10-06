@@ -1,7 +1,13 @@
 import { Server } from "socket.io";
-import moment from "moment";
 import { prismaClient } from "../db/prisma.js";
+import cron from "node-cron";
+import { authMiddleware } from "../middleware/authMiddleware.js";
+import dayjs from "dayjs";
+import tz from "dayjs/plugin/timezone.js";
+import utc from "dayjs/plugin/utc.js";
 
+dayjs.extend(tz);
+dayjs.extend(utc);
 /**
  *
  * @param {import("fastify").FastifyInstance} app
@@ -9,6 +15,8 @@ import { prismaClient } from "../db/prisma.js";
  * @param {*} done
  */
 export const messagesRoutes = (app, _, done) => {
+  const { redis } = app;
+
   const io = new Server(app.server, {
     cors: {
       origin: "*",
@@ -22,34 +30,55 @@ export const messagesRoutes = (app, _, done) => {
 
     socket.on("join", async ({ userId }) => {
       activeUsers.set(userId, socket.id);
-
-      console.log(activeUsers);
+      await updateUserStatus(userId, "ONLINE");
+      socket.emit("userStatusChange", {});
       console.log(`User ${userId} joined`);
     });
 
-    socket.on("userActive", async ({ userId }) => {
-      activeUsers.set(userId, socket.id);
-      // await updateUserStatus(userId, "online");
-      console.log(`User ${userId} is now active`);
-    });
+    // socket.on("userActive", async ({ userId }) => {
+    //   activeUsers.set(userId, socket.id);
+    //   // await updateUserStatus(userId, "online");
+    //   console.log(`User ${userId} is now active`);
+    // });
 
-    socket.on("userInactive", async ({ userId }) => {
-      activeUsers.delete(userId);
-      // await updateUserStatus(userId, "offline");
-      console.log(`User ${userId} is now inactive`);
-    });
+    // socket.on("userInactive", async ({ userId }) => {
+    //   activeUsers.delete(userId);
+    //   // await updateUserStatus(userId, "offline");
+    //   console.log(`User ${userId} is now inactive`);
+    // });
 
     socket.on(
       "personal-message",
       async ({ senderId, receiverId, content, role }) => {
         const receiverSocketId = activeUsers.get(receiverId);
-        console.log({ senderId });
+
+        console.log({ senderId, receiverId, content, role });
+
+        const messageData = {
+          senderId,
+          receiverId,
+          content,
+          sentAt: new Date(),
+          status: "pending",
+        };
+
+        const sortedUserIds = [senderId, receiverId].sort().join("_");
+        const messageId = `${Date.now()}`; // Unique message ID based on timestamp
+        const res = await redis.hmset(
+          `message:conversation:${sortedUserIds}:${messageId}`,
+          messageData
+        );
+        await redis.expire(messageId, 3600); // Expire after 1 hour
+
+        console.log({ res }, "redis message");
         if (receiverSocketId) {
           io.to(receiverSocketId).emit("personal-message", {
             senderId,
+            receiverId,
             content,
           });
         }
+        await updateConversation(senderId, receiverId, content);
       }
     );
 
@@ -57,7 +86,8 @@ export const messagesRoutes = (app, _, done) => {
       for (const [userId, socketId] of activeUsers.entries()) {
         if (socketId === socket.id) {
           activeUsers.delete(userId);
-          // await updateUserStatus(userId, "offline");
+          socket.emit("userStatusChange", {});
+          await updateUserStatus(userId, "OFFLINE");
           break;
         }
       }
@@ -66,8 +96,10 @@ export const messagesRoutes = (app, _, done) => {
 
   async function updateUserStatus(userId, status) {
     try {
-      const user = await prismaClient.userMessage.update({
-        where: { userId: userId },
+      await prismaClient.userMessage.update({
+        where: {
+          userId: userId,
+        },
         data: { status },
       });
       io.emit("userStatusChange", { userId, status });
@@ -77,109 +109,280 @@ export const messagesRoutes = (app, _, done) => {
     }
   }
 
-  // REST API routes
-  app.get("/:userId", async (request, reply) => {
-    const { userId } = request.params;
-    const { timezone } = request.query;
-
+  async function updateConversation(senderId, receiverId, lastMessage) {
     try {
-      const messages = await prismaClient.message.findMany({
+      await prismaClient.userConversation.upsert({
         where: {
-          OR: [
-            { senderId: parseInt(userId) },
-            { receiverId: parseInt(userId) },
-          ],
-        },
-        include: {
-          sender: true,
-          receiver: true,
-        },
-        orderBy: {
-          sentAt: "asc",
-        },
-      });
-
-      const groupedMessages = messages.reduce((acc, message) => {
-        const day = moment(message.sentAt).tz(timezone).format("YYYY-MM-DD");
-        if (!acc[day]) {
-          acc[day] = [];
-        }
-        acc[day].push({
-          ...message,
-          localTime: moment(message.sentAt).tz(timezone).format("HH:mm"),
-        });
-        return acc;
-      }, {});
-
-      reply.send(groupedMessages);
-    } catch (error) {
-      console.error("Error fetching messages:", error);
-      reply.status(500).send({ error: "Failed to fetch messages" });
-    }
-  });
-
-  app.post("/", async (request, reply) => {
-    const { content, senderId, receiverId, senderTimezone } = request.body;
-    try {
-      const message = await prismaClient.message.create({
-        data: {
-          content,
-          senderId,
-          receiverId,
-          sentAt: new Date(),
-          senderTimezone,
-        },
-        include: {
-          sender: true,
-          receiver: true,
-        },
-      });
-
-      reply.send(message);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      reply.status(500).send({ error: "Failed to send message" });
-    }
-  });
-
-  app.get("/conversations/:userId", async (request, reply) => {
-    const { userId } = request.params;
-
-    try {
-      // Find the latest message in each conversation involving the user
-      const conversations = await prismaClient.$queryRaw`
-        SELECT m.*, u1.id AS senderId, u1.name AS senderName, u2.id AS receiverId, u2.name AS receiverName
-        FROM "Message" m
-        JOIN "User" u1 ON m."senderId" = u1.id
-        JOIN "User" u2 ON m."receiverId" = u2.id
-        WHERE m."id" IN (
-          SELECT MAX(m2."id")
-          FROM "Message" m2
-          WHERE m2."senderId" = ${userId} OR m2."receiverId" = ${userId}
-          GROUP BY LEAST(m2."senderId", m2."receiverId"), GREATEST(m2."senderId", m2."receiverId")
-        )
-        ORDER BY m."sentAt" DESC
-      `;
-
-      const sidebarPreview = conversations.map((message) => {
-        const isUserSender = message.senderId === userId;
-        const otherUser = isUserSender
-          ? { id: message.receiverId, name: message.receiverName }
-          : { id: message.senderId, name: message.senderName };
-
-        return {
-          user: otherUser,
-          lastMessage: {
-            content: message.content,
-            sentAt: message.sentAt,
+          userId_otherUserId: {
+            userId: senderId,
+            otherUserId: receiverId,
           },
-        };
+        },
+        update: {
+          lastMessage,
+          updatedAt: new Date(),
+        },
+        create: {
+          userId: senderId,
+          otherUserId: receiverId,
+          lastMessage,
+        },
       });
 
-      reply.send(sidebarPreview);
+      // Update the reverse conversation as well
+      await prismaClient.userConversation.upsert({
+        where: {
+          userId_otherUserId: {
+            userId: receiverId,
+            otherUserId: senderId,
+          },
+        },
+        update: {
+          lastMessage,
+          updatedAt: new Date(),
+        },
+        create: {
+          userId: receiverId,
+          otherUserId: senderId,
+          lastMessage,
+        },
+      });
     } catch (error) {
-      console.error("Error fetching conversation previews:", error);
-      reply.status(500).send({ error: "Failed to fetch conversations" });
+      console.error("Error updating conversation:", error);
+    }
+  }
+
+  // REST API routes
+  app.get(
+    "/conversation/:userId/:otherUserId",
+    { preHandler: [authMiddleware] },
+    async (request, reply) => {
+      const { userId, otherUserId } = request.params;
+      const { timezone } = request.query;
+
+      console.log({ userId, otherUserId, timezone });
+
+      try {
+        const sortedUserIds = [userId, otherUserId].sort().join("_");
+        const redisMessageKeys = await redis.keys(
+          `message:conversation:${sortedUserIds}:*`
+        );
+        console.log({ redisMessageKeys });
+
+        let redisMessages = [];
+
+        for (const key of redisMessageKeys) {
+          const message = await redis.hgetall(key);
+          console.log({ message }, "from redis");
+          redisMessages.push({
+            ...message,
+            sentAt: new Date(message.sentAt), // Convert timestamp to Date
+          });
+        }
+
+        console.log({ redisMessages });
+
+        const allMessages = [
+          ...(redisMessages.length > 0 ? redisMessages : []),
+        ];
+
+        const finalMessages = allMessages.map((message) => ({
+          ...message,
+          role: message.senderId === userId ? "user" : "other",
+        }));
+
+        const groupedMessages = finalMessages.reduce((acc, message) => {
+          const day = dayjs(message.sentAt).tz(timezone).format("YYYY-MM-DD");
+          if (!acc[day]) {
+            acc[day] = [];
+          }
+          acc[day].push({
+            ...message,
+            localTime: dayjs(message.sentAt).tz(timezone).format("HH:mm"),
+          });
+          return acc;
+        }, {});
+
+        console.log({ groupedMessages });
+
+        return reply.send(groupedMessages);
+      } catch (error) {
+        console.error("Error fetching conversation history:", error);
+        return reply
+          .status(500)
+          .send({ error: "Failed to fetch conversation history" });
+      }
+    }
+  );
+
+  app.get(
+    "/conversation-detail/:conversationId",
+    { preHandler: [authMiddleware] },
+    async (request, reply) => {
+      const { conversationId } = request.params;
+
+      try {
+        const conversation = await prismaClient.userConversation.findUnique({
+          where: { id: conversationId },
+          include: {
+            otherUser: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        });
+
+        if (!conversation) {
+          return reply.status(404).send({ error: "Conversation not found" });
+        }
+
+        return reply.send({
+          message: "Conversation details fetched successfully",
+          data: {
+            conversationId: conversation.id,
+            userId: conversation.userId,
+            otherUser: {
+              id: conversation.otherUserId,
+              name: conversation.otherUser.user.name,
+            },
+          },
+        });
+      } catch (error) {
+        console.error("Error fetching conversation details:", error);
+        return reply.status(500).send({
+          data: null,
+          message: "",
+          error: "Failed to fetch conversation details",
+        });
+      }
+    }
+  );
+
+  app.get(
+    "/conversations/:userId",
+    { preHandler: [authMiddleware] },
+    async (request, reply) => {
+      const { userId } = request.params;
+
+      try {
+        const conversations = await prismaClient.userConversation.findMany({
+          where: { userId },
+          include: {
+            otherUser: {
+              include: {
+                user: true,
+              },
+            },
+          },
+          orderBy: { updatedAt: "desc" },
+        });
+
+        const test = conversations[0];
+        // console.log({ test });
+
+        const conversationPreviews = conversations.map((conv) => ({
+          id: conv.id,
+          userId: conv.otherUserId,
+          name: conv.otherUser.user.name,
+          lastMessage: conv.lastMessage,
+          updatedAt: conv.updatedAt,
+        }));
+
+        return reply.send(conversationPreviews);
+      } catch (error) {
+        console.error("Error fetching conversation previews:", error);
+        return reply
+          .status(500)
+          .send({ error: "Failed to fetch conversations" });
+      }
+    }
+  );
+
+  app.get(
+    "/other-user-details/:userId",
+    { preHandler: [authMiddleware] },
+    async (request, reply) => {
+      const { userId } = request.params;
+
+      try {
+        const user = await prismaClient.user.findUnique({
+          where: { id: userId },
+          select: {
+            name: true,
+            messagesSent: true,
+          },
+        });
+
+        if (!user) {
+          return reply.status(404).send({ error: "User not found" });
+        }
+
+        return reply.send({
+          message: "User details fetched successfully",
+          data: user,
+        });
+      } catch (error) {
+        console.error("Error fetching user details:", error);
+        return reply
+          .status(500)
+          .send({ error: "Failed to fetch user details" });
+      }
+    }
+  );
+
+  cron.schedule("*/5 * * * *", async () => {
+    try {
+      const messageKeys = await redis.keys("message:*");
+
+      console.log({ messageKeys });
+
+      for (const key of messageKeys) {
+        const messageData = await redis.hgetall(key);
+        if (
+          !messageData.senderId ||
+          !messageData.receiverId ||
+          !messageData.content
+        ) {
+          console.error("Invalid message data:", messageData);
+          continue;
+        }
+
+        console.log({ messageData });
+
+        await prismaClient.message.create({
+          data: {
+            content: messageData.content,
+            sender: {
+              connectOrCreate: {
+                create: {
+                  user: {
+                    connect: { id: messageData.senderId },
+                  },
+                },
+                where: { userId: messageData.senderId },
+              },
+            },
+            receiver: {
+              connectOrCreate: {
+                create: {
+                  user: {
+                    connect: { id: messageData.receiverId },
+                  },
+                },
+                where: { userId: messageData.receiverId },
+              },
+            },
+            sentAt: new Date(messageData.sentAt),
+            senderTimezone: "UTC",
+          },
+        });
+
+        // await redis.del(key);
+      }
+      console.log("Synced messages to database");
+    } catch (error) {
+      console.error("Error syncing messages:", error);
     }
   });
 

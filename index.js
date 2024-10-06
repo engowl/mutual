@@ -13,6 +13,7 @@ import { messagesRoutes } from "./app/routes/messagesRoutes.js";
 import { campaignWorkers } from "./app/workers/campaignWorkers.js";
 import { influencerRoutes } from "./app/routes/influencerRoutes.js";
 import { adminRoutes } from "./app/routes/adminRoutes.js";
+import fastifyRedis from "@fastify/redis";
 import { twitterWorkers } from "./app/workers/twitterWorkers.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -22,6 +23,7 @@ const fastify = Fastify({
   logger: false,
 });
 
+fastify.register(fastifyRedis, { host: "127.0.0.1", port: 6379 });
 fastify.register(FastifyCors, {
   origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -55,6 +57,16 @@ fastify.register(influencerRoutes, {
   prefix: "/influencer",
 });
 fastify.register(adminRoutes, { prefix: "/__admin" });
+
+fastify.ready(async (err) => {
+  if (err) throw err;
+  try {
+    const ping = await fastify.redis.ping();
+    console.log("Redis Ping Response:", ping);
+  } catch (error) {
+    console.error("Error connecting to Redis:", error);
+  }
+});
 
 /* --------------------------------- Workers -------------------------------- */
 fastify.register(campaignWorkers);
