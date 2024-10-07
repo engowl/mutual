@@ -15,12 +15,17 @@ import { X } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { mutualAPI } from "../../../api/mutual.js";
+import AsciiFlame from "../../../lib/mconnect/components/AsciiFlame.jsx";
 
 export default function InfluencerProfilePage() {
   const { user, getUser } = useMCAuth();
 
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
+      <div className="fixed bottom-0 w-full h-[20vh]">
+        <AsciiFlame />
+      </div>
+
       <div className="w-full max-w-3xl flex flex-col py-20">
         <div className="size-24 rounded-full bg-neutral-200 overflow-hidden">
           {user.influencer.twitterAccount.profileImageUrl ? (
