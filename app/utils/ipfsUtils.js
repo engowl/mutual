@@ -25,6 +25,7 @@ export function extractCID(uri) {
 
 export const getIPFSData = async (link) => {
   const cid = extractCID(link);
+  console.log('Getting data for CID:', cid);
   const data = await storage.download(`ipfs://${cid}`)
   
   return {

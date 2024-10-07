@@ -195,6 +195,27 @@ model Token {
   @@unique([mintAddress, chainId])
 }
 
+model MintDataCache {
+  id String @id @default(cuid())
+
+  mintAddress String
+  chainId     CHAIN
+
+  name        String
+  symbol      String
+  decimals    Int
+  imageUrl    String?
+  description String?
+  uriData     Json?
+
+  isInvalid Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([mintAddress, chainId])
+}
+
 model Pair {
   id String @id @default(cuid())
 
