@@ -239,6 +239,25 @@ model CampaignOrder {
   status           CampaignOrderStatus            @default(CREATED)
   eligibility      CampaignOrderEligibilityStatus @default(NOTELIGIBLE)
 
+  post CampaignPost?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CampaignPost {
+  id String @id @default(cuid())
+
+  campaignOrderId String @unique
+  order           CampaignOrder @relation(fields: [campaignOrderId], references: [id])
+
+  postId   String
+  postUrl  String
+  postedTimeUnix Int
+
+  text String @db.Text
+  data Json
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
