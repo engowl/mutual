@@ -4,6 +4,7 @@ import { getTokenInfo } from "./solanaUtils.js";
 import { prismaClient } from "../db/prisma.js";
 import { validateRequiredFields } from "./validationUtils.js";
 import { getCreateDealTxDetails } from "../lib/contract/mutualEscrowContract.js";
+import { fetchTokenData } from "../workers/helpers/tokenHelpers.js";
 
 // getCreateDealTxDetails('5A1ohsSEw8JwYnh3trUEbTUAu5Dkf4a26fZdAbrFEL6JLzKJomFuZurNGyYohmWLWDES8fxbDqCAZWNYbZ4jDCzk', 'devnet');
 
@@ -105,50 +106,11 @@ export async function validateOfferData(req, reply, checkTxHash = false) {
     const chain = CHAINS.find(c => c.id === chainId);
     if (!chain) return reply.status(400).send({ message: 'Invalid chain ID' });
 
-    let existingToken = await prismaClient.token.findUnique({
-      where: {
-        mintAddress_chainId: { mintAddress, chainId: chain.dbChainId },
-        updatedAt: { gte: new Date(Date.now() - 1000 * 60 * 60 * 1) } // 1 hour
-      }
-    });
-
-    if (!existingToken) {
-      const connection = new Connection(chain.rpcUrl, 'confirmed');
-      const token = await getTokenInfo(mintAddress, connection).catch((e) => {
-        return reply.status(400).send({ message: `Invalid token address: ${e.message}` });
-      });
-
-      existingToken = await prismaClient.token.upsert({
-        where: {
-          mintAddress_chainId: {
-            mintAddress: mintAddress,
-            chainId: chain.dbChainId
-          }
-        },
-        create: {
-          mintAddress: mintAddress,
-          chainId: chain.dbChainId,
-          name: token.name,
-          symbol: token.symbol,
-          decimals: token.decimals,
-          totalSupply: token.totalSupply,
-          imageUrl: token.image,
-          description: token.description,
-          uriData: token.uriData
-        },
-        update: {
-          name: token.name,
-          symbol: token.symbol,
-          decimals: token.decimals,
-          totalSupply: token.totalSupply,
-          imageUrl: token.image,
-          description: token.description,
-          uriData: token.uriData
-        }
-      });
-    }
-
-    console.log('Token validated:', existingToken);
+    const token = await fetchTokenData({
+      mintAddress: mintAddress,
+      chainId: chain.id
+    })
+    console.log('Token validated:', token);
 
     // Validate createDealTxHash if required
     if (checkTxHash && !createDealTxHash) {

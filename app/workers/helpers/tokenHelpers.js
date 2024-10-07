@@ -1,4 +1,5 @@
-import { Connection } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
+import * as splToken from "@solana/spl-token";
 import { CHAINS } from "../../../config.js";
 import { prismaClient } from "../../db/prisma.js";
 import { getTokenInfo } from "../../utils/solanaUtils.js";
@@ -31,6 +32,10 @@ export const fetchTokenData = async ({
       console.error(`Error fetching token info: ${e.message}`);
       throw e;
     });
+
+    fetchTokenHolderCount({
+      tokenId: existingToken.id
+    })
 
     existingToken = await prismaClient.token.upsert({
       where: {
@@ -95,7 +100,7 @@ export const fetchPairData = async ({
       console.log('Dexscreener data:', dexsData);
 
       pair = dexsData.pairs?.[0];
-    }else {
+    } else {
       // Use dummy data for devnet
       pair = {
         pairAddress: 'dummyPairAddress',
@@ -147,3 +152,60 @@ export const fetchPairData = async ({
 
   return existingPair;
 }
+
+export const fetchTokenHolderCount = async ({
+  tokenId
+}) => {
+  try {
+    const token = await prismaClient.token.findUnique({
+      where: {
+        id: tokenId
+      }
+    });
+
+    if (!token) {
+      throw new Error("Token not found");
+    }
+
+    const chain = CHAINS.find(c => c.dbChainId === token.chainId);
+
+    const connection = new Connection(chain.rpcUrl, 'confirmed');
+
+    console.log('Fetching token holder count for:', token.mintAddress);
+    const accounts = await connection.getProgramAccounts(
+      splToken.TOKEN_PROGRAM_ID,
+      {
+        filters: [
+          {
+            dataSize: 165 // Size of a token account
+          },
+          {
+            memcmp: {
+              offset: 0, // The offset where the mint address is stored in the token account
+              bytes: token.mintAddress
+            }
+          }
+        ],
+        commitment: 'confirmed',
+        encoding: 'base64' // Avoid fetching full account data, only necessary metadata
+      }
+    );
+
+    await prismaClient.token.update({
+      where: {
+        id: tokenId
+      },
+      data: {
+        holderCount: accounts.length
+      }
+    });
+
+    return accounts.length;
+  } catch (error) {
+    console.error(`Error fetching token holder count: ${error.message}`);
+  }
+}
+
+fetchTokenHolderCount({
+  tokenId: 'cm1y7e4ub0000kckskbdrthnx'
+})

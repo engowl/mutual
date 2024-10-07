@@ -16,6 +16,7 @@ import { adminRoutes } from "./app/routes/adminRoutes.js";
 import fastifyRedis from "@fastify/redis";
 import { twitterWorkers } from "./app/workers/twitterWorkers.js";
 import { walletRoutes } from "./app/routes/walletRoutes.js";
+import { tokenWorkers } from "./app/workers/tokenWorkers.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -75,6 +76,7 @@ fastify.ready(async (err) => {
 /* --------------------------------- Workers -------------------------------- */
 // fastify.register(campaignWorkers);
 // fastify.register(twitterWorkers);
+fastify.register(tokenWorkers);
 
 const start = async () => {
   try {

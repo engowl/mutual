@@ -11,8 +11,7 @@ import { handleExpiredOffer } from './helpers/campaignHelpers.js';
 /**
  *
  * @param {import("fastify").FastifyInstance} app
- * @param {import { cron } from 'node-cron';
-*} _
+ * @param {*} _
  * @param {Function} done
  */
 export const campaignWorkers = (app, _, done) => {

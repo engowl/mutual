@@ -184,7 +184,7 @@ model Token {
   imageUrl    String?
   description String?
   uriData     Json?
-  totalHolders Int @default(1)
+  holderCount Int?
 
   orders CampaignOrder[]
   pair  Pair?
