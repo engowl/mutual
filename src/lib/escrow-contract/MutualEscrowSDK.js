@@ -204,31 +204,45 @@ class MutualEscrowSDK {
     orderId,
     mintAddress,
     kolAddress,
+    projectOwnerAddress
   }) {
     try {
       const program = this.getProgram();
       const orderIdBuffer = this.prepareOrderId(orderId);
 
-      const userPublicKey = new PublicKey(kolAddress);
+      const projectOwnerPublicKey = new PublicKey(projectOwnerAddress);
       const mintPublicKey = new PublicKey(mintAddress);
       const kolPublicKey = new PublicKey(kolAddress);
 
       const [escrowPda] = PublicKey.findProgramAddressSync([Buffer.from("escrow")], program.programId);
       const [dealPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('deal'), orderIdBuffer, userPublicKey.toBuffer(), mintPublicKey.toBuffer()],
+        [Buffer.from('deal'), orderIdBuffer, projectOwnerPublicKey.toBuffer(), kolPublicKey.toBuffer(), mintPublicKey.toBuffer()],
         program.programId
       );
 
       const [vaultTokenAccountPda] = PublicKey.findProgramAddressSync([Buffer.from("vault_token_account"), mintPublicKey.toBuffer()], program.programId);
       const [vaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from("vault_authority")], program.programId);
 
-      const kolTokenAccount = await splToken.getAssociatedTokenAddress(
-        mintPublicKey,
-        kolPublicKey
-      );
+      // Check if the KOL's associated token account exists
+      const kolTokenAccount = await splToken.getAssociatedTokenAddress(mintPublicKey, kolPublicKey);
+      const connection = program.provider.connection;
+
+      let accountInfo = await connection.getAccountInfo(kolTokenAccount);
 
       const transaction = new Transaction();
 
+      // Step 1: If KOL's token account doesn't exist, create it
+      if (!accountInfo) {
+        const createAccountIx = splToken.createAssociatedTokenAccountInstruction(
+          kolPublicKey, // payer
+          kolTokenAccount, // associated token account
+          kolPublicKey, // owner
+          mintPublicKey // mint
+        );
+        transaction.add(createAccountIx);
+      }
+
+      // Step 2: Resolve the deal
       const ix = await program.methods
         .resolveDeal()
         .accounts({
@@ -244,7 +258,7 @@ class MutualEscrowSDK {
 
       transaction.add(ix);
 
-      const connection = program.provider.connection;
+      // Step 3: Finalize the transaction with blockhash and feePayer
       const { blockhash } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = kolPublicKey;
@@ -252,6 +266,88 @@ class MutualEscrowSDK {
       return transaction;
     } catch (error) {
       console.error('Error preparing resolve deal transaction:', error);
+      throw error;
+    }
+  }
+
+  async prepareNativeResolveDealTransaction({
+    orderId,
+    kolAddress,
+    projectOwnerAddress 
+  }) {
+    try {
+      const program = this.getProgram();
+      const orderIdBuffer = this.prepareOrderId(orderId);
+
+      const projectOwnerPublicKey = new PublicKey(projectOwnerAddress);
+      const kolPublicKey = new PublicKey(kolAddress);
+      const wsolMint = new PublicKey('So11111111111111111111111111111111111111112'); // WSOL mint
+
+      const [escrowPda] = PublicKey.findProgramAddressSync([Buffer.from("escrow")], program.programId);
+      const [dealPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('deal'), orderIdBuffer, projectOwnerPublicKey.toBuffer(), kolPublicKey.toBuffer(), wsolMint.toBuffer()],
+        program.programId
+      );
+
+      console.log('escrowPda:', escrowPda.toBase58());
+      console.log('dealPda:', dealPda.toBase58());
+
+      const [vaultTokenAccountPda] = PublicKey.findProgramAddressSync([Buffer.from("vault_token_account"), wsolMint.toBuffer()], program.programId);
+      const [vaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from("vault_authority")], program.programId);
+
+      // Check if the KOL's associated WSOL token account exists
+      const kolTokenAccount = await splToken.getAssociatedTokenAddress(wsolMint, kolPublicKey);
+      const connection = program.provider.connection;
+
+      let accountInfo = await connection.getAccountInfo(kolTokenAccount);
+
+      const transaction = new Transaction();
+
+      // Step 1: If KOL's WSOL token account doesn't exist, create it
+      if (!accountInfo) {
+        const createAccountIx = splToken.createAssociatedTokenAccountInstruction(
+          kolPublicKey, // payer
+          kolTokenAccount, // associated token account
+          kolPublicKey, // owner
+          wsolMint // mint
+        );
+        transaction.add(createAccountIx);
+      }
+
+      // Step 2: Resolve the deal
+      const ix = await program.methods
+        .resolveDeal()
+        .accounts({
+          deal: dealPda,
+          escrow: escrowPda,
+          signer: kolPublicKey,
+          vaultTokenAccount: vaultTokenAccountPda,
+          vaultAuthority: vaultAuthorityPda,
+          kolTokenAccount: kolTokenAccount,
+          tokenProgram: splToken.TOKEN_PROGRAM_ID,
+        })
+        .instruction();
+
+      transaction.add(ix);
+
+      // Step 3: Close the WSOL account and unwrap back to SOL (refund SOL to KOL)
+      transaction.add(
+        splToken.createCloseAccountInstruction(
+          kolTokenAccount, // Close the KOL's WSOL account
+          kolPublicKey, // Refund SOL back to the KOL
+          kolPublicKey, // The authority who can close the account (KOL)
+          []
+        )
+      );
+
+      // Step 4: Finalize the transaction with blockhash and feePayer
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = kolPublicKey;
+
+      return transaction;
+    } catch (error) {
+      console.error('Error preparing native resolve deal transaction:', error);
       throw error;
     }
   }
@@ -370,7 +466,9 @@ class MutualEscrowSDK {
     try {
       const chain = this.getChain();
       const connection = new Connection(chain.rpcUrl, 'confirmed');
-      const txHash = await connection.sendRawTransaction(signedTx.serialize());
+      const txHash = await connection.sendRawTransaction(signedTx.serialize(), {
+        skipPreflight: true,
+      });
       console.log('Transaction hash:', txHash);
 
       await connection.confirmTransaction(txHash, 'confirmed');

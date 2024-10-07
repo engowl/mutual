@@ -8,9 +8,11 @@ import dayjs from "dayjs";
 import { mutualAPI } from "../../../api/mutual.js";
 import useSWR from "swr";
 import OfferStatusBadgePill from "../../../components/offers/OfferStatusBadgePill.jsx";
+import toast from "react-hot-toast";
+import { useState } from "react";
 
 export default function ProjectOwnerOffersDetailPage() {
-  const isWaitingApproval = true;
+  const [isWaitingApproval, setIsWaitingApproval] = useState(false);
   const params = useParams();
   const navigate = useNavigate();
 
@@ -22,7 +24,17 @@ export default function ProjectOwnerOffersDetailPage() {
     mutate,
   } = useSWR(offerId ? `/campaign/${offerId}/detail` : null, async (url) => {
     const { data } = await mutualAPI.get(url);
+
+    // If there is data.post and data.post.isApproved is false, then it is waiting for approval
+    if (data.post && data.post.isApproved === false) {
+      setIsWaitingApproval(true);
+    } else {
+      setIsWaitingApproval(false);
+    }
+
     return data;
+  }, {
+    refreshInterval: 5000
   });
 
   const {
@@ -34,7 +46,29 @@ export default function ProjectOwnerOffersDetailPage() {
     return data;
   });
 
-  console.log({ offer})
+  const [isApproving, setIsApproving] = useState(false);
+  const handleApproveWork = async () => {
+    try {
+      setIsApproving(true);
+      const res = await mutualAPI.post(
+        '/campaign/approve-work',
+        {
+          orderId: offer.id
+        }
+      )
+
+      console.log({ res })
+
+      await mutate()
+
+      toast.success("Work approved successfully");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to approve work");
+    } finally {
+      setIsApproving(false);
+    }
+  }
 
   if (isLoading || isLoadingClaimable) {
     return (
@@ -58,7 +92,11 @@ export default function ProjectOwnerOffersDetailPage() {
               Message
             </Button>
             {isWaitingApproval && (
-              <Button className="bg-orangy text-white rounded-full font-medium px-8">
+              <Button
+                onClick={handleApproveWork}
+                className="bg-orangy text-white rounded-full font-medium px-8"
+                isLoading={isApproving}
+              >
                 Approve Work
               </Button>
             )}
@@ -66,18 +104,21 @@ export default function ProjectOwnerOffersDetailPage() {
         </div>
 
         {/* Respond in */}
-        <div className="mt-10 py-3 px-4 rounded-xl bg-white border flex items-center justify-between">
-          <div className="font-medium flex items-center gap-2">
-            <Clock className="size-4" />
-            Respond in:
+        {offer?.status === "CREATED" &&
+          <div className="mt-10 py-3 px-4 rounded-xl bg-white border flex items-center justify-between">
+            <div className="font-medium flex items-center gap-2">
+              <Clock className="size-4" />
+              Respond in:
+            </div>
+            <div className="font-medium">
+              <Countdown
+                date={new Date(offer?.expiredAtUnix * 1000)}
+                daysInHours
+              />
+            </div>
           </div>
-          <div className="font-medium">
-            <Countdown
-              date={new Date(offer?.expiredAtUnix * 1000)}
-              daysInHours
-            />
-          </div>
-        </div>
+        }
+
         <div className="mt-4 p-4 rounded-xl bg-white border">
           <div className="w-full flex items-center justify-between">
             <p className="text-2xl font-medium">
@@ -125,8 +166,8 @@ export default function ProjectOwnerOffersDetailPage() {
                   {offer.vestingType === "MARKETCAP"
                     ? "Market Cap Vesting"
                     : offer.vestingType === "TIME"
-                    ? "Time Vesting"
-                    : "Direct Payment"}
+                      ? "Time Vesting"
+                      : "Direct Payment"}
                 </p>
               </div>
               <div className="flex items-center">
@@ -151,14 +192,22 @@ export default function ProjectOwnerOffersDetailPage() {
             </p>
           </div>
         </div>
-        {isWaitingApproval && <SubmissionCard />}
+
+        {(offer && offer.post) &&
+          <SubmissionCard
+            post={offer.post}
+          />
+        }
+
         <EventLogs events={DUMMY_LOGS} />
       </div>
     </div>
   );
 }
 
-function SubmissionCard() {
+function SubmissionCard({
+  post
+}) {
   return (
     <div className="w-full mt-4 bg-white rounded-xl border p-4">
       <p className="font-medium">Submission</p>
@@ -166,16 +215,24 @@ function SubmissionCard() {
         Please review and approve influencer submissions for your project
       </p>
       <div className="px-4 py-2 rounded-full border mt-3">
-        https://twitter.com/johndoe
+        {post.postUrl}
       </div>
-      <div className="flex gap-2 mt-5">
-        <Button color="default" className="rounded-full font-medium px-8">
-          Decline
-        </Button>
-        <Button className="bg-orangy text-white rounded-full font-medium px-8">
-          Approve Work
-        </Button>
-      </div>
+
+      {post.isApproved ?
+        <div className="bg-success-100 p-2 mt-2 rounded-lg">
+          <p className="font-medium">Approved</p>
+          <p className="text-sm opacity-60">The submission has been approved</p>
+        </div>
+        :
+        <div className="flex gap-2 mt-5">
+          <Button color="default" className="rounded-full font-medium px-8">
+            Decline
+          </Button>
+          <Button className="bg-orangy text-white rounded-full font-medium px-8">
+            Approve Work
+          </Button>
+        </div>
+      }
     </div>
   );
 }
