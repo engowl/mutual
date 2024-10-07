@@ -24,6 +24,7 @@ import utc from "dayjs/plugin/utc";
 import { BN } from "bn.js";
 import useSWR from "swr";
 import { mutualAPI } from "../../../api/mutual";
+import { useMCAuth } from "../../../lib/mconnect/hooks/useMCAuth";
 
 dayjs.extend(utc);
 
@@ -38,6 +39,29 @@ const marketCapVestingFormAtom = atom({
   postDateAndTime: "",
 });
 
+function formatNumberToKMB(number) {
+  if (number >= 1_000_000_000) {
+    return (
+      (number / 1_000_000_000).toLocaleString(undefined, {
+        maximumFractionDigits: 1,
+      }) + "B"
+    );
+  } else if (number >= 1_000_000) {
+    return (
+      (number / 1_000_000).toLocaleString(undefined, {
+        maximumFractionDigits: 1,
+      }) + "M"
+    );
+  } else if (number >= 1_000) {
+    return (
+      (number / 1_000).toLocaleString(undefined, { maximumFractionDigits: 1 }) +
+      "K"
+    );
+  } else {
+    return number.toLocaleString();
+  }
+}
+
 export default function ProjectOwnerMarketCapVestingPage() {
   const [step, setStep] = useState(1);
   switch (step) {
@@ -45,29 +69,6 @@ export default function ProjectOwnerMarketCapVestingPage() {
       return <MarketCapVestingForm setStep={setStep} />;
     case 2:
       return <MarketCapVestingConfirmation setStep={setStep} />;
-  }
-}
-
-function formatNumberToKMB(number) {
-  if (number >= 1_000_000_000) {
-    return (
-      (number / 1_000_000_000).toLocaleString(undefined, {
-        maximumFractionDigits: 1,
-      }) + "B"
-    ); // Billions
-  } else if (number >= 1_000_000) {
-    return (
-      (number / 1_000_000).toLocaleString(undefined, {
-        maximumFractionDigits: 1,
-      }) + "M"
-    ); // Millions
-  } else if (number >= 1_000) {
-    return (
-      (number / 1_000).toLocaleString(undefined, { maximumFractionDigits: 1 }) +
-      "K"
-    ); // Thousands
-  } else {
-    return number.toLocaleString(); // Less than a thousand
   }
 }
 
@@ -87,6 +88,28 @@ function MarketCapVestingConfirmation({ setStep }) {
   );
 
   console.log({ influencerData });
+
+  const { user } = useMCAuth();
+  // TODO change network to dynamic
+  const { data } = useSWR(
+    user
+      ? `/wallet/info?walletAddress=${user.wallet.address}&network=devnet`
+      : null,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      console.log({ data });
+      return data.data;
+    }
+  );
+
+  const tokenInfo =
+    data && user
+      ? data.find(
+          (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
+        )
+      : null;
+
+  console.log({ tokenInfo });
 
   const formData = useAtomValue(marketCapVestingFormAtom);
   // TODO: Add loading state
@@ -110,6 +133,8 @@ function MarketCapVestingConfirmation({ setStep }) {
       console.log("formData:", formData);
 
       console.log("cookies:", cookies);
+
+      // TODO switch to mainnet later
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
         bearerToken: cookies.session_token,
@@ -125,8 +150,8 @@ function MarketCapVestingConfirmation({ setStep }) {
           marketcapThreshold: formData.marketCapMilestone,
         },
         chainId: "devnet",
-        mintAddress: "6EXeGq2NuPUyB9UFWhbs35DBieQjhLrSfY2FU3o9gtr7",
-        tokenAmount: formData.tokenOfferAmount,
+        mintAddress: tokenInfo?.mint,
+        tokenAmount: parseFloat(formData.tokenOfferAmount),
         campaignChannel: formData.marketingChannel,
         promotionalPostText: formData.promotionalPostText,
         postDateAndTime: new Date(formData.postDateAndTime),
@@ -149,7 +174,9 @@ function MarketCapVestingConfirmation({ setStep }) {
         userAddress: wallet.adapter.publicKey.toBase58(),
         vestingType: DATA.vestingType,
         // amount: DATA.tokenAmount * 10 ** 6,
-        amount: new BN(DATA.tokenAmount).mul(new BN(10).pow(new BN(9))),
+        amount: new BN(DATA.tokenAmount).mul(
+          new BN(10).pow(new BN(tokenInfo?.decimals))
+        ),
       });
       console.log("createDealTx:", createDealTx);
 
@@ -239,7 +266,7 @@ function MarketCapVestingConfirmation({ setStep }) {
                 <p className="font-medium">
                   {formData.tokenOfferAmount *
                     OFFER_CONFIG.secondUnlockPercentage}
-                  0 MICHI
+                  MICHI
                 </p>
               </div>
               <div className="flex items-center">
@@ -338,6 +365,28 @@ function MarketCapVestingForm({ setStep }) {
 
   console.log({ selectedDate, selectedTime });
 
+  const { user } = useMCAuth();
+
+  const { data } = useSWR(
+    user
+      ? `/wallet/info?walletAddress=${user.wallet.address}&network=devnet`
+      : null,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      console.log({ data });
+      return data.data;
+    }
+  );
+
+  const tokenInfo =
+    data && user
+      ? data.find(
+          (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
+        )
+      : null;
+
+  console.log({ tokenInfo });
+
   useEffect(() => {
     if (selectedDate && selectedTime) {
       const combinedDateTime = combineDateAndTime(selectedDate, selectedTime);
@@ -365,7 +414,9 @@ function MarketCapVestingForm({ setStep }) {
           </p>
           <div className="mt-4 p-4 rounded-xl bg-white border">
             <div className="w-full flex items-center justify-between">
-              <p className="text-xl lg:text-2xl font-medium">MICHI ($MICHI)</p>
+              <p className="text-xl lg:text-2xl font-medium">
+                {tokenInfo?.name} (${tokenInfo?.symbol} )
+              </p>
               <div className="font-medium">DexScreener</div>
             </div>
             <div className="flex gap-7 mt-3">
@@ -375,12 +426,12 @@ function MarketCapVestingForm({ setStep }) {
               </div>
               <div>
                 <p className="text-orangy font-medium">
-                  {shortenAddress("0x8ad8asfha8f8iaf")}
+                  {shortenAddress(tokenInfo?.mint)}
                 </p>
                 <p className="text-sm text-neutral-500">Contract Address</p>
               </div>
               <div>
-                <p className="text-orangy font-medium">821,893,121</p>
+                <p className="text-orangy font-medium">{tokenInfo?.amount}</p>
                 <p className="text-sm text-neutral-500">Total Supply</p>
               </div>
             </div>
@@ -403,10 +454,20 @@ function MarketCapVestingForm({ setStep }) {
                 </div>
                 <div className="mt-2 w-full flex items-center justify-between">
                   <p className="text-sm text-neutral-400 px-4 py-2">
-                    Balance: 8,000,000 $OCD
+                    Balance: {tokenInfo?.amount.toLocaleString("en-US")} $
+                    {tokenInfo?.symbol}
                   </p>
                   <div className="p-2">
-                    <Button className="bg-orangy/10 text-orangy" size="sm">
+                    <Button
+                      onClick={() => {
+                        handleInputChange(
+                          "tokenOfferAmount",
+                          tokenInfo?.amount.toLocaleString("en-US")
+                        );
+                      }}
+                      className="bg-orangy/10 text-orangy"
+                      size="sm"
+                    >
                       Max
                     </Button>
                   </div>

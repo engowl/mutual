@@ -8,38 +8,50 @@ import {
   Textarea,
   TimeInput,
 } from "@nextui-org/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import IconicButton from "../../../components/ui/IconicButton";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useCookies } from "react-cookie";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { getAlphanumericId } from "../../../utils/misc";
-import { CHAINS } from "../../../config";
+import { CHAINS, OFFER_CONFIG } from "../../../config";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK";
 import { useMCAuth } from "../../../lib/mconnect/hooks/useMCAuth";
 import useSWR from "swr";
 import { mutualAPI } from "../../../api/mutual";
+import { cnm } from "../../../utils/style";
+import { parseDate, parseTime } from "@internationalized/date";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import { BN } from "bn.js";
+
+dayjs.extend(utc);
 
 const vestingPeriods = [
   {
     label: "1 Month",
-    value: "1m",
+    value: "1-month",
+    seconds: 30 * 24 * 60 * 60, // 1 month in seconds
   },
   {
     label: "2 Months",
-    value: "2m",
+    value: "2-months",
+    seconds: 2 * 30 * 24 * 60 * 60, // 2 months in seconds
   },
   {
     label: "3 Months",
-    value: "3m",
+    value: "3-months",
+    seconds: 3 * 30 * 24 * 60 * 60, // 3 months in seconds
   },
   {
     label: "6 Months",
-    value: "6m",
+    value: "6-months",
+    seconds: 6 * 30 * 24 * 60 * 60, // 6 months in seconds
   },
   {
     label: "1 Year",
-    value: "1y",
+    value: "1-year",
+    seconds: 365 * 24 * 60 * 60, // 1 year in seconds
   },
 ];
 
@@ -48,6 +60,7 @@ const timeVestingFormAtom = atom({
   tokenOfferAmount: "",
   percentageOfSupply: "",
   timeMilestone: "",
+  timeMilestoneValue: "",
   telegramAdminUsername: "",
   marketingChannel: "",
   promotionalPostText: "",
@@ -60,26 +73,53 @@ export default function ProjectOwnerTimeVestingPage() {
     case 1:
       return <TimeVestingForm setStep={setStep} />;
     case 2:
-      return <TimeVestingConfirmation />;
+      return <TimeVestingConfirmation setStep={setStep} />;
   }
 }
 
-function TimeVestingConfirmation() {
+function TimeVestingConfirmation({ setStep }) {
   const { wallet } = useWallet();
   const [cookies] = useCookies(["session_token"]);
   const params = useParams();
   const influencerId = params.influencerId;
   const navigate = useNavigate();
 
+  const { data: influencerData } = useSWR(
+    `/influencer/${influencerId}`,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      return data;
+    }
+  );
+
   const formData = useAtomValue(timeVestingFormAtom);
-  // TODO: Add loading state
+
+  const { user } = useMCAuth();
+  // TODO change network to dynamic
+  const { data } = useSWR(
+    user
+      ? `/wallet/info?walletAddress=${user.wallet.address}&network=devnet`
+      : null,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      console.log({ data });
+      return data.data;
+    }
+  );
+
+  const tokenInfo =
+    data && user
+      ? data.find(
+          (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
+        )
+      : null;
 
   console.log("formData:", formData);
 
   const [isLoading, setIsLoading] = useState(false);
   const handleCreateOffer = async () => {
+    if (isLoading) return;
     // TODO complete validation and data
-
     try {
       setIsLoading(true);
 
@@ -98,11 +138,11 @@ function TimeVestingConfirmation() {
         influencerId: influencerId,
         vestingType: "TIME",
         vestingCondition: {
-          marketcapThreshold: formData.marketCapMilestone,
+          vestingDuration: formData.timeMilestoneValue,
         },
         chainId: "devnet",
         mintAddress: "6EXeGq2NuPUyB9UFWhbs35DBieQjhLrSfY2FU3o9gtr7",
-        tokenAmount: 1,
+        tokenAmount: parseFloat(formData.tokenOfferAmount),
         campaignChannel: formData.marketingChannel,
         promotionalPostText: formData.promotionalPostText,
         postDateAndTime: new Date(formData.postDateAndTime),
@@ -120,10 +160,12 @@ function TimeVestingConfirmation() {
       const createDealTx = await escrowSDK.prepareCreateDealTransaction({
         orderId: DATA.orderId,
         mintAddress: DATA.mintAddress,
-        kolAddress: "95CTp5B82XanjZ6LCg4w4bW9Gak4p9A8P4uUfriVFjWF",
+        kolAddress: influencerData.data.user.wallet.address,
         userAddress: wallet.adapter.publicKey.toBase58(),
         vestingType: DATA.vestingType,
-        amount: DATA.tokenAmount * 10 ** 6,
+        amount: new BN(DATA.tokenAmount).mul(
+          new BN(10).pow(new BN(tokenInfo?.decimals))
+        ),
       });
       console.log("createDealTx:", createDealTx);
 
@@ -161,7 +203,9 @@ function TimeVestingConfirmation() {
         </div>
         <div className="mt-4 p-4 rounded-xl bg-white border">
           <div className="w-full flex items-center justify-between">
-            <p className="text-2xl font-medium">MICHI ($MICHI)</p>
+            <p className="text-2xl font-medium">
+              {tokenInfo?.name} (${tokenInfo?.symbol})
+            </p>
             <div className="font-medium">DexScreener</div>
           </div>
           <div className="flex gap-7 mt-3">
@@ -171,12 +215,14 @@ function TimeVestingConfirmation() {
             </div>
             <div>
               <p className="text-orangy font-medium">
-                {shortenAddress("0x8ad8asfha8f8iaf")}
+                {shortenAddress(tokenInfo?.mint)}
               </p>
               <p className="text-sm text-neutral-500">Contract Address</p>
             </div>
             <div>
-              <p className="text-orangy font-medium">821,893,121</p>
+              <p className="text-orangy font-medium">
+                {tokenInfo?.amount.toLocaleString("en-US")}
+              </p>
               <p className="text-sm text-neutral-500">Total Supply</p>
             </div>
           </div>
@@ -185,38 +231,64 @@ function TimeVestingConfirmation() {
           <div>
             <div className="flex flex-col gap-3 text-sm">
               <div className="flex items-center">
-                <p className="w-48 text-neutral-400">Offer Amount</p>
-                <p className="font-medium">20 SOL</p>
+                <p className="w-48 text-neutral-400">Total Payment</p>
+                <p className="font-medium">{formData.tokenOfferAmount} MICHI</p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Payment Terms</p>
                 <p className="font-medium">Time Vesting</p>
               </div>
-              <div className="flex items-center">
-                <p className="w-48 text-neutral-400">Total Payment</p>
-                <p className="font-medium">1,000,000 MICHI</p>
-              </div>
+
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">First Unlock</p>
-                <p className="font-medium">200,000 MICHI</p>
+                <p className="font-medium">
+                  {(
+                    formData.tokenOfferAmount *
+                    OFFER_CONFIG.firstUnlockPercentage
+                  ).toFixed(3)}{" "}
+                  {tokenInfo?.symbol}
+                </p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Second Unlock</p>
-                <p className="font-medium">800,000 MICHI</p>
+                <p className="font-medium">
+                  {(
+                    formData.tokenOfferAmount *
+                    OFFER_CONFIG.secondUnlockPercentage
+                  ).toFixed(3)}{" "}
+                  {tokenInfo?.symbol}
+                </p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">
                   Second Unlock to Trigger
                 </p>
-                <p className="font-medium">$MICHI reached $200M Marketcap</p>
+                <p className="font-medium">
+                  ${tokenInfo?.symbol} reached{" "}
+                  {
+                    vestingPeriods.find(
+                      (period) => period.seconds === formData.timeMilestone
+                    )?.label
+                  }{" "}
+                  Vesting Time
+                </p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Marketing Channel</p>
-                <p className="font-medium">Twitter Post</p>
+                <p className="font-medium">
+                  {formData.marketingChannel === "twitter"
+                    ? "Twitter"
+                    : "Telegram"}{" "}
+                  Post
+                </p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Schedule</p>
-                <p className="font-medium">15 October 2024 : 18:00 UTC</p>
+                <p className="font-medium">
+                  {dayjs(new Date(formData.postDateAndTime))
+                    .utc()
+                    .format("D MMMM YYYY : HH:mm [UTC]")}
+                </p>
               </div>
             </div>
             <p className="font-medium mt-8">Promotional post text</p>
@@ -228,10 +300,20 @@ function TimeVestingConfirmation() {
           </div>
         </div>
 
-        <div className="w-full flex justify-end mt-8">
+        <div className="w-full flex justify-end mt-8 gap-4">
+          <Button
+            size="lg"
+            color="default"
+            className="rounded-full"
+            onClick={() => setStep(1)}
+          >
+            Back
+          </Button>
           <IconicButton
             className={"rounded-full border-orangy"}
             arrowBoxClassName={"rounded-full bg-orangy"}
+            isLoading={isLoading}
+            onClick={handleCreateOffer}
           >
             <p className="group-hover:text-white transition-colors text-orangy pl-3 pr-4">
               Send Offer
@@ -245,6 +327,57 @@ function TimeVestingConfirmation() {
 
 function TimeVestingForm({ setStep }) {
   const [formData, setFormData] = useAtom(timeVestingFormAtom); // Use useAtom here
+
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = String(currentDate.getMonth() + 1).padStart(2, "0");
+  const currentDay = String(currentDate.getDate()).padStart(2, "0");
+
+  const [selectedDate, setSelectedDate] = useState(
+    parseDate(`${currentYear}-${currentMonth}-${currentDay}`)
+  );
+  const [selectedTime, setSelectedTime] = useState(parseTime("12:00:00"));
+
+  const combineDateAndTime = (dateISO, timeObject) => {
+    console.log("date:", dateISO);
+    console.log("time:", timeObject);
+
+    if (!dateISO || !timeObject) return null;
+
+    const date = new Date(dateISO);
+
+    date.setHours(timeObject.hour);
+    date.setMinutes(timeObject.minute);
+    date.setSeconds(timeObject.second);
+    date.setMilliseconds(timeObject.millisecond || 0); // Set milliseconds, default to 0 if not provided
+
+    return date;
+  };
+
+  console.log({ selectedDate, selectedTime });
+
+  const handleChange = (field) => (event) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: event.target.value,
+    }));
+  };
+
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  useEffect(() => {
+    if (selectedDate && selectedTime) {
+      const combinedDateTime = combineDateAndTime(selectedDate, selectedTime);
+      console.log("combinedDateTime:", combinedDateTime);
+      handleInputChange("postDateAndTime", combinedDateTime);
+    }
+  }, [selectedDate, selectedTime]);
+
   const { user } = useMCAuth();
   // TODO change network to dynamic
   const { data } = useSWR(
@@ -258,14 +391,14 @@ function TimeVestingForm({ setStep }) {
     }
   );
 
-  console.log({ data, user });
+  const tokenInfo =
+    data && user
+      ? data.find(
+          (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
+        )
+      : null;
 
-  const handleChange = (field) => (event) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: event.target.value,
-    }));
-  };
+  console.log({ data, user, tokenInfo });
 
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center">
@@ -285,7 +418,9 @@ function TimeVestingForm({ setStep }) {
           </p>
           <div className="mt-4 p-4 rounded-xl bg-white border">
             <div className="w-full flex items-center justify-between">
-              <p className="text-2xl font-medium">MICHI ($MICHI)</p>
+              <p className="text-2xl font-medium">
+                {tokenInfo?.name} (${tokenInfo?.symbol} )
+              </p>
               <div className="font-medium">DexScreener</div>
             </div>
             <div className="flex gap-7 mt-3">
@@ -295,12 +430,12 @@ function TimeVestingForm({ setStep }) {
               </div>
               <div>
                 <p className="text-orangy font-medium">
-                  {shortenAddress("0x8ad8asfha8f8iaf")}
+                  {shortenAddress(tokenInfo?.mint)}
                 </p>
                 <p className="text-sm text-neutral-500">Contract Address</p>
               </div>
               <div>
-                <p className="text-orangy font-medium">821,893,121</p>
+                <p className="text-orangy font-medium">{tokenInfo?.balance}</p>
                 <p className="text-sm text-neutral-500">Total Supply</p>
               </div>
             </div>
@@ -321,17 +456,27 @@ function TimeVestingForm({ setStep }) {
                 </div>
                 <div className="mt-2 w-full flex items-center justify-between">
                   <p className="text-sm text-neutral-400 px-4 py-2">
-                    Balance: 8,000,000 $OCD
+                    Balance: {tokenInfo?.amount.toLocaleString("en-US")} $
+                    {tokenInfo?.symbol}
                   </p>
                   <div className="p-2">
-                    <Button className="bg-orangy/10 text-orangy" size="sm">
+                    <Button
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          tokenOfferAmount: tokenInfo?.amount.toString(),
+                        }));
+                      }}
+                      className="bg-orangy/10 text-orangy"
+                      size="sm"
+                    >
                       Max
                     </Button>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="flex-1">
+            {/* <div className="flex-1">
               <p>Percentage of supply</p>
               <div className="bg-white rounded-xl border mt-1">
                 <div className="px-2 py-7 w-full flex justify-center">
@@ -352,7 +497,7 @@ function TimeVestingForm({ setStep }) {
                   ))}
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Market cap milestone */}
@@ -362,7 +507,19 @@ function TimeVestingForm({ setStep }) {
               {vestingPeriods.map((period, idx) => (
                 <Button
                   key={idx}
-                  className="bg-white rounded-xl border p-2 h-14 flex items-center gap-2 flex-1 justify-center"
+                  className={cnm(
+                    "bg-white rounded-xl border py-2 px-4 h-14 flex items-center gap-2 md:flex-1 justify-center",
+                    formData.timeMilestone === period.seconds
+                      ? "bg-orangy/10 text-orangy border-orangy"
+                      : "text-black"
+                  )}
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      timeMilestone: period.seconds, // Update the timeMilestone in atom state
+                      timeMilestoneValue: period.value,
+                    }))
+                  }
                 >
                   <p>{period.label}</p>
                 </Button>
@@ -380,6 +537,8 @@ function TimeVestingForm({ setStep }) {
                 classNames={{
                   inputWrapper: "h-12 bg-white shadow-none border",
                 }}
+                value={formData.telegramAdminUsername}
+                onChange={handleChange("telegramAdminUsername")}
               />
             </div>
           </div>
@@ -389,14 +548,34 @@ function TimeVestingForm({ setStep }) {
             <p>Marketing Channel</p>
             <div className="w-full flex flex-wrap gap-2">
               <Button
-                className="flex-1 bg-white h-20 border"
+                className={cnm(
+                  "flex-1 bg-white h-20 border",
+                  formData.marketingChannel === "twitter" &&
+                    "bg-orangy/10 border-orangy"
+                )}
                 variant="bordered"
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    marketingChannel: "twitter", // Update marketing channel
+                  }))
+                }
               >
                 X (Twitter) Post
               </Button>
               <Button
-                className="flex-1 bg-white h-20 border"
+                className={cnm(
+                  "flex-1 bg-white h-20 border",
+                  formData.marketingChannel === "telegram" &&
+                    "bg-orangy/10 border-orangy"
+                )}
                 variant="bordered"
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    marketingChannel: "telegram", // Update marketing channel
+                  }))
+                }
               >
                 Telegram Channel Post
               </Button>
@@ -413,6 +592,8 @@ function TimeVestingForm({ setStep }) {
                 classNames={{
                   inputWrapper: "bg-white shadow-none border p-4",
                 }}
+                value={formData.promotionalPostText}
+                onChange={handleChange("promotionalPostText")}
               />
             </div>
           </div>
@@ -427,6 +608,8 @@ function TimeVestingForm({ setStep }) {
                 dateInputClassNames={{
                   inputWrapper: "h-12 bg-white shadow-none border",
                 }}
+                value={selectedDate}
+                onChange={setSelectedDate}
               />
               <TimeInput
                 classNames={{
@@ -434,6 +617,8 @@ function TimeVestingForm({ setStep }) {
                 }}
                 className="max-w-32"
                 variant="bordered"
+                value={selectedTime}
+                onChange={setSelectedTime}
               />
             </div>
           </div>

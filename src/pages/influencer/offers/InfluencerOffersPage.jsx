@@ -1,6 +1,6 @@
 import { Button, Spinner } from "@nextui-org/react";
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK";
 import { useCookies } from "react-cookie";
 import { mutualAPI } from "../../../api/mutual";
@@ -176,7 +176,10 @@ function OfferCard({ order, mutate }) {
   };
 
   return (
-    <div className="flex items-center gap-4 p-3 border rounded-lg justify-between">
+    <Link
+      to={`/influencer/offers/${order.id}`}
+      className="flex items-center gap-4 p-3 border rounded-lg justify-between hover:bg-neutral-100"
+    >
       <div>
         <div className="flex items-center">
           <p className="font-medium">
@@ -238,6 +241,6 @@ function OfferCard({ order, mutate }) {
           </p>
         </div>
       )}
-    </div>
+    </Link>
   );
 }
