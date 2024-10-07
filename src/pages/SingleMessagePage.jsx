@@ -197,7 +197,7 @@ export default function SingleMessagePage() {
                           <p className="font-medium">
                             {otherUserDetail?.data.name || ""}
                           </p>
-                          {otherUserDetail.data?.messagesSent.status ===
+                          {otherUserDetail.data?.messagesSent?.status ===
                           "ONLINE" ? (
                             <div className="flex items-center gap-1 text-sm text-neutral-400">
                               <span className="size-2 bg-green-700 rounded-full"></span>

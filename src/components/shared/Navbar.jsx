@@ -31,7 +31,7 @@ export default function Navbar() {
     : "/assets/mutual_text_logo.png";
 
   return (
-    <nav className="flex items-center px-5 md:px-8 h-12 justify-between border-b border-black/20 overflow-hidden">
+    <nav className="flex items-center px-5 md:px-8 h-12 justify-between border-b border-black/20">
       <div className="flex h-full items-center">
         <Link to={"/"} className="text-xl font-medium">
           <img src={logoSrc} alt="mutual_logo" className="w-24" />

@@ -29,7 +29,7 @@ import ErrorPage from "./pages/error/ErrorPage.jsx";
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
-    errorElement: <ErrorPage />,
+    // errorElement: <ErrorPage />,
     children: [
       {
         path: "/",
