@@ -49,6 +49,7 @@ pub mod mutual_escrow {
         pub project_owner: Pubkey,
         pub kol: Pubkey,
         pub released_amount: u64,
+        pub claim_amount: u64,
         pub status: DealStatus,
     }
 
@@ -218,22 +219,28 @@ pub mod mutual_escrow {
         // Log the updated released amount for debugging
         msg!("Released amount after claim: {}", deal.released_amount);
 
-        // If full amount has been released, mark deal as completed
-        if deal.released_amount >= deal.amount {
-            deal.status = DealStatus::Completed;
-            msg!("Deal status: Completed");
+        // Determine the new status based on the released amount
+        let new_status = if deal.released_amount >= deal.amount {
+            DealStatus::Completed
         } else {
-            deal.status = DealStatus::PartialCompleted;
-            msg!("Deal status: PartialCompleted");
-        }
+            DealStatus::PartialCompleted
+        };
 
-        emit!(DealStatusChanged {
-            order_id: deal.order_id,
-            deal: deal.key(),
-            project_owner: deal.project_owner,
-            kol: deal.kol,
-            status: deal.status.clone(),
-        });
+        // Check if the status has changed before updating and emitting the event
+        if deal.status != new_status {
+            deal.status = new_status;
+
+            // Emit the event only if the status has changed
+            emit!(DealStatusChanged {
+                order_id: deal.order_id,
+                deal: deal.key(),
+                project_owner: deal.project_owner,
+                kol: deal.kol,
+                status: deal.status.clone(),
+            });
+        } else {
+            msg!("Deal status unchanged. No event emitted.");
+        }
 
         emit!(DealResolved {
             order_id: deal.order_id,
@@ -241,6 +248,7 @@ pub mod mutual_escrow {
             project_owner: deal.project_owner,
             kol: deal.kol,
             released_amount: deal.released_amount,
+            claim_amount: claimable_amount,
             status: deal.status.clone(),
         });
 
@@ -253,19 +261,25 @@ pub mod mutual_escrow {
     ) -> Result<()> {
         let deal = &mut ctx.accounts.deal;
 
+        // Ensure the signer is the admin of the escrow
         require!(
             ctx.accounts.signer.key() == ctx.accounts.escrow.admin,
             ErrorCode::UnauthorizedSigner
         );
 
-        // Set the done_obligation_time when eligibility changes to PartiallyEligible (the status when KOL finished the obligation)
-        if new_status == EligibilityStatus::PartiallyEligible {
+        // Set `done_obligation_time` if transitioning to `PartiallyEligible` or `FullyEligible` for the first time
+        if (new_status == EligibilityStatus::PartiallyEligible
+            || new_status == EligibilityStatus::FullyEligible)
+            && deal.done_obligation_time == 0
+        {
             deal.done_obligation_time = Clock::get()?.unix_timestamp;
             msg!("done_obligation_time set to: {}", deal.done_obligation_time);
         }
 
+        // Update the eligibility status
         deal.eligibility_status = new_status.clone();
 
+        // Emit event for the status update
         emit!(EligibilityStatusUpdated {
             order_id: deal.order_id,
             deal: deal.key(),
@@ -343,17 +357,14 @@ pub mod mutual_escrow {
         );
 
         // Calculate the claimable amount by subtracting the released amount from the vested amount
-        let claimable_amount = vested_amount
-            .checked_sub(deal.released_amount)
-            .ok_or(ErrorCode::ExceedsVestedAmount)?;
+        let claimable_amount = vested_amount.checked_sub(deal.released_amount).unwrap_or(0); // Instead of throwing an error, it will just return 0
 
         // Log the final claimable amount that will be returned
         msg!("Final claimable amount for the KOL: {}", claimable_amount);
 
-        // Return the claimable amount
+        // Return the claimable amount, ensuring no errors when it's zero
         Ok(claimable_amount)
     }
-
 }
 
 // Enums
@@ -715,9 +726,16 @@ fn calculate_vested_amount(
                     let remaining_amount = total_amount.checked_sub(max_claimable).unwrap_or(0);
 
                     // Calculate how much of the remaining amount is vested proportional to time
-                    let vested_remaining = (remaining_amount as u128 * elapsed_time as u128)
-                        / deal.vesting_duration as u128;
-                    let vested_remaining = vested_remaining as u64;
+                    let vested_remaining = if deal.vesting_duration == 0 {
+                        // If vesting_duration is 0, consider the entire remaining amount vested
+                        remaining_amount
+                    } else {
+                        // Otherwise, calculate the vested amount proportional to time
+                        let vested = (remaining_amount as u128 * elapsed_time as u128)
+                            / deal.vesting_duration as u128;
+                        vested as u64
+                    };
+
                     msg!("Vested portion of remaining amount: {}", vested_remaining);
 
                     // Ensure the vested remaining does not exceed the remaining amount
