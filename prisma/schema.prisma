@@ -184,8 +184,10 @@ model Token {
   imageUrl    String?
   description String?
   uriData     Json?
+  totalHolders Int @default(1)
 
   orders CampaignOrder[]
+  pair  Pair?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -193,9 +195,25 @@ model Token {
   @@unique([mintAddress, chainId])
 }
 
-// model Pair {
+model Pair {
+  id String @id @default(cuid())
 
-// }
+  tokenId String @unique
+  token   Token  @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  address String 
+  url     String
+  priceNative Float
+  priceUsd    Float
+  fdv         Float
+  marketCap   Float
+  liquidityUsd Float
+
+  info        Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
 model CampaignOrder {
   id      String @id
