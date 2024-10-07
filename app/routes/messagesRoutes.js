@@ -89,6 +89,16 @@ export const messagesRoutes = (app, _, done) => {
 
   async function updateUserStatus(userId, status) {
     try {
+      const existingUser = await prismaClient.userMessage.findFirst({
+        where: {
+          userId: userId,
+        }
+      })
+
+      if(!existingUser) {
+        return ""
+      }
+
       await prismaClient.userMessage.update({
         where: {
           userId: userId,
