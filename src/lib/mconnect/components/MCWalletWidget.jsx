@@ -2,19 +2,27 @@ import useMCWallet from "../hooks/useMCWallet.jsx";
 import { shortenId } from "../utils/formattingUtils.js";
 import { DropdownIcon, GoogleIcon } from "./ui/Icons.jsx";
 import { Menu, MenuButton, MenuItems, Transition } from "@headlessui/react";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect } from "react";
 import { Spinner } from "@nextui-org/react";
 import { useMCAuth } from "../hooks/useMCAuth.jsx";
+import { shortenAddress } from "../../../utils/string.js";
+import toast from "react-hot-toast";
+import { Copy, LogOut } from "lucide-react";
 
 export default function MCWalletWidget() {
-  const { address, wallet, isWalletLoading } = useMCWallet();
-  const { walletType, logout } = useMCAuth();
-  const [copied, setCopied] = useState(false);
+  const {
+    address,
+    wallet,
+    isWalletLoading,
+    getBalance,
+    balance,
+    isGetBalanceLoading,
+  } = useMCWallet();
+  const { walletType, logout, user } = useMCAuth();
 
   async function handleCopyAddress() {
     await navigator.clipboard.writeText(address);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    toast.success("Address Copied!");
   }
 
   return isWalletLoading || !address ? (
@@ -33,7 +41,11 @@ export default function MCWalletWidget() {
     </div>
   ) : (
     <Menu as="div" className="relative">
-      <MenuButton>
+      <MenuButton
+        onClick={async () => {
+          await getBalance();
+        }}
+      >
         <div className="flex items-center justify-center gap-2 rounded-full bg-white border-[1px] border-[#C9C9C9] p-1">
           {walletType == "MPC" ? (
             <GoogleIcon className="size-5" />
@@ -56,55 +68,103 @@ export default function MCWalletWidget() {
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
-        <MenuItems className="absolute right-0 mt-1 w-56 origin-top-right rounded-xl p-4 backdrop-blur-xl z-50 bg-white border-[1px] border-[#C9C9C9]">
+        <MenuItems className="absolute right-0 mt-1 py-4 origin-top-right rounded-xl backdrop-blur-xl z-50 bg-white border-[1px] border-[#C9C9C9]">
           <div className="flex flex-col items-start text-[#131523]">
-            <button
-              onClick={handleCopyAddress}
-              className="px-3 py-1.5 rounded-md hover:bg-black/5  w-full flex items-center gap-3"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="lucide lucide-copy"
-              >
-                <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-              </svg>
-              {copied ? "Copied!" : "Copy Address"}
-            </button>
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 px-4">
+              <div className="size-7">
+                {walletType == "MPC" ? (
+                  <GoogleIcon className="w-full h-full" />
+                ) : (
+                  <img
+                    src={wallet?.adapter?.icon}
+                    className="rounded-full h-full w-full"
+                  />
+                )}
+              </div>
 
-            <button
-              onClick={logout}
-              className="px-3 py-1.5 rounded-md hover:bg-black/5 w-full flex items-center gap-3"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="lucide lucide-unplug"
-              >
-                <path d="m19 5 3-3" />
-                <path d="m2 22 3-3" />
-                <path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z" />
-                <path d="M7.5 13.5 10 11" />
-                <path d="M10.5 16.5 13 14" />
-                <path d="m12 6 6 6 2.3-2.3a2.4 2.4 0 0 0 0-3.4l-2.6-2.6a2.4 2.4 0 0 0-3.4 0Z" />
-              </svg>
-              Logout
-            </button>
+              <div className="flex flex-col items-start">
+                {user.email && <h1 className="font-medium">{user.email}</h1>}
+                <p>{shortenAddress(address)}</p>
+              </div>
+
+              <div className="flex gap-2 ml-auto md:ml-4">
+                <button
+                  onClick={handleCopyAddress}
+                  className="rounded-full p-3 bg-[#E5E5E5] hover:bg-[#E5E5E5]/70  w-full flex items-center"
+                >
+                  <Copy size={16} />
+                </button>
+
+                <button
+                  onClick={logout}
+                  className="rounded-full p-3 bg-[#E5E5E5] hover:bg-[#E5E5E5]/70  w-full flex items-center"
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="h-[1px] w-full bg-[#C9C9C9] my-4" />
+
+            <div className="flex flex-col gap-4 w-full px-4">
+              <div className="flex items-center justify-between">
+                <h1>Holdings</h1>
+              </div>
+
+              {isGetBalanceLoading ? (
+                <div className="flex items-center justify-center h-40 w-full">
+                  <Spinner size="md" color="primary" />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-4 items-center">
+                      <div className="size-10 rounded-full overflow-hidden">
+                        <img
+                          src={balance?.nativeBalance?.imageUrl}
+                          alt="ic"
+                          className="h-full w-full"
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <p className="font-medium">
+                          {balance?.nativeBalance?.name}
+                        </p>
+                        <p>
+                          {balance?.nativeBalance?.amount} $
+                          {balance?.nativeBalance?.symbol}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {balance?.splBalance?.map((spl) => {
+                    return (
+                      <div
+                        key={spl.mint}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex gap-4 items-center">
+                          <div className="size-10 rounded-full overflow-hidden">
+                            <img
+                              src={spl?.token?.imageUrl}
+                              alt="ic"
+                              className="h-full w-full"
+                            />
+                          </div>
+                          <div className="flex flex-col">
+                            <p className="font-medium">{spl?.token?.name}</p>
+                            <p>
+                              {spl?.tokenAmount} ${spl?.token?.symbol}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </MenuItems>
       </Transition>

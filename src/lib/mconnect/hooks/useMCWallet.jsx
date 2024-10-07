@@ -9,28 +9,30 @@ export default function useMCWallet() {
   const [wallet, setWallet] = useState(null);
   const [isWalletLoading, setWalletLoading] = useState(false);
   const [balance, setBalance] = useState(false);
+  const [isGetBalanceLoading, setGetBalanceLoading] = useState(false);
 
   const { wallet: walletAdapter, connected, publicKey } = useWallet();
 
   useEffect(() => {
     const fetchWalletAddress = async () => {
-      if (walletType === "MPC" && portal && isLoggedIn) {
-        console.log(portal);
+      setWalletLoading(true);
+      try {
+        if (walletType === "MPC" && portal && isLoggedIn) {
+          console.log(portal);
 
-        setWalletLoading(true);
-        try {
           const solAddress = await portal.getSolanaAddress();
-          await getBalance();
           setAddress(solAddress);
-        } catch (error) {
-          console.error("Failed to fetch Solana address:", error);
-        } finally {
-          setWalletLoading(false);
+          await getBalance();
+        } else if (walletType === "EOA" && isLoggedIn && connected) {
+          setAddress(publicKey.toBase58());
+          setWallet(walletAdapter);
+
+          await getBalance();
         }
-      } else if (walletType === "EOA" && isLoggedIn && connected) {
-        await getBalance();
-        setAddress(publicKey.toBase58());
-        setWallet(walletAdapter);
+      } catch (error) {
+        console.error("Failed to fetch Solana address:", error);
+      } finally {
+        setWalletLoading(false);
       }
     };
 
@@ -38,11 +40,19 @@ export default function useMCWallet() {
   }, [portal, isLoggedIn, walletType, connected, publicKey, walletAdapter]);
 
   async function getBalance() {
+    setGetBalanceLoading(true);
     try {
-      const res = await mutualAPI.get("/balance");
-      setBalance(res.data.data.balance);
+      if (address && chain) {
+        const res = await mutualAPI.get(
+          `/wallet/portfolio?walletAddress=${address}&chainId=${chain.chainId}`
+        );
+        setBalance(res.data);
+        return res.data;
+      }
     } catch (error) {
       console.error("Failed to get balance", error);
+    } finally {
+      setGetBalanceLoading(false);
     }
   }
 
@@ -70,8 +80,10 @@ export default function useMCWallet() {
   return {
     wallet,
     address,
+    getBalance,
     balance,
     signSolanaTxWithPortal,
     isWalletLoading,
+    isGetBalanceLoading,
   };
 }
