@@ -115,6 +115,7 @@ export const authRoutes = (app, _, done) => {
 
       const token = jwt.sign(
         {
+          id: user.id,
           address: wallet.address,
         },
         process.env.JWT_SECRET,
@@ -155,6 +156,7 @@ export const authRoutes = (app, _, done) => {
 
       const token = jwt.sign(
         {
+          id: user.id,
           address: user.wallet.address,
         },
         process.env.JWT_SECRET,
