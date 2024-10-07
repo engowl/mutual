@@ -193,18 +193,20 @@ export const messagesRoutes = (app, _, done) => {
           });
         }
 
-        console.log({ redisMessages });
+        // console.log({ redisMessages });
 
-        const allMessages = [
-          ...(redisMessages.length > 0 ? redisMessages : []),
-        ];
+        const allMessages = [...redisMessages];
 
         const finalMessages = allMessages.map((message) => ({
           ...message,
           role: message.senderId === userId ? "user" : "other",
         }));
 
-        const groupedMessages = finalMessages.reduce((acc, message) => {
+        const sortedMessages = finalMessages.sort(
+          (a, b) => new Date(a.sentAt) - new Date(b.sentAt)
+        );
+
+        const groupedMessages = sortedMessages.reduce((acc, message) => {
           const day = dayjs(message.sentAt).tz(timezone).format("YYYY-MM-DD");
           if (!acc[day]) {
             acc[day] = [];
