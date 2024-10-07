@@ -57,7 +57,7 @@ model UserWallet {
 model ProjectOwner {
   id             String           @id @default(cuid())
   userId         String           @unique
-  user           User             @relation(fields: [userId], references: [id])
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   telegramAdmin  String?
   projectDetails ProjectDetails[]
   orders         CampaignOrder[]
@@ -75,23 +75,23 @@ model ProjectDetails {
   holders           Int?
 
   projectOwnerId String       @unique
-  projectOwner   ProjectOwner @relation(fields: [projectOwnerId], references: [id])
+  projectOwner   ProjectOwner @relation(fields: [projectOwnerId], references: [id], onDelete: Cascade)
 
   twitterAccountId String?
-  twitterAccount   TwitterAccount? @relation(fields: [twitterAccountId], references: [id])
+  twitterAccount   TwitterAccount? @relation(fields: [twitterAccountId], references: [id], onDelete: Cascade)
 }
 
 // Influencer (KOL) Model
 model Influencer {
   id               String            @id @default(cuid())
-  user             User              @relation(fields: [userId], references: [id])
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId           String            @unique
   telegramLink     String?
   projectCriterias ProjectCriteria[]
   packages         Package[]
 
   twitterAccountId String?
-  twitterAccount   TwitterAccount? @relation(fields: [twitterAccountId], references: [id])
+  twitterAccount   TwitterAccount? @relation(fields: [twitterAccountId], references: [id], onDelete: Cascade)
 
   orders CampaignOrder[]
 }
@@ -99,7 +99,7 @@ model Influencer {
 // Project Criteria for Influencers (KOL)
 model ProjectCriteria {
   id             String             @id @default(cuid())
-  influencer     Influencer         @relation(fields: [influencerId], references: [id])
+  influencer     Influencer         @relation(fields: [influencerId], references: [id], onDelete: Cascade)
   influencerId   String
   riskPreference RiskPreferenceEnum
   tokenAge       TokenAgeEnum
@@ -112,7 +112,7 @@ model ProjectCriteria {
 
 model Package {
   id           String       @id @default(cuid())
-  influencer   Influencer   @relation(fields: [influencerId], references: [id])
+  influencer   Influencer   @relation(fields: [influencerId], references: [id], onDelete: Cascade)
   influencerId String
   type         PostTypeEnum
   price        Float
@@ -241,7 +241,7 @@ model CampaignOrder {
   chainId CHAIN  @default(DEVNET)
 
   projectOwnerId String
-  projectOwner   ProjectOwner @relation(fields: [projectOwnerId], references: [id])
+  projectOwner   ProjectOwner @relation(fields: [projectOwnerId], references: [id], onDelete: Cascade)
 
   influencerId String
   influencer   Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
@@ -270,7 +270,7 @@ model CampaignPost {
   id String @id @default(cuid())
 
   campaignOrderId String @unique
-  order           CampaignOrder @relation(fields: [campaignOrderId], references: [id])
+  order           CampaignOrder @relation(fields: [campaignOrderId], references: [id], onDelete: Cascade)
 
   postId   String
   postUrl  String
@@ -308,9 +308,9 @@ model UserConversation {
   lastMessage String
 
   userId      String
-  user        UserMessage @relation("UserConversations", fields: [userId], references: [userId])
+  user        UserMessage @relation("UserConversations", fields: [userId], references: [userId], onDelete: Cascade)
   otherUserId String
-  otherUser   UserMessage @relation("OtherUserConversations", fields: [otherUserId], references: [userId])
+  otherUser   UserMessage @relation("OtherUserConversations", fields: [otherUserId], references: [userId], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -324,7 +324,7 @@ model UserMessage {
   status UserOnlineStatus @default(OFFLINE)
 
   userId String @unique
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
@@ -348,9 +348,9 @@ model Message {
 
   sentAt         DateTime    @default(now())
   senderTimezone String
-  sender         UserMessage @relation("SentMessages", fields: [senderId], references: [id])
+  sender         UserMessage @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
   senderId       String
-  receiver       UserMessage @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  receiver       UserMessage @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
   receiverId     String
 
   createdAt DateTime @default(now())
