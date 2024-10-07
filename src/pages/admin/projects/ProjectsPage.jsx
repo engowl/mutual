@@ -57,7 +57,7 @@ function ProjectsList() {
             status === "new" ? "text-black" : "text-neutral-500"
           }`}
         >
-          New
+          Pending
         </button>
         <button
           onClick={() => setStatus("past")}
@@ -65,7 +65,7 @@ function ProjectsList() {
             status === "past" ? "text-black" : "text-neutral-500"
           }`}
         >
-          Past
+          Registered
         </button>
       </div>
       <div className="w-full mt-1 bg-white rounded-2xl border p-4 h-[447px] overflow-y-auto">

@@ -31,7 +31,7 @@ import ContactAdminMessagePage from "./pages/contact/ContactAdminMessage.jsx";
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
-    errorElement: <ErrorPage />,
+    // errorElement: <ErrorPage />,
     children: [
       {
         path: "/",
