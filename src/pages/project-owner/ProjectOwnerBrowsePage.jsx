@@ -109,7 +109,7 @@ export default function ProjectOwnerBrowsePage() {
               <div className="w-full flex justify-between items-center">
                 <p className="text-neutral-100">${tokenInfo?.symbol}</p>
               </div>
-              {tokenInfo.imageUrl ? (
+              {tokenInfo?.imageUrl ? (
                 <div className="size-12  rounded-full">
                   <img
                     src={tokenInfo.imageUrl}
