@@ -25,6 +25,8 @@ import ProjectOwnerSingleMessagePage from "./pages/project-owner/ProjectOwnerSin
 import MessagePage from "./pages/MessagePage.jsx";
 import SingleMessagePage from "./pages/SingleMessagePage.jsx";
 import ErrorPage from "./pages/error/ErrorPage.jsx";
+import AdminMessagePage from "./pages/admin/AdminMessage.jsx";
+import ContactAdminMessagePage from "./pages/contact/ContactAdminMessage.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -173,8 +175,13 @@ export const router = createBrowserRouter([
           },
         ],
       },
+      {
+        path: "/contact/admin",
+        element: <ContactAdminMessagePage />,
+      },
     ],
   },
+
   {
     element: <AdminLayout />,
     children: [
@@ -189,6 +196,10 @@ export const router = createBrowserRouter([
       {
         path: "/__admin/kol",
         element: <KolPage />,
+      },
+      {
+        path: "/__admin/message",
+        element: <AdminMessagePage />,
       },
     ],
   },
