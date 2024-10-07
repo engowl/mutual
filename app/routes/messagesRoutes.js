@@ -51,11 +51,7 @@ export const messagesRoutes = (app, _, done) => {
         const messageId = `${Date.now()}`;
         const messageKey = `message:conversation:${sortedId}:${messageId}`;
 
-        const res = await redis.hmset(messageKey, messageData);
-        console.log({ res });
-        await redis.expire(messageKey, 3600);
-
-        console.log({ messageKey, content, senderId, receiverId });
+        await redis.hmset(messageKey, messageData);
 
         const receiverSocketId = activeUsers.get(receiverId);
         const senderSocketId = activeUsers.get(senderId);

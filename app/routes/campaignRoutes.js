@@ -1,4 +1,10 @@
-import { CHAINS, MINIMUM_POST_LIVE_IN_MINUTES, OFFER_EXPIRY_IN_MINUTES, PARTIAL_UNLOCK_PERCENTAGE, VESTING_CONFIG } from "../../config.js";
+import {
+  CHAINS,
+  MINIMUM_POST_LIVE_IN_MINUTES,
+  OFFER_EXPIRY_IN_MINUTES,
+  PARTIAL_UNLOCK_PERCENTAGE,
+  VESTING_CONFIG,
+} from "../../config.js";
 import { prismaClient } from "../db/prisma.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import {
@@ -6,7 +12,11 @@ import {
   validateVestingCondition,
 } from "../utils/campaignUtils.js";
 import { getCreateDealTxDetails } from "../lib/contract/mutualEscrowContract.js";
-import { parseAccountData, prepareOrderId, validateTokenAmount } from "../utils/contractUtils.js";
+import {
+  parseAccountData,
+  prepareOrderId,
+  validateTokenAmount,
+} from "../utils/contractUtils.js";
 import { adminKp, MUTUAL_ESCROW_PROGRAM } from "../lib/contract/contracts.js";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import * as splToken from "@solana/spl-token";
@@ -496,45 +506,49 @@ export const campaignRoutes = (app, _, done) => {
     }
   );
 
-  app.get('/:orderId/detail', {
-    preHandler: [authMiddleware]
-  }, async (req, reply) => {
-    try {
-      const { user } = req
-      const { orderId } = req.params
+  app.get(
+    "/:orderId/detail",
+    {
+      preHandler: [authMiddleware],
+    },
+    async (req, reply) => {
+      try {
+        const { user } = req;
+        const { orderId } = req.params;
 
-      const order = await prismaClient.campaignOrder.findUnique({
-        where: {
-          id: orderId
-        },
-        include: {
-          influencer: {
-            include: {
-              user: true
-            }
+        const order = await prismaClient.campaignOrder.findUnique({
+          where: {
+            id: orderId,
           },
-          projectOwner: {
-            include: {
-              user: true
-            }
+          include: {
+            influencer: {
+              include: {
+                user: true,
+              },
+            },
+            projectOwner: {
+              include: {
+                user: true,
+              },
+            },
+            token: true,
+            post: true,
           },
-          token: true,
-          post: true
+        });
+
+        if (!order) {
+          return reply.status(400).send({ message: "Order not found" });
         }
-      })
 
-      if (!order) {
-        return reply.status(400).send({ message: "Order not found" });
+        return reply.send(order);
+      } catch (error) {
+        console.error("Error fetching order detail:", error);
+        return reply.status(500).send({
+          message: error?.message || "Internal server error",
+        });
       }
-
-      return reply.send(order)
-    } catch (error) {
-      console.error("Error fetching order detail:", error);
-      return reply.status(500).send({
-        message: error?.message || "Internal server error",
-      });
     }
-  });
+  );
 
   app.get("/:orderId/contract-logs", async (req, reply) => {
     try {
@@ -542,18 +556,18 @@ export const campaignRoutes = (app, _, done) => {
 
       const order = await prismaClient.campaignOrder.findUnique({
         select: {
-          id: true
+          id: true,
         },
         where: {
           id: orderId,
-        }
+        },
       });
 
       if (!order) {
         return reply.status(400).send({ message: "Order not found" });
       }
 
-      const logs = await generateEventLogs(order.id)
+      const logs = await generateEventLogs(order.id);
 
       return reply.send(logs);
     } catch (error) {
@@ -574,9 +588,9 @@ export const campaignRoutes = (app, _, done) => {
       try {
         await validateRequiredFields(
           request.body,
-          ['orderId', 'twitterPostLink'],
+          ["orderId", "twitterPostLink"],
           reply
-        )
+        );
 
         const { user } = request;
         const { twitterPostLink, orderId } = request.body;
@@ -588,8 +602,8 @@ export const campaignRoutes = (app, _, done) => {
             id: orderId,
             influencer: {
               userId: user.id,
-            }
-          }
+            },
+          },
         });
 
         if (!order) {
@@ -599,16 +613,22 @@ export const campaignRoutes = (app, _, done) => {
         const tweetId = twitterPostLink.split("/").pop();
         console.log("Tweet ID:", tweetId);
 
-        if(!tweetId) {
+        if (!tweetId) {
           return reply.status(400).send({ message: "Invalid tweet link" });
         }
 
         const tweet = await unTwitterApiGetTweet({
-          tweetId: tweetId
+          tweetId: tweetId,
         }).catch((e) => {
           console.error("Error fetching tweet:", e);
-          return reply.status(400).send({ message: "Error while fetching tweet" });
+          return reply
+            .status(400)
+            .send({ message: "Error while fetching tweet" });
         });
+
+        if (!tweet) {
+          return reply.status(400).send({ message: "Tweet not found" });
+        }
 
         console.log("Tweet:", tweet);
 
@@ -625,22 +645,22 @@ export const campaignRoutes = (app, _, done) => {
             postUrl: twitterPostLink,
             postedTimeUnix: tweet.tweet.created_at,
             text: tweet.tweet.full_text,
-            data: tweet.tweet
+            data: tweet.tweet,
           },
           update: {
             postId: tweet.tweet.id_str,
             postUrl: twitterPostLink,
             postedTimeUnix: tweet.tweet.created_at,
             text: tweet.tweet.full_text,
-            data: tweet.tweet
-          }
-        })
+            data: tweet.tweet,
+          },
+        });
 
         return reply.send(posted);
       } catch (error) {
         console.error("Error submitting work:", error);
         return reply.status(500).send({
-          message: error?.message || "Internal server error",
+          message: "Internal server error",
         });
       }
     }
@@ -770,114 +790,121 @@ export const campaignRoutes = (app, _, done) => {
     }
   );
 
-  app.post("/:orderId/claim", {
-    preHandler: [authMiddleware],
-  }, async (req, reply) => {
-    try {
-      const { user } = req;
-      console.log("Claiming tokens");
+  app.post(
+    "/:orderId/claim",
+    {
+      preHandler: [authMiddleware],
+    },
+    async (req, reply) => {
+      try {
+        const { user } = req;
+        console.log("Claiming tokens");
 
-      const order = await prismaClient.campaignOrder.findUnique({
-        where: {
-          id: req.params.orderId,
-          influencer: {
-            userId: user.id,
+        const order = await prismaClient.campaignOrder.findUnique({
+          where: {
+            id: req.params.orderId,
+            influencer: {
+              userId: user.id,
+            },
           },
-        },
-        include: {
-          projectOwner: {
-            include: {
-              user: {
-                include: {
-                  wallet: true,
+          include: {
+            projectOwner: {
+              include: {
+                user: {
+                  include: {
+                    wallet: true,
+                  },
                 },
               },
             },
-          },
-          influencer: {
-            include: {
-              user: {
-                include: {
-                  wallet: true,
+            influencer: {
+              include: {
+                user: {
+                  include: {
+                    wallet: true,
+                  },
                 },
               },
             },
+            token: true,
           },
-          token: true,
-        },
-      });
+        });
 
-      if (!order) {
-        return reply.status(400).send({ message: "Order not found" });
+        if (!order) {
+          return reply.status(400).send({ message: "Order not found" });
+        }
+        const chain = CHAINS.find((c) => c.dbChainId === order.chainId);
+
+        const orderIdBuffer = prepareOrderId(order.id);
+
+        const kolPublicKey = new PublicKey(
+          order.influencer.user.wallet.address
+        );
+        const projectOwnerPublicKey = new PublicKey(
+          order.projectOwner.user.wallet.address
+        );
+        const mintPublicKey = new PublicKey(order.token.mintAddress);
+
+        const program = MUTUAL_ESCROW_PROGRAM(chain.id);
+
+        const [dealPda] = PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("deal"),
+            orderIdBuffer,
+            projectOwnerPublicKey.toBuffer(),
+            kolPublicKey.toBuffer(),
+            mintPublicKey.toBuffer(),
+          ],
+          program.programId
+        );
+        const [escrowPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from("escrow")],
+          program.programId
+        );
+        const [vaultTokenAccountPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from("vault_token_account"), mintPublicKey.toBuffer()],
+          program.programId
+        );
+
+        const [vaultAuthorityPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from("vault_authority")],
+          program.programId
+        );
+
+        const kolTokenAccount = await splToken.getAssociatedTokenAddress(
+          mintPublicKey,
+          kolPublicKey
+        );
+
+        const txHash = await program.methods
+          .resolveDeal()
+          .accounts({
+            deal: dealPda,
+            escrow: escrowPda,
+            signer: adminKp.publicKey,
+            vaultTokenAccount: vaultTokenAccountPda,
+            vaultAuthority: vaultAuthorityPda,
+            kolTokenAccount: kolTokenAccount,
+            tokenProgram: splToken.TOKEN_PROGRAM_ID,
+          })
+          .signers([adminKp])
+          .rpc({ commitment: "confirmed" });
+        console.log("Claim txHash:", txHash);
+
+        // TODO: Claimed amount
+
+        return reply.send({
+          txHash: txHash,
+          claimedAmount: 123456,
+        });
+      } catch (error) {
+        console.error("Error claiming tokens:", error);
+        return reply.status(500).send({
+          message: error?.message || "Internal server error",
+        });
       }
-      const chain = CHAINS.find((c) => c.dbChainId === order.chainId);
-
-      const orderIdBuffer = prepareOrderId(order.id);
-
-      const kolPublicKey = new PublicKey(order.influencer.user.wallet.address);
-      const projectOwnerPublicKey = new PublicKey(order.projectOwner.user.wallet.address);
-      const mintPublicKey = new PublicKey(order.token.mintAddress);
-
-      const program = MUTUAL_ESCROW_PROGRAM(chain.id);
-
-      const [dealPda] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("deal"),
-          orderIdBuffer,
-          projectOwnerPublicKey.toBuffer(),
-          kolPublicKey.toBuffer(),
-          mintPublicKey.toBuffer(),
-        ],
-        program.programId
-      );
-      const [escrowPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("escrow")],
-        program.programId
-      );
-      const [vaultTokenAccountPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("vault_token_account"), mintPublicKey.toBuffer()],
-        program.programId
-      );
-
-      const [vaultAuthorityPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("vault_authority")],
-        program.programId
-      );
-
-      const kolTokenAccount = await splToken.getAssociatedTokenAddress(
-        mintPublicKey,
-        kolPublicKey
-      );
-
-      const txHash = await program.methods
-        .resolveDeal()
-        .accounts({
-          deal: dealPda,
-          escrow: escrowPda,
-          signer: adminKp.publicKey,
-          vaultTokenAccount: vaultTokenAccountPda,
-          vaultAuthority: vaultAuthorityPda,
-          kolTokenAccount: kolTokenAccount,
-          tokenProgram: splToken.TOKEN_PROGRAM_ID,
-        })
-        .signers([adminKp])
-        .rpc({ commitment: "confirmed" });
-      console.log("Claim txHash:", txHash);
-
-
-      // TODO: Claimed amount
-
-      return reply.send({
-        txHash: txHash,
-        claimedAmount: 123456
-      });
-    } catch (error) {
-      console.error("Error claiming tokens:", error);
-      return reply.status(500).send({
-        message: error?.message || "Internal server error",
-      });
     }
-  })
+  );
 
   // TODO: Check claimable tokens
   app.get(
@@ -960,7 +987,7 @@ export const campaignRoutes = (app, _, done) => {
         );
 
         const dealData = await program.account.deal.fetch(dealPda);
-        const dealSchema = program.idl.accounts.find(a => a.name === 'Deal');
+        const dealSchema = program.idl.accounts.find((a) => a.name === "Deal");
         // console.log("Deal Data:", parseAccountData(dealData, dealSchema));
         const parsedDealData = parseAccountData(dealData, dealSchema);
         console.log("Parsed Deal Data:", parsedDealData);
@@ -987,23 +1014,29 @@ export const campaignRoutes = (app, _, done) => {
 
         let claimInfo = {};
 
-        const isNotEligible = parsedDealData.eligibilityStatus === "notEligible";
-        const isPartiallyEligible = parsedDealData.eligibilityStatus === "partiallyEligible";
-        const isFullyEligible = parsedDealData.eligibilityStatus === "fullyEligible";
+        const isNotEligible =
+          parsedDealData.eligibilityStatus === "notEligible";
+        const isPartiallyEligible =
+          parsedDealData.eligibilityStatus === "partiallyEligible";
+        const isFullyEligible =
+          parsedDealData.eligibilityStatus === "fullyEligible";
 
         // Calculate the partial and total unlock amounts
-        const partialUnlockAmount = (order.tokenAmount * PARTIAL_UNLOCK_PERCENTAGE) / 100;
+        const partialUnlockAmount =
+          (order.tokenAmount * PARTIAL_UNLOCK_PERCENTAGE) / 100;
         const totalAmount = order.tokenAmount;
 
         // Common logic for both NONE and MARKETCAP vesting types
-        const canClaimPartial = isPartiallyEligible && new BN(claimableAmount).gt(new BN(0));
-        const canClaimFull = isFullyEligible && new BN(claimableAmount).gt(new BN(0));
+        const canClaimPartial =
+          isPartiallyEligible && new BN(claimableAmount).gt(new BN(0));
+        const canClaimFull =
+          isFullyEligible && new BN(claimableAmount).gt(new BN(0));
 
-        let mediaLabel
+        let mediaLabel;
         if (order.channel === "TWITTER") {
-          mediaLabel = "Tweet"
+          mediaLabel = "Tweet";
         } else if (order.channel === "TELEGRAM") {
-          mediaLabel = "Telegram Post"
+          mediaLabel = "Telegram Post";
         }
 
         if (order.vestingType === "NONE") {
@@ -1016,9 +1049,11 @@ export const campaignRoutes = (app, _, done) => {
                   phaseName: "Final Unlock",
                   amount: totalAmount,
                   amountLabel: `${totalAmount} $${order.token.symbol}`,
-                  conditionLabel: `Claimable ${MINIMUM_POST_LIVE_IN_MINUTES / 60} hours after the ${mediaLabel} is posted`,
-                  isClaimable: false
-                }
+                  conditionLabel: `Claimable ${
+                    MINIMUM_POST_LIVE_IN_MINUTES / 60
+                  } hours after the ${mediaLabel} is posted`,
+                  isClaimable: false,
+                },
               ],
             };
           } else if (isFullyEligible) {
@@ -1030,12 +1065,15 @@ export const campaignRoutes = (app, _, done) => {
                   amount: totalAmount,
                   amountLabel: `${totalAmount} $${order.token.symbol}`,
                   conditionLabel: `You can claim the full amount of ${totalAmount} tokens now.`,
-                  isClaimable: canClaimFull
-                }
+                  isClaimable: canClaimFull,
+                },
               ],
             };
           } else {
-            console.log("Invalid eligibility status:", parsedDealData.eligibilityStatus);
+            console.log(
+              "Invalid eligibility status:",
+              parsedDealData.eligibilityStatus
+            );
           }
         } else if (order.vestingType === "MARKETCAP") {
           // Market Cap-based vesting logic
@@ -1048,15 +1086,17 @@ export const campaignRoutes = (app, _, done) => {
                   amount: partialUnlockAmount,
                   amountLabel: `${partialUnlockAmount} $${order.token.symbol}`,
                   conditionLabel: `Claim after the ${mediaLabel} is posted`,
-                  isClaimable: canClaimPartial
+                  isClaimable: canClaimPartial,
                 },
                 {
                   phaseName: "Final Unlock",
                   amount: totalAmount - partialUnlockAmount,
-                  amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol}`,
+                  amountLabel: `${totalAmount - partialUnlockAmount} $${
+                    order.token.symbol
+                  }`,
                   conditionLabel: `Claim after $${order.token.symbol} reaches the target ... market cap`,
-                  isClaimable: false
-                }
+                  isClaimable: false,
+                },
               ],
             };
           } else if (isFullyEligible) {
@@ -1068,12 +1108,15 @@ export const campaignRoutes = (app, _, done) => {
                   amount: totalAmount,
                   amountLabel: `${totalAmount} $${order.token.symbol}`,
                   conditionLabel: `You can claim the full amount of ${totalAmount} tokens now.`,
-                  isClaimable: canClaimFull
-                }
+                  isClaimable: canClaimFull,
+                },
               ],
             };
           } else {
-            console.log("Invalid eligibility status:", parsedDealData.eligibilityStatus);
+            console.log(
+              "Invalid eligibility status:",
+              parsedDealData.eligibilityStatus
+            );
           }
         } else if (order.vestingType === "TIME") {
           // Time-based vesting logic
@@ -1085,15 +1128,17 @@ export const campaignRoutes = (app, _, done) => {
                   amount: partialUnlockAmount,
                   amountLabel: `${partialUnlockAmount} $${order.token.symbol}`,
                   conditionLabel: `Claim after the ${mediaLabel} is posted`,
-                  isClaimable: canClaimPartial
+                  isClaimable: canClaimPartial,
                 },
                 {
                   phaseName: "Final Unlock",
                   amount: totalAmount - partialUnlockAmount,
-                  amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol} `,
+                  amountLabel: `${totalAmount - partialUnlockAmount} $${
+                    order.token.symbol
+                  } `,
                   conditionLabel: `Claim after the vesting period ends`,
-                  isClaimable: false
-                }
+                  isClaimable: false,
+                },
               ],
             };
           } else if (isFullyEligible) {
@@ -1106,12 +1151,15 @@ export const campaignRoutes = (app, _, done) => {
                   amount: totalAmount,
                   amountLabel: `${formattedAmount} $${order.token.symbol} `,
                   conditionLabel: `You can claim ${formattedAmount} tokens now.`,
-                  isClaimable: canClaimFull
-                }
+                  isClaimable: canClaimFull,
+                },
               ],
             };
           } else {
-            console.log("Invalid eligibility status:", parsedDealData.eligibilityStatus);
+            console.log(
+              "Invalid eligibility status:",
+              parsedDealData.eligibilityStatus
+            );
           }
         }
 
