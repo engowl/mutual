@@ -181,10 +181,11 @@ function OfferCard({ order, mutate }) {
 
   function handleNavigation(e) {
     e.stopPropagation();
+    navigate(`/influencer/offers/${order.id}`);
   }
 
   return (
-    <Link
+    <button
       to={`/influencer/offers/${order.id}`}
       onClick={handleNavigation}
       className="flex items-center gap-4 p-3 border rounded-lg justify-between hover:bg-neutral-100"
@@ -260,6 +261,6 @@ function OfferCard({ order, mutate }) {
           </p>
         </div>
       )}
-    </Link>
+    </button>
   );
 }

@@ -7,16 +7,13 @@ import dayjs from "dayjs";
 import useSWR from "swr";
 import { motion } from "framer-motion";
 import { Button, Spinner } from "@nextui-org/react";
-import { useMCAuth } from "../lib/mconnect/hooks/useMCAuth";
-import { mutualAPI } from "../api/mutual";
-import { BACKEND_URL } from "../config";
-import { cnm } from "../utils/style";
-import RandomAvatar from "../components/ui/RandomAvatar";
+import { useMCAuth } from "../../lib/mconnect/hooks/useMCAuth";
+import { mutualAPI } from "../../api/mutual";
+import { BACKEND_URL } from "../../config";
+import RandomAvatar from "../../components/ui/RandomAvatar";
+import { cnm } from "../../utils/style";
 
 export default function ContactAdminMessagePage() {
-  const params = useParams();
-  const receiverId = params.receiverId;
-
   const [newMessage, setNewMessage] = useState("");
   const { user } = useMCAuth();
   const [socket, setSocket] = useState(null);
@@ -29,15 +26,23 @@ export default function ContactAdminMessagePage() {
     isLoading,
     mutate: mutateMessagesHistory,
   } = useSWR(
-    user && receiverId
-      ? `/messages/conversation/${user.id}/${receiverId}?timezone=UTC`
-      : null,
+    user ? `/messages/conversation-admin/${user.id}?timezone=UTC` : null,
     async (url) => {
       console.log({ url }, "messages");
       const { data } = await mutualAPI.get(url);
       return data;
     }
   );
+
+  const {
+    data: adminDetail,
+    isLoading: isLoadingAdminDetail,
+    mutate: mutateAdminDetail,
+  } = useSWR(`/messages/admin-detail`, async (url) => {
+    console.log({ url }, "messages");
+    const { data } = await mutualAPI.get(url);
+    return data;
+  });
 
   console.log("MESSAGE TEST", {
     messagesHistory,
@@ -52,30 +57,6 @@ export default function ContactAdminMessagePage() {
     }));
   }, [messagesHistory]);
 
-  const { data: conversations, mutate: mutateConversations } = useSWR(
-    user ? `/messages/conversations/${user.id}` : null,
-    async (url) => {
-      const { data } = await mutualAPI.get(url);
-      return data;
-    }
-  );
-
-  const {
-    data: otherUserDetail,
-    isLoading: otherUserDetailLoading,
-    mutate: mutateOtherUserDetails,
-  } = useSWR(
-    receiverId ? `/messages/other-user-details/${receiverId}` : null,
-    async (url) => {
-      console.log({ url });
-      const { data } = await mutualAPI.get(url);
-      return data;
-    }
-  );
-
-  console.log({ otherUserDetail });
-  console.log({ conversations });
-
   useEffect(() => {
     if (!user) return;
     const socket = io(`${BACKEND_URL}`);
@@ -89,6 +70,7 @@ export default function ContactAdminMessagePage() {
     if (!socket || !user) return;
 
     socket.on("connect", () => {
+      toast.success("Connected to message service");
       socket.emit("join", { userId: user.id });
       setSocketConnected(true);
     });
@@ -99,11 +81,12 @@ export default function ContactAdminMessagePage() {
 
     socket.on("userStatusChange", () => {
       console.log("userStatusChange");
-      mutateOtherUserDetails();
+      mutateAdminDetail();
     });
 
     // TODO change to admin-message
-    socket.on("personal-message", (data) => {
+    socket.on("admin-message", (data) => {
+      toast(`${JSON.stringify(data)}`);
       setMessages((currentMessages) => {
         const currentDate = dayjs().format("YYYY-MM-DD");
         return {
@@ -115,14 +98,13 @@ export default function ContactAdminMessagePage() {
               content: data.content,
               senderId: data.senderId,
               receiverId: data.receiverId,
-              role: data.senderId === user.id ? "user" : "other",
+              role: data.senderId === "__admin" ? "admin" : "other",
               sentAt: new Date().toISOString(),
             },
           ],
         };
       });
       mutateMessagesHistory();
-      mutateConversations();
     });
 
     return () => {
@@ -130,25 +112,26 @@ export default function ContactAdminMessagePage() {
     };
   }, [socket, user]);
 
+  console.log({ adminDetail });
+
   function sendMessage() {
     console.log({ newMessage });
 
-    if (!receiverId) {
-      return toast.error("User not found");
+    if (!user.id) {
+      return toast.error("Your user data is not found");
     }
 
     if (!newMessage) {
       return toast.error("Please enter a message");
     }
 
-    socket.emit("personal-message", {
+    socket.emit("admin-message", {
       senderId: user.id,
-      receiverId: receiverId,
+      receiverId: "__admin",
       content: newMessage,
       role: "user",
     });
     setNewMessage("");
-    mutateConversations();
   }
 
   if (!socketConnected) {
@@ -175,31 +158,31 @@ export default function ContactAdminMessagePage() {
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
       <div className="w-full max-w-3xl flex flex-col py-20">
-        <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6 h-full">
+        <div className="w-full flex flex-col items-center justify-center gap-4 h-full">
           {/* Message Box */}
+          <h1 className="text-xl font-medium">Admin Message</h1>
           <div className="p-6 border rounded-2xl bg-white w-full ml-6">
-            {isLoading || otherUserDetailLoading ? (
+            {isLoading || isLoadingAdminDetail ? (
               <div className="w-full h-[450px] flex items-center justify-center">
                 <Spinner size="md" color="primary" />
               </div>
             ) : (
               <>
-                {otherUserDetail ? (
+                {adminDetail ? (
                   <div className="w-full">
                     <div className="w-full flex items-center justify-between">
                       <div className="flex gap-4">
                         <div className="size-10 bg-neutral-200 rounded-full">
                           <RandomAvatar
-                            seed={otherUserDetail?.data.name || ""}
+                            seed={"admin"}
                             className="w-full h-full"
                           />
                         </div>
                         <div>
                           <p className="font-medium">
-                            {otherUserDetail?.data.name || ""}
+                            {adminDetail.data.name || ""}
                           </p>
-                          {otherUserDetail.data?.messagesSent.status ===
-                          "ONLINE" ? (
+                          {adminDetail.data?.message.status === "ONLINE" ? (
                             <div className="flex items-center gap-1 text-sm text-neutral-400">
                               <span className="size-2 bg-green-700 rounded-full"></span>
                               <p>Active Now</p>
@@ -230,7 +213,6 @@ export default function ContactAdminMessagePage() {
                       setNewMessage={setNewMessage}
                       sendMessage={sendMessage}
                       isLoading={isLoading}
-                      selectedMessageUserId={receiverId}
                     />
                   </div>
                 ) : (
@@ -270,7 +252,7 @@ function MessageChat({
     sendMessage();
   };
 
-  console.log(Object.entries(messages));
+  // console.log(Object.entries(messages));
 
   return (
     <div className="mt-4 rounded-2xl bg-creamy-300 h-[412px] relative overflow-hidden">
@@ -304,18 +286,14 @@ function MessageChat({
                     <div
                       className={cnm(
                         "flex items-end gap-2",
-                        msg.role === "user"
-                          ? "ml-auto flex-row-reverse"
-                          : "mr-auto"
+                        msg.role === "admin"
+                          ? "mr-auto"
+                          : "ml-auto flex-row-reverse"
                       )}
                     >
                       <div className="size-6 rounded-full overflow-hidden">
                         <RandomAvatar
-                          seed={
-                            msg.user === "user"
-                              ? msg.senderId || ""
-                              : msg.receiverId || ""
-                          }
+                          seed={msg.role === "admin" ? "admin" : msg.senderId}
                           className="w-full h-full"
                         />
                       </div>

@@ -5,16 +5,14 @@ import dayjs from "dayjs";
 import useSWR from "swr";
 import { motion } from "framer-motion";
 import { Button, Spinner } from "@nextui-org/react";
-import { useMCAuth } from "../lib/mconnect/hooks/useMCAuth";
-import { mutualAPI } from "../api/mutual";
-import { BACKEND_URL } from "../config";
-import { cnm } from "../utils/style";
-import RandomAvatar from "../components/ui/RandomAvatar";
 import { Menu, Search, Send, X } from "lucide-react";
+import { mutualAPI, mutualPublicAPI } from "../../api/mutual";
+import { BACKEND_URL } from "../../config";
+import { cnm } from "../../utils/style";
+import RandomAvatar from "../../components/ui/RandomAvatar";
 
 export default function AdminMessagePage() {
   const [newMessage, setNewMessage] = useState("");
-  const { user } = useMCAuth();
   const [socket, setSocket] = useState(null);
   const [selectedMessageUserId, setSelectedMessageUserId] = useState(null);
   const [selectedMessageConversationId, setSelectedMessageConversationId] =
@@ -28,12 +26,11 @@ export default function AdminMessagePage() {
     isLoading,
     mutate: mutateMessagesHistory,
   } = useSWR(
-    user && selectedMessageUserId
-      ? `/messages/conversation/${user.id}/${selectedMessageUserId}?timezone=UTC`
+    selectedMessageUserId
+      ? `/messages/conversation-admin/${selectedMessageUserId}?timezone=UTC`
       : null,
     async (url) => {
-      console.log({ url }, "messages");
-      const { data } = await mutualAPI.get(url);
+      const { data } = await mutualPublicAPI.get(url);
       return data;
     }
   );
@@ -52,20 +49,20 @@ export default function AdminMessagePage() {
   }, [messagesHistory]);
 
   const { data: conversations, mutate: mutateConversations } = useSWR(
-    user ? `/messages/conversations/${user.id}` : null,
+    `/messages/conversations-admin`,
     async (url) => {
-      const { data } = await mutualAPI.get(url);
+      const { data } = await mutualPublicAPI.get(url);
       return data;
     }
   );
 
   const { data: conversationDetail } = useSWR(
     selectedMessageConversationId
-      ? `/messages/conversation-detail/${selectedMessageConversationId}`
+      ? `/messages/conversation-detail-admin/${selectedMessageConversationId}`
       : null,
     async (url) => {
       console.log({ url });
-      const { data } = await mutualAPI.get(url);
+      const { data } = await mutualPublicAPI.get(url);
       return data;
     }
   );
@@ -76,29 +73,32 @@ export default function AdminMessagePage() {
     mutate: mutateOtherUserDetails,
   } = useSWR(
     selectedMessageUserId
-      ? `/messages/other-user-details/${selectedMessageUserId}`
+      ? `/messages/other-user-details-admin/${selectedMessageUserId}`
       : null,
     async (url) => {
       console.log({ url });
-      const { data } = await mutualAPI.get(url);
+      const { data } = await mutualPublicAPI.get(url);
       return data;
     }
   );
 
   useEffect(() => {
-    if (!user) return;
     const socket = io(`${BACKEND_URL}`);
+    console.log("socket", socket);
     setSocket(socket);
     return () => {
       socket.disconnect();
     };
-  }, [user, selectedMessageUserId]);
+  }, [selectedMessageUserId]);
 
   useEffect(() => {
-    if (!socket || !user) return;
+    if (!socket) return;
+
+    console.log("socket exitsst");
 
     socket.on("connect", () => {
-      socket.emit("join", { userId: user.id });
+      toast.success("Connected to message service");
+      socket.emit("admin-join", {});
       setSocketConnected(true);
     });
 
@@ -112,37 +112,34 @@ export default function AdminMessagePage() {
     });
 
     // TODO switch to admin-message
-    socket.on("personal-message", (data) => {
-      if (
-        selectedMessageUserId === data.senderId ||
-        data.senderId === user.id
-      ) {
-        setMessages((currentMessages) => {
-          const currentDate = dayjs().format("YYYY-MM-DD");
-          return {
-            ...currentMessages,
-            [currentDate]: [
-              ...(currentMessages?.[currentDate] || []),
-              {
-                id: Date.now(),
-                content: data.content,
-                senderId: data.senderId,
-                receiverId: data.receiverId,
-                role: data.senderId === user.id ? "user" : "other",
-                sentAt: new Date().toISOString(),
-              },
-            ],
-          };
-        });
-      }
-      // mutateMessagesHistory();
+    socket.on("admin-message", (data) => {
+      console.log("admin-message", data);
+      // toast(JSON.stringify(data));
+      setMessages((currentMessages) => {
+        const currentDate = dayjs().format("YYYY-MM-DD");
+        return {
+          ...currentMessages,
+          [currentDate]: [
+            ...(currentMessages?.[currentDate] || []),
+            {
+              id: Date.now(),
+              content: data.content,
+              senderId: data.senderId,
+              receiverId: data.receiverId,
+              role: data.senderId === "__admin" ? "admin" : "other",
+              sentAt: new Date().toISOString(),
+            },
+          ],
+        };
+      });
+      mutateMessagesHistory();
       mutateConversations();
     });
 
     return () => {
       socket.disconnect();
     };
-  }, [socket, user, selectedMessageUserId]);
+  }, [socket, selectedMessageUserId]);
 
   function selectConversation(conversation) {
     setSelectedMessageUserId(conversation.userId);
@@ -151,10 +148,6 @@ export default function AdminMessagePage() {
       setMessages([]);
     }
     mutateMessagesHistory();
-    socket.emit("on-conversation", {
-      conversationId: conversation.userId,
-      userId: user.id,
-    });
   }
 
   function sendMessage() {
@@ -168,17 +161,21 @@ export default function AdminMessagePage() {
       return toast.error("Please enter a message or select a user");
     }
 
-    socket.emit("personal-message", {
-      senderId: user.id,
+    socket.emit("admin-message", {
+      senderId: "__admin",
       receiverId: selectedMessageUserId,
       content: newMessage,
-      role: "user",
+      role: "admin",
     });
     setNewMessage("");
     mutateConversations();
   }
 
-  console.log({ selectedMessageConversationId, selectedMessageUserId });
+  console.log({
+    selectedMessageConversationId,
+    selectedMessageUserId,
+    socketConnected,
+  });
 
   if (!socketConnected) {
     return (
@@ -274,19 +271,13 @@ export default function AdminMessagePage() {
                         <div className="flex gap-4">
                           <div className="size-10 bg-neutral-200 rounded-full">
                             <RandomAvatar
-                              seed={
-                                otherUserDetail?.data.name ||
-                                conversationDetail.data?.otherUser?.name ||
-                                ""
-                              }
+                              seed={otherUserDetail?.data.name || ""}
                               className="w-full h-full"
                             />
                           </div>
                           <div>
                             <p className="font-medium">
-                              {otherUserDetail?.data.name ||
-                                conversationDetail.data?.otherUser?.name ||
-                                ""}
+                              {otherUserDetail?.data.name || ""}
                             </p>
                             {otherUserDetail.data?.messagesSent.status ===
                             "ONLINE" ? (
@@ -429,7 +420,6 @@ function MessageChat({
 
   useEffect(() => {
     if (chatEndRef.current) {
-      // chatEndRef.current.scrollIntoView({ behavior: "smooth" });
       chatEndRef.current.scrollTop = chatEndRef.current.scrollHeight;
     }
   }, [messages]);
@@ -471,7 +461,7 @@ function MessageChat({
                     <div
                       className={cnm(
                         "flex items-end gap-2",
-                        msg.role === "user"
+                        msg.role === "admin"
                           ? "ml-auto flex-row-reverse"
                           : "mr-auto"
                       )}
@@ -479,9 +469,7 @@ function MessageChat({
                       <div className="size-6 rounded-full overflow-hidden">
                         <RandomAvatar
                           seed={
-                            msg.user === "user"
-                              ? msg.senderId || ""
-                              : msg.receiverId || ""
+                            msg.role === "admin" ? "admin" : msg.senderId || ""
                           }
                           className="w-full h-full"
                         />
@@ -489,7 +477,7 @@ function MessageChat({
                       <div
                         className={cnm(
                           "chat-bubble px-4 py-2 rounded-lg text-sm",
-                          msg.role === "user"
+                          msg.role === "admin"
                             ? " border border-orangy/50 text-neutral-600"
                             : "bg-neutral-200"
                         )}

@@ -50,9 +50,26 @@ export default function InfluencerOffersDetailPage() {
     return data;
   });
 
+  const {
+    data: events,
+    isLoading: isLoadingEvents,
+    mutate: mutateEvents,
+  } = useSWR(offerId ? `/campaign/${offerId}/logs` : null, async (url) => {
+    const { data } = await mutualAPI.get(url);
+    return data;
+  });
+
+  console.log({ events }, "events");
+
   const [cookie] = useCookies(["session_token"]);
   const [isRejectLoading, setIsRejectLoading] = useState(false);
   const [isAcceptLoading, setIsAcceptLoading] = useState(false);
+
+  function mutateAllData() {
+    mutate();
+    mutateClaimable();
+    mutateEvents();
+  }
 
   const handleAcceptOffer = async () => {
     try {
@@ -68,7 +85,7 @@ export default function InfluencerOffersDetailPage() {
 
       await escrowSDK.acceptOffer(offer.id);
       await sleep(2000);
-      mutate();
+      mutateAllData();
       console.log("Offer accepted successfully");
     } catch (error) {
       console.error("Error accepting offer:", error);
@@ -90,6 +107,8 @@ export default function InfluencerOffersDetailPage() {
       });
 
       await escrowSDK.rejectOffer(offer.id);
+      await sleep(2000);
+      mutateAllData();
       console.log("Offer rejected successfully");
     } catch (error) {
       console.error("Error rejecting offer:", error);
@@ -100,7 +119,7 @@ export default function InfluencerOffersDetailPage() {
 
   console.log({ claimable, offer }, "offer data");
 
-  if (isLoading || isLoadingClaimable) {
+  if (isLoading || isLoadingClaimable || isLoadingEvents) {
     return (
       <div className="h-full w-full flex items-center justify-center">
         <Spinner size="lg" color="primary" />
@@ -237,14 +256,12 @@ export default function InfluencerOffersDetailPage() {
             <p className="font-medium mt-6 md:mt-8">Promotional post text</p>
             {/* TODO add promotional text real data */}
             <p className="mt-6 md:mt-8 text-sm md:text-base">
-              🚀 $Michi is ready to take over the crypto space!🔥 Join the
-              $Michi revolution and be part of the most exciting meme coin of
-              the year! 📈 Strong community, rapid growth, and big plans ahead!
+              {offer?.post.text}
             </p>
           </div>
         </div>
 
-        <EventLogs events={DUMMY_LOGS} />
+        <EventLogs events={events} />
       </div>
     </div>
   );
@@ -290,14 +307,14 @@ function EventLogs({ events }) {
                   <div
                     className={cnm(
                       "flex items-center justify-center size-4 rounded-full  aspect-square",
-                      `${index === 0 ? "bg-orangy" : "bg-[#D9D9D9]"}`
+                      "bg-orangy"
                     )}
                   >
-                    {index === 0 && <Check color="white" size={10} />}
+                    <Check color="white" size={10} />
                   </div>
                   <div
                     className={cnm(
-                      "h-full w-[2px] bg-[#D9D9D9]",
+                      "h-full w-[2px] bg-orangy",
                       `${index === events.length - 1 ? "hidden" : ""}`
                     )}
                   />
@@ -312,15 +329,15 @@ function EventLogs({ events }) {
                   </h1>
                 </div>
 
+                {/* TODO change to mainnet in prod */}
                 {event.txHash && (
-                  <button
-                    onClick={() =>
-                      window.open(`https://solscan.io/tx/${event.txHash}`)
-                    }
+                  <a
+                    target="_blank"
+                    href={`https://solscan.io/tx/${event.txHash}?cluster=devnet`}
                     className="my-auto ml-auto text-xs text-[#161616] hover:text-[#161616]/70 font-medium whitespace-nowrap underline"
                   >
                     View Transaction
-                  </button>
+                  </a>
                 )}
               </div>
             </div>

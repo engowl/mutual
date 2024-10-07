@@ -2,6 +2,7 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import AdminNavbar from "../components/admin/AdminNavbar.jsx";
 import { Button, Input } from "@nextui-org/react";
+import { Toaster } from "react-hot-toast";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -79,11 +80,14 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-creamy overflow-hidden">
-      <AdminNavbar handleLogout={handleLogout} />
-      <div className="h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden">
-        <Outlet />
+    <>
+      <div className="min-h-screen w-full bg-creamy overflow-hidden">
+        <AdminNavbar handleLogout={handleLogout} />
+        <div className="h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden">
+          <Outlet />
+        </div>
       </div>
-    </div>
+      <Toaster />
+    </>
   );
 }
