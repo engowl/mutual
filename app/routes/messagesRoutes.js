@@ -24,7 +24,6 @@ export const messagesRoutes = (app, _, done) => {
   });
 
   const activeUsers = new Map();
-  const activeConversations = new Map();
 
   io.on("connection", (socket) => {
     console.log("A user connected", socket.id);
@@ -34,11 +33,6 @@ export const messagesRoutes = (app, _, done) => {
       await updateUserStatus(userId, "ONLINE");
       socket.emit("userStatusChange", {});
       console.log(`User ${userId} joined`);
-    });
-
-    socket.on("on-conversation", async ({ conversationId, userId }) => {
-      activeConversations.set(userId, { conversationId, userId });
-      console.log(`${userId} is on conversation id ${conversationId} joined`);
     });
 
     socket.on(
@@ -66,21 +60,12 @@ export const messagesRoutes = (app, _, done) => {
         const receiverSocketId = activeUsers.get(receiverId);
         const senderSocketId = activeUsers.get(senderId);
 
-        console.log({ activeConversations });
-
-        if (receiverSocketId) {
-          if (activeConversations.has(receiverId)) {
-            const conversation = activeConversations.get(receiverId);
-            if (conversation.conversationId === senderId) {
-              io.to(receiverSocketId).emit("personal-message", {
-                senderId,
-                receiverId,
-                content,
-                role,
-              });
-            }
-          }
-        }
+        io.to(receiverSocketId).emit("personal-message", {
+          senderId,
+          receiverId,
+          content,
+          role,
+        });
 
         if (senderSocketId) {
           io.to(senderSocketId).emit("personal-message", {
