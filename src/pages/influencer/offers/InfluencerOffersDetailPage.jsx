@@ -23,10 +23,15 @@ import { useState } from "react";
 import Countdown from "react-countdown";
 import { sleep } from "../../../utils/misc.js";
 import SubmitProofModal from "../../../components/influencer/offers/SubmitWorkModal.jsx";
+import { CHAINS } from "../../../config.js";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { NATIVE_MINT } from "@solana/spl-token";
 
 export default function InfluencerOffersDetailPage() {
+  const [isWaitingApproval, setIsWaitingApproval] = useState(false);
   const params = useParams();
   const navigate = useNavigate();
+  const { wallet } = useWallet();
 
   const offerId = params.id;
 
@@ -36,10 +41,19 @@ export default function InfluencerOffersDetailPage() {
     mutate,
   } = useSWR(offerId ? `/campaign/${offerId}/detail` : null, async (url) => {
     const { data } = await mutualAPI.get(url);
+
+    // If there is data.post and data.post.isApproved is false, then it is waiting for approval
+    if (data.post && data.post.isApproved === false) {
+      setIsWaitingApproval(true);
+    } else {
+      setIsWaitingApproval(false);
+    }
+
     return data;
+  }, {
+    refreshInterval: 5000
   });
 
-  console.log({ offer }, "offer data");
 
   const {
     data: claimable,
@@ -100,6 +114,55 @@ export default function InfluencerOffersDetailPage() {
 
   console.log({ claimable, offer }, "offer data");
 
+  // Claiming
+  const [isClaiming, setIsClaiming] = useState(false);
+  const handleClaim = async () => {
+    try {
+      setIsClaiming(true);
+      console.log("Claiming...");
+
+      // Claim logic here
+      const escrowSDK = new MutualEscrowSDK({
+        backendEndpoint: import.meta.env.VITE_BACKEND_URL,
+        bearerToken: cookie.session_token,
+        chainId: 'devnet',
+        chains: CHAINS
+      });
+
+      if (offer.token.mintAddress === NATIVE_MINT.toBase58()) {
+        const resolveDealTx = await escrowSDK.prepareNativeResolveDealTransaction({
+          orderId: offer.id,
+          mintAddress: offer.token.mintAddress,
+          kolAddress: wallet.adapter.publicKey.toBase58(),
+          projectOwnerAddress: offer.projectOwner.user.wallet.address
+        })
+
+        const signedTx = await wallet.adapter.signTransaction(resolveDealTx);
+        const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
+
+        console.log("Claimed successfully", txHash);
+      } else {
+        const resolveDealTx = await escrowSDK.prepareResolveDealTransaction({
+          orderId: offer.id,
+          mintAddress: offer.token.mintAddress,
+          kolAddress: wallet.adapter.publicKey.toBase58(),
+          projectOwnerAddress: offer.projectOwner.user.wallet.address
+        })
+
+        const signedTx = await wallet.adapter.signTransaction(resolveDealTx);
+        const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
+
+        console.log("Claimed successfully", txHash);
+      }
+
+      await mutateClaimable();
+    } catch (error) {
+      console.error("Error claiming:", error);
+    } finally {
+      setIsClaiming(false);
+    }
+  }
+
   if (isLoading || isLoadingClaimable) {
     return (
       <div className="h-full w-full flex items-center justify-center">
@@ -122,9 +185,11 @@ export default function InfluencerOffersDetailPage() {
               Message
             </Button>
 
-            {offer?.status === "ACCEPTED" ? (
+            {offer?.status === "ACCEPTED" &&
               <SubmitProofModal orderId={offer.id} />
-            ) : (
+            }
+
+            {offer?.status === "CREATED" &&
               <>
                 <Button
                   isLoading={isRejectLoading}
@@ -144,23 +209,25 @@ export default function InfluencerOffersDetailPage() {
                   Accept Offer
                 </Button>
               </>
-            )}
+            }
           </div>
         </div>
 
         {/* Respond in */}
-        <div className="mt-10 py-3 px-4 rounded-xl bg-white border flex items-center justify-between">
-          <div className="font-medium flex items-center gap-2">
-            <Clock className="size-4" />
-            Respond in:
+        {offer?.status === "CREATED" &&
+          <div className="mt-10 py-3 px-4 rounded-xl bg-white border flex items-center justify-between">
+            <div className="font-medium flex items-center gap-2">
+              <Clock className="size-4" />
+              Respond in:
+            </div>
+            <div className="font-medium">
+              <Countdown
+                date={new Date(offer?.expiredAtUnix * 1000)}
+                daysInHours
+              />
+            </div>
           </div>
-          <div className="font-medium">
-            <Countdown
-              date={new Date(offer?.expiredAtUnix * 1000)}
-              daysInHours
-            />
-          </div>
-        </div>
+        }
 
         <div className="mt-4 p-4 rounded-xl bg-white border">
           <div className="w-full flex items-center justify-between">
@@ -194,7 +261,11 @@ export default function InfluencerOffersDetailPage() {
         </div>
 
         {/* TODO add real first and second unlocks data */}
-        <Unlock unlocks={claimable?.phases || []} />
+        <Unlock
+          unlocks={claimable?.phases || []}
+          handleClaim={handleClaim}
+          isClaiming={isClaiming}
+        />
 
         {/* Details */}
         <div className="mt-4 py-5 px-4 rounded-xl bg-white border flex items-center justify-between">
@@ -216,8 +287,8 @@ export default function InfluencerOffersDetailPage() {
                   {offer.vestingType === "MARKETCAP"
                     ? "Market Cap Vesting"
                     : offer.vestingType === "TIME"
-                    ? "Time Vesting"
-                    : "Direct Payment"}
+                      ? "Time Vesting"
+                      : "Direct Payment"}
                 </p>
               </div>
               <div className="flex items-center">
@@ -244,14 +315,56 @@ export default function InfluencerOffersDetailPage() {
           </div>
         </div>
 
+        {(offer && offer?.post) &&
+          <SubmissionCard
+            post={offer.post}
+          />
+        }
+
         <EventLogs events={DUMMY_LOGS} />
       </div>
     </div>
   );
 }
 
-function Unlock({ unlocks }) {
+function SubmissionCard({
+  post
+}) {
+  return (
+    <div className="w-full mt-4 bg-white rounded-xl border p-4">
+      <p className="font-medium">
+        Your Submission
+      </p>
+      <p className="mt-1 text-sm text-neutral-400">
+        The post you submitted for approval
+      </p>
+      <div className="px-4 py-2 rounded-full border mt-3">
+        {post.postUrl}
+      </div>
+
+      {post.isApproved ?
+        <div className="bg-success-100 p-2 mt-2 rounded-lg">
+          <p className="font-medium">Approved</p>
+          <p className="text-sm opacity-60">
+            Your submission has been approved by the project owner
+          </p>
+        </div>
+        :
+        <div className="gap-2 mt-5 text-center opacity-60">
+          Waiting for approval from the project owner
+        </div>
+      }
+    </div>
+  );
+}
+
+function Unlock({
+  unlocks,
+  handleClaim,
+  isClaiming
+}) {
   console.log({ unlocks }, "unlocks data");
+
   return (
     <div className="flex flex-col md:flex-row gap-2 lg:gap-4 mt-2 lg:mt-4">
       {unlocks.map((unlock, index) => {
@@ -266,7 +379,12 @@ function Unlock({ unlocks }) {
               <p className="text-sm">{unlock.conditionLabel}</p>
             </div>
 
-            <Button className="bg-[#C9C9C9] rounded-full text-white font-medium text-sm w-20 md:w-24">
+            <Button
+              isDisabled={!unlock.isClaimable}
+              isLoading={isClaiming}
+              onClick={handleClaim}
+              className="bg-primary rounded-full text-white font-medium text-sm w-20 md:w-24"
+            >
               Claim
             </Button>
           </div>
