@@ -28,7 +28,8 @@ class MutualEscrowSDK {
       const response = await axios.post(
         `${this.backendEndpoint}/campaign/create-offer-check`,
         {
-          ...dealData
+          ...dealData,
+          chainId: this.chainId
         },
         {
           headers: this.getHeaders()
@@ -44,7 +45,7 @@ class MutualEscrowSDK {
   }
 
   // Prepare the transaction to create a deal
-  async prepareCreateDealTransaction({ orderId, mintAddress, kolAddress, userAddress, vestingType, amount }) {
+  async prepareCreateDealTransaction({ orderId, mintAddress, kolAddress, userAddress, vestingType, vestingDuration = 0, amount }) {
     try {
       const program = this.getProgram();
       const orderIdBuffer = this.prepareOrderId(orderId);
@@ -69,7 +70,7 @@ class MutualEscrowSDK {
         .createDeal(
           new BN(amount),
           { [vestingType.toLowerCase()]: {} },
-          new BN(0),
+          new BN(vestingDuration),
           Array.from(orderIdBuffer)
         )
         .accounts({
@@ -105,11 +106,11 @@ class MutualEscrowSDK {
     try {
       const program = this.getProgram();
       const orderIdBuffer = this.prepareOrderId(orderId);
-
+    
       const userPublicKey = new PublicKey(userAddress);
       const kolPublicKey = new PublicKey(kolAddress);
       const wsolMint = splToken.NATIVE_MINT; // WSOL mint address using the latest spl-token version
-
+    
       const [escrowPda] = PublicKey.findProgramAddressSync([Buffer.from("escrow")], program.programId);
       const [dealPda] = PublicKey.findProgramAddressSync(
         [Buffer.from('deal'), orderIdBuffer, userPublicKey.toBuffer(), kolPublicKey.toBuffer(), wsolMint.toBuffer()],
@@ -117,16 +118,25 @@ class MutualEscrowSDK {
       );
       const [vaultTokenAccountPda] = PublicKey.findProgramAddressSync([Buffer.from("vault_token_account"), wsolMint.toBuffer()], program.programId);
       const [vaultAuthorityPda] = PublicKey.findProgramAddressSync([Buffer.from("vault_authority")], program.programId);
-
+    
       // Create a temporary WSOL token account for the project owner using the latest SPL-Token API
       const projectOwnerTokenAccount = await splToken.getAssociatedTokenAddress(
         wsolMint,
         userPublicKey
       );
-
+    
       const transaction = new Transaction();
-
-      // Step 1: Wrap SOL by transferring it to the WSOL account
+    
+      // Step 1: Create the WSOL account if it doesn't exist
+      const createAccountIx = splToken.createAssociatedTokenAccountInstruction(
+        userPublicKey, // payer
+        projectOwnerTokenAccount, // associatedToken
+        userPublicKey, // owner
+        wsolMint // mint
+      );
+      transaction.add(createAccountIx);
+    
+      // Step 2: Wrap SOL by transferring it to the WSOL account
       transaction.add(
         SystemProgram.transfer({
           fromPubkey: userPublicKey,
@@ -134,15 +144,15 @@ class MutualEscrowSDK {
           lamports: amount // Amount of SOL to wrap into WSOL
         })
       );
-
-      // Step 2: Ensure the WSOL account is rent-exempt using createSyncNativeInstruction
+    
+      // Step 3: Sync the WSOL account to ensure it's initialized correctly
       transaction.add(
         splToken.createSyncNativeInstruction(
           projectOwnerTokenAccount
         )
       );
-
-      // Step 3: Create the deal using the WSOL mint
+    
+      // Step 4: Create the deal using the WSOL mint
       const ix = await program.methods
         .createDeal(
           new BN(amount),
@@ -156,7 +166,7 @@ class MutualEscrowSDK {
           projectOwner: userPublicKey,
           kol: kolPublicKey,
           mint: wsolMint,
-          projectOwnerTokenAccount: projectOwnerTokenAccount.toBase58(),
+          projectOwnerTokenAccount: projectOwnerTokenAccount,
           vaultTokenAccount: vaultTokenAccountPda,
           vaultAuthority: vaultAuthorityPda,
           tokenProgram: splToken.TOKEN_PROGRAM_ID,
@@ -164,10 +174,10 @@ class MutualEscrowSDK {
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         })
         .instruction();
-
+    
       transaction.add(ix);
-
-      // Step 4: Close the WSOL account to refund remaining SOL back to the user
+    
+      // Step 5: Close the WSOL account to refund remaining SOL back to the user
       transaction.add(
         splToken.createCloseAccountInstruction(
           projectOwnerTokenAccount,
@@ -176,13 +186,13 @@ class MutualEscrowSDK {
           []
         )
       );
-
+    
       // Finalize the transaction
       const connection = program.provider.connection;
       const { blockhash } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = userPublicKey;
-
+    
       return transaction;
     } catch (error) {
       console.error('Error preparing native create deal transaction:', error);
@@ -200,7 +210,8 @@ class MutualEscrowSDK {
         `${this.backendEndpoint}/campaign/create-offer`,
         {
           ...dealData,
-          createDealTxHash: txHash
+          createDealTxHash: txHash,
+          chainId: this.chainId
         },
         {
           headers: this.getHeaders()
