@@ -522,12 +522,20 @@ export const campaignRoutes = (app, _, done) => {
           include: {
             influencer: {
               include: {
-                user: true,
+                user: {
+                  include: {
+                    wallet: true,
+                  }
+                },
               },
             },
             projectOwner: {
               include: {
-                user: true,
+                user: {
+                  include: {
+                    wallet: true,
+                  }
+                },
               },
             },
             token: true,
@@ -667,23 +675,23 @@ export const campaignRoutes = (app, _, done) => {
 
   // KOL confirms that the obligated task is done
   app.post(
-    "/confirm-work",
+    "/approve-work",
     {
       preHandler: [authMiddleware],
     },
     async (request, reply) => {
       try {
         const { user } = request;
+        const { orderId } = request.body;
         // Project Owner confirms the task (tweet, post, etc.). On-demand verification is done here.
 
         // If the task is done, call the contract to make the eligibility partial (for vesting), for none, full eligibility
-
         const order = await prismaClient.campaignOrder.findUnique({
           where: {
-            id: request.body.orderId,
-            influencer: {
+            id: orderId,
+            projectOwner: {
               userId: user.id,
-            },
+            }
           },
           include: {
             projectOwner: {
@@ -705,18 +713,24 @@ export const campaignRoutes = (app, _, done) => {
               },
             },
             token: true,
+            post: true,
           },
         });
         if (!order) {
           return reply.status(400).send({ message: "Order not found" });
         }
 
+        if(order.post.isApproved){
+          return reply.status(400).send({ message: "Work already approved" });
+        }
+
+        console.log('Order:', order);
         const chain = CHAINS.find((c) => c.dbChainId === order.chainId);
         if (!chain) {
           return reply.status(400).send({ message: "Invalid chain ID" });
         }
 
-        const program = MUTUAL_ESCROW_PROGRAM(order.chainId);
+        const program = MUTUAL_ESCROW_PROGRAM(chain.id);
 
         const [dealPda] = PublicKey.findProgramAddressSync(
           [
@@ -748,7 +762,7 @@ export const campaignRoutes = (app, _, done) => {
 
           console.log("Fully eligibility txHash:", txHash);
 
-          const fullyCompleted = await prismaClient.campaignOrder.update({
+          await prismaClient.campaignOrder.update({
             where: {
               id: order.id,
             },
@@ -756,12 +770,11 @@ export const campaignRoutes = (app, _, done) => {
               status: "COMPLETED",
             },
           });
-
-          reply.send(fullyCompleted);
         } else {
           // Become partially eligible, to claim the 20% of the tokens
           const txHash = await program.methods
-            .setEligibilityStatus({ partiallyEligible: {} })
+            // .setEligibilityStatus({ partiallyEligible: {} })
+            .setEligibilityStatus({ fullyEligible: {} })
             .accounts({
               deal: dealPda,
               escrow: escrowPda,
@@ -772,7 +785,7 @@ export const campaignRoutes = (app, _, done) => {
 
           console.log("Partial eligibility txHash:", txHash);
 
-          const partialCompleted = await prismaClient.campaignOrder.update({
+          await prismaClient.campaignOrder.update({
             where: {
               id: order.id,
             },
@@ -780,9 +793,19 @@ export const campaignRoutes = (app, _, done) => {
               status: "PARTIALCOMPLETED",
             },
           });
-
-          reply.send(partialCompleted);
         }
+
+        // Update post to approved
+        await prismaClient.campaignPost.update({
+          where: {
+            campaignOrderId: order.id,
+          },
+          data: {
+            isApproved: true,
+          },
+        });
+
+        return reply.send({ message: "Work approved" });
       } catch (error) {
         console.error("Error confirming work:", error);
       }
@@ -1047,9 +1070,8 @@ export const campaignRoutes = (app, _, done) => {
                   phaseName: "Final Unlock",
                   amount: totalAmount,
                   amountLabel: `${totalAmount} $${order.token.symbol}`,
-                  conditionLabel: `Claimable ${
-                    MINIMUM_POST_LIVE_IN_MINUTES / 60
-                  } hours after the ${mediaLabel} is posted`,
+                  conditionLabel: `Claimable ${MINIMUM_POST_LIVE_IN_MINUTES / 60
+                    } hours after the ${mediaLabel} is posted`,
                   isClaimable: false,
                 },
               ],
@@ -1089,9 +1111,8 @@ export const campaignRoutes = (app, _, done) => {
                 {
                   phaseName: "Final Unlock",
                   amount: totalAmount - partialUnlockAmount,
-                  amountLabel: `${totalAmount - partialUnlockAmount} $${
-                    order.token.symbol
-                  }`,
+                  amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol
+                    }`,
                   conditionLabel: `Claim after $${order.token.symbol} reaches the target ... market cap`,
                   isClaimable: false,
                 },
@@ -1131,9 +1152,8 @@ export const campaignRoutes = (app, _, done) => {
                 {
                   phaseName: "Final Unlock",
                   amount: totalAmount - partialUnlockAmount,
-                  amountLabel: `${totalAmount - partialUnlockAmount} $${
-                    order.token.symbol
-                  } `,
+                  amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol
+                    } `,
                   conditionLabel: `Claim after the vesting period ends`,
                   isClaimable: false,
                 },
