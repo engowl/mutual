@@ -104,7 +104,7 @@ export const fetchPairData = async ({
       // Use dummy data for devnet
       pair = {
         pairAddress: 'dummyPairAddress',
-        url: 'https://dummyurl.com',
+        url: 'https://dexscreener.com',
         priceNative: '0.001',
         priceUsd: '0.1',
         fdv: '100000',

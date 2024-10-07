@@ -46,6 +46,8 @@ export const tokenRoutes = (app, _, done) => {
         symbol: tokenData.symbol,
         decimals: tokenData.decimals,
         imageUrl: tokenData.imageUrl,
+        totalSupply: tokenData.totalSupply,
+        holderCount: tokenData.holderCount,
         pair: pairData,
       }
 
