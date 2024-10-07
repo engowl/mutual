@@ -4,6 +4,7 @@ export const CHAINS = [
   {
     id: "mainnet-beta",
     dbChainId: "MAINNET_BETA",
+    portalChainId: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
     name: "Mainnet Beta",
     rpcUrl:
       import.meta.env.VITE_MAINNET_RPC_URL ||
@@ -13,6 +14,7 @@ export const CHAINS = [
   {
     id: "devnet",
     dbChainId: "DEVNET",
+    portalChainId: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
     name: "Devnet",
     rpcUrl:
       import.meta.env.VITE_DEVNET_RPC_URL || "https://api.devnet.solana.com",

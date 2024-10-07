@@ -8,7 +8,7 @@ export default function MCProvider({ children }) {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <Web3Provider>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider chainId="devnet">{children}</AuthProvider>
       </Web3Provider>
     </GoogleOAuthProvider>
   );

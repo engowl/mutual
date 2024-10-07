@@ -25,6 +25,9 @@ import { BN } from "bn.js";
 import useSWR from "swr";
 import { mutualAPI } from "../../../api/mutual";
 import { useMCAuth } from "../../../lib/mconnect/hooks/useMCAuth";
+import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
+import { Transaction } from "@solana/web3.js";
+import bs58 from "bs58";
 
 dayjs.extend(utc);
 
@@ -79,11 +82,14 @@ function MarketCapVestingConfirmation({ setStep }) {
   const influencerId = params.influencerId;
   const navigate = useNavigate();
 
+  const { signSolanaTxWithPortal, address: mpcAddress } = useMCWallet();
+  const { walletType } = useMCAuth();
+
   const { data: influencerData, isLoading: isInfluencerDataLoading } = useSWR(
     `/influencer/${influencerId}`,
     async (url) => {
       const { data } = await mutualAPI.get(url);
-      console.log('influencerData:', data);
+      console.log("influencerData:", data);
       return data;
     }
   );
@@ -109,13 +115,13 @@ function MarketCapVestingConfirmation({ setStep }) {
       const { data } = await mutualAPI.get(url);
       return data;
     }
-  )
+  );
 
   const userTokenInfo =
     data && user
       ? data.find(
-        (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
-      )
+          (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
+        )
       : null;
 
   console.log({ tokenInfo });
@@ -175,7 +181,10 @@ function MarketCapVestingConfirmation({ setStep }) {
         orderId: DATA.orderId,
         mintAddress: DATA.mintAddress,
         kolAddress: influencerData.data.user.wallet.address,
-        userAddress: wallet.adapter.publicKey.toBase58(),
+        userAddress:
+          walletType === "MPC"
+            ? mpcAddress
+            : wallet.adapter.publicKey.toBase58(),
         vestingType: DATA.vestingType,
         // amount: DATA.tokenAmount * 10 ** 6,
         amount: new BN(DATA.tokenAmount).mul(
@@ -184,8 +193,28 @@ function MarketCapVestingConfirmation({ setStep }) {
       });
       console.log("createDealTx:", createDealTx);
 
+      let signedTx;
+
       // Step 3: Sign and send the transaction
-      const signedTx = await wallet.adapter.signTransaction(createDealTx);
+      if (walletType === "MPC") {
+        const serializedTransaction = createDealTx.serialize({
+          requireAllSignatures: false,
+        });
+
+        // Convert the serialized Buffer to a Base64 string
+        const base64Transaction = serializedTransaction.toString("base64");
+
+        const signature = await signSolanaTxWithPortal({
+          messageToSign: base64Transaction,
+        });
+
+        console.log("Success sign using portal: ", signature);
+
+        const transactionBuffer = bs58.decode(signature);
+        signedTx = Transaction.from(transactionBuffer);
+      } else {
+        signedTx = await wallet.adapter.signTransaction(createDealTx);
+      }
 
       // Step 4: Send the transaction
       const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
@@ -197,6 +226,7 @@ function MarketCapVestingConfirmation({ setStep }) {
       });
 
       console.log("Offer created:", created);
+
       navigate("/success/offer-submit");
     } catch (error) {
       console.error("Error creating deal:", error);
@@ -390,14 +420,13 @@ function MarketCapVestingForm({ setStep }) {
       const { data } = await mutualAPI.get(url);
       return data;
     }
-  )
+  );
   const userTokenInfo =
     data && user
       ? data.find(
-        (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
-      )
+          (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
+        )
       : null;
-
 
   useEffect(() => {
     if (selectedDate && selectedTime) {
@@ -450,7 +479,9 @@ function MarketCapVestingForm({ setStep }) {
                 <p className="text-sm text-neutral-500">Contract Address</p>
               </div>
               <div>
-                <p className="text-orangy font-medium">{tokenInfo?.totalSupply.toLocaleString("en-US")}</p>
+                <p className="text-orangy font-medium">
+                  {tokenInfo?.totalSupply.toLocaleString("en-US")}
+                </p>
                 <p className="text-sm text-neutral-500">Total Supply</p>
               </div>
             </div>
@@ -568,7 +599,7 @@ function MarketCapVestingForm({ setStep }) {
                 className={cnm(
                   "flex-1 bg-white h-20 border",
                   formValues.marketingChannel === "twitter" &&
-                  "bg-orangy/10 border-orangy"
+                    "bg-orangy/10 border-orangy"
                 )}
                 variant="bordered"
                 onClick={() => handleInputChange("marketingChannel", "twitter")}
@@ -579,7 +610,7 @@ function MarketCapVestingForm({ setStep }) {
                 className={cnm(
                   "flex-1 bg-white h-20 border",
                   formValues.marketingChannel === "telegram" &&
-                  "bg-orangy/10 border-orangy"
+                    "bg-orangy/10 border-orangy"
                 )}
                 variant="bordered"
                 onClick={() =>
