@@ -715,7 +715,7 @@ export const campaignRoutes = (app, _, done) => {
           program.programId
         );
 
-        if (order.vestingType === "NONE") {
+        if (order.vestingType === "NONE" || order.vestingType === "TIME") {
           // Become fully eligible
           const txHash = await program.methods
             .setEligibilityStatus({ fullyEligible: {} })

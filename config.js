@@ -1,4 +1,5 @@
 import { CHAIN } from "@prisma/client";
+import { SolNetwork } from "moralis/common-sol-utils";
 
 export const CHAINS = [
   {
@@ -8,6 +9,7 @@ export const CHAINS = [
     rpcUrl:
       process.env.MAINNET_RPC_URL || "https://api.mainnet-beta.solana.com",
     escrowProgramId: process.env.ESCROW_PROGRAM_ID,
+    moralisChain: SolNetwork.MAINNET
   },
   {
     id: "devnet",
@@ -15,6 +17,7 @@ export const CHAINS = [
     name: "Devnet",
     rpcUrl: process.env.DEVNET_RPC_URL || "https://api.devnet.solana.com",
     escrowProgramId: process.env.ESCROW_PROGRAM_ID,
+    moralisChain: SolNetwork.DEVNET
   },
   // {
   //   id: "localnet",
