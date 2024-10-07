@@ -706,6 +706,115 @@ export const campaignRoutes = (app, _, done) => {
     }
   );
 
+  app.post("/:orderId/claim", {
+    preHandler: [authMiddleware],
+  }, async (req, reply) => {
+    try {
+      const { user } = req;
+      console.log("Claiming tokens");
+
+      const order = await prismaClient.campaignOrder.findUnique({
+        where: {
+          id: req.params.orderId,
+          influencer: {
+            userId: user.id,
+          },
+        },
+        include: {
+          projectOwner: {
+            include: {
+              user: {
+                include: {
+                  wallet: true,
+                },
+              },
+            },
+          },
+          influencer: {
+            include: {
+              user: {
+                include: {
+                  wallet: true,
+                },
+              },
+            },
+          },
+          token: true,
+        },
+      });
+
+      if (!order) {
+        return reply.status(400).send({ message: "Order not found" });
+      }
+      const chain = CHAINS.find((c) => c.dbChainId === order.chainId);
+
+      const orderIdBuffer = prepareOrderId(order.id);
+
+      const kolPublicKey = new PublicKey(order.influencer.user.wallet.address);
+      const projectOwnerPublicKey = new PublicKey(order.projectOwner.user.wallet.address);
+      const mintPublicKey = new PublicKey(order.token.mintAddress);
+
+      const program = MUTUAL_ESCROW_PROGRAM(chain.id);
+
+      const [dealPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("deal"),
+          orderIdBuffer,
+          projectOwnerPublicKey.toBuffer(),
+          kolPublicKey.toBuffer(),
+          mintPublicKey.toBuffer(),
+        ],
+        program.programId
+      );
+      const [escrowPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("escrow")],
+        program.programId
+      );
+      const [vaultTokenAccountPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("vault_token_account"), mintPublicKey.toBuffer()],
+        program.programId
+      );
+
+      const [vaultAuthorityPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("vault_authority")],
+        program.programId
+      );
+
+      const kolTokenAccount = await splToken.getAssociatedTokenAddress(
+        mintPublicKey,
+        kolPublicKey
+      );
+
+      const txHash = await program.methods
+        .resolveDeal()
+        .accounts({
+          deal: dealPda,
+          escrow: escrowPda,
+          signer: adminKp.publicKey,
+          vaultTokenAccount: vaultTokenAccountPda,
+          vaultAuthority: vaultAuthorityPda,
+          kolTokenAccount: kolTokenAccount,
+          tokenProgram: splToken.TOKEN_PROGRAM_ID,
+        })
+        .signers([adminKp])
+        .rpc({ commitment: "confirmed" });
+      console.log("Claim txHash:", txHash);
+
+
+      // TODO: Claimed amount
+
+      return reply.send({
+        txHash: txHash,
+        claimedAmount: 123456
+      });
+    } catch (error) {
+      console.error("Error claiming tokens:", error);
+      return reply.status(500).send({
+        message: error?.message || "Internal server error",
+      });
+    }
+  })
+
   // TODO: Check claimable tokens
   app.get(
     "/:orderId/claimable",
