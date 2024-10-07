@@ -35,13 +35,12 @@ export default function useMCWallet() {
     messageToSign,
     chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", // Devnet
   }) {
-    if (portal && wallet) {
-      console.log("portal: ", portal);
+    if (portal && address) {
       try {
         const transactionHash = await portal.request({
           chainId,
-          method: "sol_sign",
-          params: [wallet, messageToSign],
+          method: "sol_signTransaction",
+          params: messageToSign,
         });
 
         return transactionHash;

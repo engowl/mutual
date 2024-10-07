@@ -20,18 +20,34 @@ import { Link, useNavigate } from "react-router-dom";
 import useSWR from "swr";
 import { mutualAPI } from "../../api/mutual";
 import RandomAvatar from "../../components/ui/RandomAvatar";
+import { useMCAuth } from "../../lib/mconnect/hooks/useMCAuth.jsx";
 
 export default function ProjectOwnerBrowsePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [followersRange, setFollowersRange] = useState([0, 1000000]);
+  const [budgetRange, setBudgetRange] = useState([0, 1000000]);
+
+  const { user } = useMCAuth();
 
   const { data, isLoading } = useSWR("/influencer/all", async (url) => {
     const { data } = await mutualAPI.get(url);
     return data;
   });
 
+  const { data: tokenInfo, isLoading: isTokenLoading } = useSWR(
+    `/token/info?tokenAddress=So11111111111111111111111111111111111111112`,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      return data;
+    }
+  );
+
   const handleFollowersRangeChange = (min, max) => {
     setFollowersRange([min, max === 1000000 ? undefined : max]);
+  };
+
+  const handleBudgetRangeChange = (min, max) => {
+    setBudgetRange([min, max === 1000000 ? undefined : max]);
   };
 
   const filteredInfluencers = data?.data?.filter((influencer) => {
@@ -49,7 +65,12 @@ export default function ProjectOwnerBrowsePage() {
       (followersRange[1] === undefined ||
         influencer.twitterAccount.followersCount <= followersRange[1]);
 
-    return matchesSearchQuery && withinFollowersRange;
+    const withinBudgetRange =
+      influencer.packages.price >= budgetRange[0] &&
+      (budgetRange[1] === undefined ||
+        influencer.packages.price <= budgetRange[1]);
+
+    return matchesSearchQuery && withinFollowersRange && withinBudgetRange;
   });
 
   if (isLoading) {
@@ -86,29 +107,44 @@ export default function ProjectOwnerBrowsePage() {
           <div className="hidden xl:inline bg-white rounded-2xl border p-5 w-80 min-h-[400px]">
             <div className="bg-orangy rounded-2xl p-4 text-white flex flex-col gap-2">
               <div className="w-full flex justify-between items-center">
-                <p className="text-neutral-100">$MICHI</p>
+                <p className="text-neutral-100">${tokenInfo?.symbol}</p>
               </div>
-              <div className="size-12 bg-neutral-100 rounded-full"></div>
-              <p className="font-medium text-xl">Michi</p>
+              {tokenInfo.imageUrl ? (
+                <div className="size-12  rounded-full">
+                  <img
+                    src={tokenInfo.imageUrl}
+                    alt="ic"
+                    className="h-full w-full"
+                  />
+                </div>
+              ) : (
+                <div className="size-12 bg-neutral-100 rounded-full"></div>
+              )}
+              <p className="font-medium text-xl">{tokenInfo?.name}</p>
               <p className="text-neutral-100">
-                {shortenAddress("0x289hfi2ufhi2fhi2f23f")}
+                {shortenAddress(tokenInfo?.mintAddress)}
               </p>
             </div>
             <div className="mt-6">
               <div className="w-full flex items-center justify-between">
                 <p className="font-medium">Filter</p>
-                <p className="text-orangy text-sm">Reset</p>
+                {/* <button
+                  onClick={() => {
+                    setFollowersRange([0, 1000000]);
+                    setBudgetRange([0, 1000000]);
+                  }}
+                  className="text-orangy hover:text-orangy/80 text-sm"
+                >
+                  Reset
+                </button> */}
               </div>
               <div className="mt-4">
-                <BudgetRangeSlider />
+                <BudgetRangeSlider onRangeChange={handleBudgetRangeChange} />
               </div>
               <div className="mt-4">
                 <FollowersRangeSlider
                   onRangeChange={handleFollowersRangeChange}
                 />
-              </div>
-              <div className="mt-4">
-                <EngagementRangeSlider />
               </div>
             </div>
           </div>
@@ -323,12 +359,17 @@ function OffersTokenDealsModal({ influencerData }) {
   );
 }
 
-function BudgetRangeSlider() {
+function BudgetRangeSlider({ onRangeChange }) {
   return (
     <div className="w-full">
       <p>Budget</p>
       <div className="mt-3 w-full">
-        <GraphRangeSlider initialMax={1} initialMin={1} step={100} />
+        <GraphRangeSlider
+          initialMax={5000000}
+          initialMin={0}
+          step={0.0001}
+          onRangeChange={onRangeChange}
+        />
       </div>
     </div>
   );
@@ -349,10 +390,10 @@ function FollowersRangeSlider({ onRangeChange }) {
   );
 }
 
-function EngagementRangeSlider() {
+function EngagementRangeSlider({ onRangeChange }) {
   return (
     <div className="w-full">
-      <p>Engagement</p>
+      <p>Success</p>
       <div className="mt-3 w-full">
         <GraphRangeSlider initialMax={1} initialMin={1} step={100} />
       </div>
@@ -400,6 +441,7 @@ function GraphRangeSlider({
     if (!isNaN(numValue) && numValue >= 0) {
       setMinValue(numValue);
     }
+    onRangeChange(value, maxValue);
   };
 
   const handleMaxInputChange = (e) => {
@@ -408,6 +450,7 @@ function GraphRangeSlider({
     if (!isNaN(numValue) && numValue <= initialMax) {
       setMaxValue(numValue);
     }
+    onRangeChange(minValue, value);
   };
 
   const normalizeValue = (value, min, max) => {

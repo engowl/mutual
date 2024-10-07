@@ -14,7 +14,7 @@ import {
 } from "@nextui-org/react";
 import { NATIVE_MINT } from "@solana/spl-token";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { LAMPORTS_PER_SOL, Transaction } from "@solana/web3.js";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
@@ -26,6 +26,9 @@ import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK.js";
 import { getAlphanumericId } from "../../../utils/misc.js";
 import { parseDate, parseTime } from "@internationalized/date";
 import toast from "react-hot-toast";
+import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
+import bs58 from "bs58";
+import { useMCAuth } from "../../../lib/mconnect/hooks/useMCAuth.jsx";
 
 export default function InfluencerProfilePublicPage() {
   const params = useParams();
@@ -164,6 +167,9 @@ function TelegramPackageModal({ solTotal, influencer }) {
   const [cookies] = useCookies(["session_token"]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const { signSolanaTxWithPortal, address: mpcAddress } = useMCWallet();
+  const { walletType } = useMCAuth();
+
   const { wallet } = useWallet();
 
   const handleTelegramSubmit = async (formData) => {
@@ -194,22 +200,57 @@ function TelegramPackageModal({ solTotal, influencer }) {
       const createDealTx = await escrowSDK.prepareNativeCreateDealTransaction({
         orderId: DATA.orderId,
         kolAddress: influencer.user.wallet.address,
-        userAddress: wallet.adapter.publicKey.toBase58(),
+        userAddress:
+          walletType === "MPC"
+            ? mpcAddress
+            : wallet.adapter.publicKey.toBase58(),
         vestingType: "NONE",
         amount: DATA.tokenAmount * LAMPORTS_PER_SOL,
       });
       console.log("Create deal transaction prepared:", createDealTx);
 
-      const signedTx = await wallet.adapter.signTransaction(createDealTx);
+      if (walletType === "MPC") {
+        // Sign with MPC wallet
+        const serializedTransaction = createDealTx.serialize({
+          requireAllSignatures: false,
+        });
 
-      const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
-      console.log("Deal created successfully. Tx:", txHash);
+        // Convert the serialized Buffer to a Base64 string
+        const base64Transaction = serializedTransaction.toString("base64");
 
-      const created = await escrowSDK.createOffer({
-        dealData: DATA,
-        txHash: txHash,
-      });
-      console.log("Offer created successfully:", created);
+        const signature = await signSolanaTxWithPortal({
+          messageToSign: base64Transaction,
+        });
+
+        console.log("success sign using portal: ", signature);
+
+        const transactionBuffer = bs58.decode(signature);
+        const signedTx = Transaction.from(transactionBuffer);
+        const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
+
+        console.log("Deal created successfully. Tx:", txHash);
+
+        const created = await escrowSDK.createOffer({
+          dealData: DATA,
+          txHash: txHash,
+        });
+
+        console.log("Offer created successfully:", created);
+      } else {
+        // Sign with EOA wallet
+        const signedTx = await wallet.adapter.signTransaction(createDealTx);
+
+        const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
+        console.log("Deal created successfully. Tx:", txHash);
+
+        const created = await escrowSDK.createOffer({
+          dealData: DATA,
+          txHash: txHash,
+        });
+
+        console.log("Offer created successfully:", created);
+      }
+
       toast.success("Offer sent successfully");
     } catch (error) {
       console.error(
@@ -240,6 +281,9 @@ function TweetPackageModal({ solTotal, influencer }) {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [cookies] = useCookies(["session_token"]);
   const [isLoading, setIsLoading] = useState(false);
+
+  const { signSolanaTxWithPortal, address: mpcAddress } = useMCWallet();
+  const { walletType } = useMCAuth();
 
   const { wallet } = useWallet();
 
@@ -274,22 +318,57 @@ function TweetPackageModal({ solTotal, influencer }) {
       const createDealTx = await escrowSDK.prepareNativeCreateDealTransaction({
         orderId: DATA.orderId,
         kolAddress: influencer.user.wallet.address,
-        userAddress: wallet.adapter.publicKey.toBase58(),
+        userAddress:
+          walletType === "MPC"
+            ? mpcAddress
+            : wallet.adapter.publicKey.toBase58(),
         vestingType: "NONE",
         amount: DATA.tokenAmount * LAMPORTS_PER_SOL,
       });
       console.log("Create deal transaction prepared:", createDealTx);
 
-      const signedTx = await wallet.adapter.signTransaction(createDealTx);
+      if (walletType === "MPC") {
+        // Sign with MPC wallet
+        const serializedTransaction = createDealTx.serialize({
+          requireAllSignatures: false,
+        });
 
-      const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
-      console.log("Deal created successfully. Tx:", txHash);
+        // Convert the serialized Buffer to a Base64 string
+        const base64Transaction = serializedTransaction.toString("base64");
 
-      const created = await escrowSDK.createOffer({
-        dealData: DATA,
-        txHash: txHash,
-      });
-      console.log("Offer created successfully:", created);
+        const signature = await signSolanaTxWithPortal({
+          messageToSign: base64Transaction,
+        });
+
+        console.log("success sign using portal: ", signature);
+
+        const transactionBuffer = bs58.decode(signature);
+        const signedTx = Transaction.from(transactionBuffer);
+        const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
+
+        console.log("Deal created successfully. Tx:", txHash);
+
+        const created = await escrowSDK.createOffer({
+          dealData: DATA,
+          txHash: txHash,
+        });
+
+        console.log("Offer created successfully:", created);
+      } else {
+        // Sign with EOA wallet
+        const signedTx = await wallet.adapter.signTransaction(createDealTx);
+
+        const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
+        console.log("Deal created successfully. Tx:", txHash);
+
+        const created = await escrowSDK.createOffer({
+          dealData: DATA,
+          txHash: txHash,
+        });
+
+        console.log("Offer created successfully:", created);
+      }
+
       toast.success("Offer sent successfully");
     } catch (error) {
       console.error(
@@ -299,7 +378,7 @@ function TweetPackageModal({ solTotal, influencer }) {
       toast.error("Error submitting Twitter Package");
     } finally {
       setIsLoading(false);
-      onClose(); // Close modal after submission
+      onClose();
     }
   };
 
