@@ -310,7 +310,6 @@ export const messagesRoutes = (app, _, done) => {
     { preHandler: [authMiddleware] },
     async (request, reply) => {
       const { userId } = request.params;
-
       try {
         const user = await prismaClient.user.findUnique({
           where: { id: userId },

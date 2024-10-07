@@ -29,7 +29,6 @@ export const tokenRoutes = (app, _, done) => {
         });
       }
 
-      // TODO: Get token total holders
       const tokenData = await fetchTokenData({
         mintAddress: tokenAddress,
         chainId: chain.id
@@ -51,7 +50,6 @@ export const tokenRoutes = (app, _, done) => {
         pair: pairData,
       }
 
-      // TODO fetch token info from API
       return reply.send(data);
     } catch (error) {
       console.error(`Error fetching token info: ${error.message}`);

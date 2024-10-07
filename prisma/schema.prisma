@@ -246,7 +246,6 @@ model CampaignOrder {
   influencerId String
   influencer   Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
 
-  // TODO: token mint
   tokenId String
   token   Token  @relation(fields: [tokenId], references: [id], onDelete: Cascade)
 

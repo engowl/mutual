@@ -94,7 +94,6 @@ export const campaignRoutes = (app, _, done) => {
           "Order Validated, proceed to confirm the deal on the contract"
         );
 
-        // TODO: Validate is the createDeal txHash is valid,
         const dealAccountData = await getCreateDealTxDetails(
           createDealTxHash,
           chainId
@@ -550,7 +549,7 @@ export const campaignRoutes = (app, _, done) => {
     }
   );
 
-  app.get("/:orderId/contract-logs", async (req, reply) => {
+  app.get("/:orderId/logs", async (req, reply) => {
     try {
       const { orderId } = req.params;
 
@@ -906,7 +905,6 @@ export const campaignRoutes = (app, _, done) => {
     }
   );
 
-  // TODO: Check claimable tokens
   app.get(
     "/:orderId/claimable",
     {

@@ -76,7 +76,7 @@ fastify.ready(async (err) => {
 /* --------------------------------- Workers -------------------------------- */
 // fastify.register(campaignWorkers);
 // fastify.register(twitterWorkers);
-fastify.register(tokenWorkers);
+// fastify.register(tokenWorkers);
 
 const start = async () => {
   try {
