@@ -35,7 +35,7 @@ export default function ProjectOwnerBrowsePage() {
   });
 
   const { data: tokenInfo, isLoading: isTokenLoading } = useSWR(
-    `/token/info?tokenAddress=So11111111111111111111111111111111111111112`,
+    `/token/info?tokenAddress=${user?.projectOwner?.projectDetails[0]?.contractAddress}`,
     async (url) => {
       const { data } = await mutualAPI.get(url);
       return data;
@@ -105,26 +105,32 @@ export default function ProjectOwnerBrowsePage() {
         <div className="w-full flex gap-6 mt-6">
           {/* Sidebar */}
           <div className="hidden xl:inline bg-white rounded-2xl border p-5 w-80 min-h-[400px]">
-            <div className="bg-orangy rounded-2xl p-4 text-white flex flex-col gap-2">
-              <div className="w-full flex justify-between items-center">
-                <p className="text-neutral-100">${tokenInfo?.symbol}</p>
-              </div>
-              {tokenInfo?.imageUrl ? (
-                <div className="size-12  rounded-full">
-                  <img
-                    src={tokenInfo.imageUrl}
-                    alt="ic"
-                    className="h-full w-full"
-                  />
+            {tokenInfo && !isTokenLoading ? (
+              <div className="bg-orangy rounded-2xl p-4 text-white flex flex-col gap-2">
+                <div className="w-full flex justify-between items-center">
+                  <p className="text-neutral-100">${tokenInfo?.symbol}</p>
                 </div>
-              ) : (
-                <div className="size-12 bg-neutral-100 rounded-full"></div>
-              )}
-              <p className="font-medium text-xl">{tokenInfo?.name}</p>
-              <p className="text-neutral-100">
-                {shortenAddress(tokenInfo?.mintAddress)}
-              </p>
-            </div>
+                {tokenInfo?.imageUrl ? (
+                  <div className="size-12 rounded-full overflow-hidden">
+                    <img
+                      src={tokenInfo.imageUrl}
+                      alt="ic"
+                      className="h-full w-full"
+                    />
+                  </div>
+                ) : (
+                  <div className="size-12 bg-neutral-100 rounded-full"></div>
+                )}
+                <p className="font-medium text-xl">{tokenInfo?.name}</p>
+                <p className="text-neutral-100">
+                  {shortenAddress(tokenInfo?.mintAddress)}
+                </p>
+              </div>
+            ) : (
+              <div className="bg-orangy rounded-2xl p-4 text-white flex items-center justify-center w-full h-40 gap-2">
+                <Spinner size="md" color="white" />
+              </div>
+            )}
             <div className="mt-6">
               <div className="w-full flex items-center justify-between">
                 <p className="font-medium">Filter</p>
