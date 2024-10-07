@@ -7,6 +7,8 @@ import { adminKp, MUTUAL_ESCROW_PROGRAM } from "../../lib/contract/contracts.js"
 import { prepareOrderId } from "../../utils/contractUtils.js";
 import { BN } from "bn.js";
 import { nanoid } from "nanoid";
+import { unTwitterApiGetTweet } from "../../api/unTwitterApi/unTwitterApi.js";
+import { manyMinutesFromNowUnix, sleep } from "../../utils/miscUtils.js";
 
 export const handleExpiredOffer = async (offerId) => {
   try {
@@ -293,4 +295,75 @@ export const generateEventLogs = async (orderId) => {
   }
 
   return logs;
+}
+
+export const handleCheckCampaignPost = async (campaignId) => {
+  try {
+    const campaign = await prismaClient.campaignOrder.findUnique({
+      where: {
+        id: campaignId
+      },
+      include: {
+        post: true
+      }
+    });
+
+    // Get the current post
+    if (campaign.channel === 'TWITTER') {
+      const post = campaign.post;
+
+      const tweet = await unTwitterApiGetTweet({
+        tweetId: post.postId,
+      });
+
+      if (campaign.post.isApproved === false) {
+        // Check if the tweet has been live for at least the minimum required time (MINIMUM_POST_LIVE_IN_MINUTES).
+        // This is determined by comparing the current time (now) with the tweet's posted time (post.postedTimeUnix).
+        // If the tweet has been live long enough, update isApproved to true in the database.
+        let isApproved = false;
+        const now = manyMinutesFromNowUnix(0);
+        const intervalInMinutes = parseInt((now - post.postedTimeUnix) / 60);
+
+        // Approve the post if it has been live for the minimum required duration
+        if (intervalInMinutes >= MINIMUM_POST_LIVE_IN_MINUTES) {
+          isApproved = true;
+        }
+
+        // If the post is now approved, update the database to reflect the new status
+        if (isApproved) {
+          await prismaClient.campaignPost.update({
+            where: {
+              id: post.id
+            },
+            data: {
+              isApproved: true
+            }
+          });
+        }
+      }
+
+      // Update the impression count
+      await prismaClient.campaignPost.update({
+        where: {
+          id: post.id
+        },
+        data: {
+          impressionData: {
+            favourite_count: tweet.tweet.favorite_count,
+            quote_count: tweet.tweet.quote_count,
+            reply_count: tweet.tweet.reply_count,
+            retweet_count: tweet.tweet.retweet_count,
+            view_count: tweet.tweet.view_count
+          },
+          data: tweet.tweet,
+        }
+      })
+    } else if (campaign.channel === 'TELEGRAM') {
+      // TODO: Check the telegram post
+    }
+
+    await sleep(2000)
+  } catch (error) {
+    console.error('Error checking campaign post:', error);
+  }
 }

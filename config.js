@@ -28,8 +28,6 @@ export const CHAINS = [
   // },
 ];
 
-console.log("chain", CHAINS);
-
 export const VESTING_CONFIG = [
   {
     id: "TIME",

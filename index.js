@@ -17,6 +17,7 @@ import fastifyRedis from "@fastify/redis";
 import { twitterWorkers } from "./app/workers/twitterWorkers.js";
 import { walletRoutes } from "./app/routes/walletRoutes.js";
 import { tokenWorkers } from "./app/workers/tokenWorkers.js";
+import { escrowRoutes } from "./app/routes/escrowRoutes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -62,6 +63,7 @@ fastify.register(walletRoutes, {
   prefix: "/wallet",
 });
 fastify.register(adminRoutes, { prefix: "/__admin" });
+fastify.register(escrowRoutes, { prefix: "/escrow" });
 
 fastify.ready(async (err) => {
   if (err) throw err;

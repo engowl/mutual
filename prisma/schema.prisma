@@ -277,6 +277,7 @@ model CampaignPost {
 
   text String @db.Text
   data Json
+  impressionData Json?
 
   isApproved Boolean @default(false)
 

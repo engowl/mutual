@@ -653,6 +653,13 @@ export const campaignRoutes = (app, _, done) => {
             postedTimeUnix: tweet.tweet.created_at,
             text: tweet.tweet.full_text,
             data: tweet.tweet,
+            impressionData: {
+              favourite_count: tweet.tweet.favorite_count,
+              quote_count: tweet.tweet.quote_count,
+              reply_count: tweet.tweet.reply_count,
+              retweet_count: tweet.tweet.retweet_count,
+              view_count: tweet.tweet.view_count
+            }
           },
           update: {
             postId: tweet.tweet.id_str,
@@ -660,6 +667,13 @@ export const campaignRoutes = (app, _, done) => {
             postedTimeUnix: tweet.tweet.created_at,
             text: tweet.tweet.full_text,
             data: tweet.tweet,
+            impressionData: {
+              favourite_count: tweet.tweet.favorite_count,
+              quote_count: tweet.tweet.quote_count,
+              reply_count: tweet.tweet.reply_count,
+              retweet_count: tweet.tweet.retweet_count,
+              view_count: tweet.tweet.view_count
+            }
           },
         });
 

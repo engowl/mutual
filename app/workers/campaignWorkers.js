@@ -6,7 +6,7 @@ import { MUTUAL_ESCROW_PROGRAM } from '../lib/contract/contracts.js';
 import { getAlphanumericId, manyMinutesFromNowUnix } from '../utils/miscUtils.js';
 import { parseEventData } from '../utils/contractUtils.js';
 import { prismaClient } from '../db/prisma.js';
-import { handleExpiredOffer } from './helpers/campaignHelpers.js';
+import { handleCheckCampaignPost, handleExpiredOffer } from './helpers/campaignHelpers.js';
 
 /**
  *
@@ -156,16 +156,54 @@ export const campaignWorkers = (app, _, done) => {
     await handleCheckExpiredOffer();
   });
 
+
+  // Post Impression & age
+  const checkCampaignPost = async () => {
+    // Make it query post instead
+    const posts = await prismaClient.campaignPost.findMany({
+      select: {
+        id: true,
+        campaignOrderId: true,
+      },
+      where: {
+        // Last updated 15 minutes ago
+        updatedAt: {
+          lt: new Date(Date.now() - 1000 * 60 * 15) // 15 minutes
+        },
+        order: {
+          status: {
+            in: ['CREATED', 'ACCEPTED', 'COMPLETED']
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'asc'
+      }
+    })
+
+    console.log('Posts to check:', posts.length);
+    const campaignOrderIds = posts.map((p) => p.campaignOrderId);
+
+    console.log('Campaigns to check:', campaignOrderIds.length);
+    for (const campaign of campaignOrderIds) {
+      await handleCheckCampaignPost(campaign);
+    }
+  }
+
+  // Every 1 min
+  cron.schedule(`*/1 * * * *`, async () => {
+    console.log('Checking for campaign posts...');
+    await checkCampaignPost();
+  });
+
   // Graceful Shutdown: Ensure proper cleanup on exit
   const handleExit = () => {
     console.log('\nGracefully shutting down the event listeners...');
     process.exit(0);
   };
 
-  process.on('SIGINT', handleExit);  // Handle CTRL+C
-  process.on('SIGTERM', handleExit); // Handle termination signal
-
-  // Start listening for events
+  process.on('SIGINT', handleExit);  
+  process.on('SIGTERM', handleExit); 
   listenForEvents();
 
   done();
