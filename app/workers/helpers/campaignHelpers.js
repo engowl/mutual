@@ -301,11 +301,30 @@ export const handleCheckCampaignPost = async (campaignId) => {
   try {
     const campaign = await prismaClient.campaignOrder.findUnique({
       where: {
-        id: campaignId
+        id: campaignId,
       },
       include: {
-        post: true
-      }
+        projectOwner: {
+          include: {
+            user: {
+              include: {
+                wallet: true,
+              },
+            },
+          },
+        },
+        influencer: {
+          include: {
+            user: {
+              include: {
+                wallet: true,
+              },
+            },
+          },
+        },
+        token: true,
+        post: true,
+      },
     });
 
     // Get the current post
@@ -331,14 +350,7 @@ export const handleCheckCampaignPost = async (campaignId) => {
 
         // If the post is now approved, update the database to reflect the new status
         if (isApproved) {
-          await prismaClient.campaignPost.update({
-            where: {
-              id: post.id
-            },
-            data: {
-              isApproved: true
-            }
-          });
+          await approveOrder(campaign.id);
         }
       }
 
@@ -366,4 +378,108 @@ export const handleCheckCampaignPost = async (campaignId) => {
   } catch (error) {
     console.error('Error checking campaign post:', error);
   }
+}
+
+async function approveOrder(orderId) {
+  // Find the order in your system (replace this with your logic for fetching an order by ID)
+  const order = await prismaClient.campaignOrder.findUnique({
+    where: { id: orderId },
+    include: {
+      projectOwner: {
+        include: {
+          user: {
+            include: {
+              wallet: true,
+            },
+          },
+        },
+      },
+      influencer: {
+        include: {
+          user: {
+            include: {
+              wallet: true,
+            },
+          },
+        },
+      },
+      token: true,
+      post: true,
+    },
+  });
+
+  const chain = CHAINS.find(c => c.dbChainId === order.chainId);
+  const program = MUTUAL_ESCROW_PROGRAM(chain.id);
+
+  const [dealPda] = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("deal"),
+      prepareOrderId(order.id),
+      new PublicKey(order.projectOwner.user.wallet.address).toBuffer(),
+      new PublicKey(order.influencer.user.wallet.address).toBuffer(),
+      new PublicKey(order.token.mintAddress).toBuffer(),
+    ],
+    program.programId
+  );
+
+  const [escrowPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from("escrow")],
+    program.programId
+  );
+
+  if (order.vestingType === "NONE" || order.vestingType === "TIME") {
+    // Fully eligible
+    const txHash = await program.methods
+      .setEligibilityStatus({ fullyEligible: {} })
+      .accounts({
+        deal: dealPda,
+        escrow: escrowPda,
+        signer: adminKp.publicKey,
+      })
+      .signers([adminKp])
+      .rpc({ commitment: "confirmed" });
+
+    console.log("Fully eligible txHash:", txHash);
+
+    await prismaClient.campaignOrder.update({
+      where: {
+        id: order.id,
+      },
+      data: {
+        status: "COMPLETED",
+      },
+    });
+  } else {
+    // Partially eligible (adjust this logic as needed for your specific partial eligibility flow)
+    const txHash = await program.methods
+      .setEligibilityStatus({ fullyEligible: {} }) // Change to partiallyEligible if needed
+      .accounts({
+        deal: dealPda,
+        escrow: escrowPda,
+        signer: adminKp.publicKey,
+      })
+      .signers([adminKp])
+      .rpc({ commitment: "confirmed" });
+
+    console.log("Partial eligibility txHash:", txHash);
+
+    await prismaClient.campaignOrder.update({
+      where: {
+        id: order.id,
+      },
+      data: {
+        status: "PARTIALCOMPLETED",
+      },
+    });
+  }
+
+  // Update post to approved
+  await prismaClient.campaignPost.update({
+    where: {
+      campaignOrderId: order.id,
+    },
+    data: {
+      isApproved: true,
+    },
+  });
 }

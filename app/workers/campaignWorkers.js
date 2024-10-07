@@ -155,6 +155,7 @@ export const campaignWorkers = (app, _, done) => {
     console.log('Checking for expired offers...');
     await handleCheckExpiredOffer();
   });
+  handleCheckExpiredOffer();
 
 
   // Post Impression & age
@@ -193,7 +194,7 @@ export const campaignWorkers = (app, _, done) => {
   // Every 1 min
   cron.schedule(`*/1 * * * *`, async () => {
     console.log('Checking for campaign posts...');
-    await checkCampaignPost();
+    // await checkCampaignPost();
   });
 
   // Graceful Shutdown: Ensure proper cleanup on exit
