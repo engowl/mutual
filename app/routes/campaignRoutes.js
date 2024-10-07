@@ -518,7 +518,8 @@ export const campaignRoutes = (app, _, done) => {
               user: true
             }
           },
-          token: true
+          token: true,
+          post: true
         }
       })
 
