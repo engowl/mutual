@@ -22,6 +22,8 @@ import AdminPage from "./pages/admin/AdminPage.jsx";
 import KolPage from "./pages/admin/kol/KolPage.jsx";
 import ProjectsPage from "./pages/admin/projects/ProjectsPage.jsx";
 import ProjectOwnerSingleMessagePage from "./pages/project-owner/ProjectOwnerSingleMessagePage.jsx";
+import MessagePage from "./pages/MessagePage.jsx";
+import SingleMessagePage from "./pages/SingleMessagePage.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -81,14 +83,14 @@ export const router = createBrowserRouter([
             path: "profile/:id",
             element: <InfluencerProfilePublicPage />,
           },
-          {
-            path: "message",
-            element: (
-              <RolesAuthRouteGuard roles={["INFLUENCER"]}>
-                <InfluencerMessagePage />
-              </RolesAuthRouteGuard>
-            ),
-          },
+          // {
+          //   path: "message",
+          //   element: (
+          //     <RolesAuthRouteGuard roles={["INFLUENCER"]}>
+          //       <InfluencerMessagePage />
+          //     </RolesAuthRouteGuard>
+          //   ),
+          // },
         ],
       },
       {
@@ -118,22 +120,22 @@ export const router = createBrowserRouter([
               </RolesAuthRouteGuard>
             ),
           },
-          {
-            path: "message",
-            element: (
-              <RolesAuthRouteGuard roles={["PROJECT_OWNER"]}>
-                <ProjectOwnerMessagePage />
-              </RolesAuthRouteGuard>
-            ),
-          },
-          {
-            path: "message/:influencerId",
-            element: (
-              <RolesAuthRouteGuard roles={["PROJECT_OWNER"]}>
-                <ProjectOwnerSingleMessagePage />
-              </RolesAuthRouteGuard>
-            ),
-          },
+          // {
+          //   path: "message",
+          //   element: (
+          //     <RolesAuthRouteGuard roles={["PROJECT_OWNER"]}>
+          //       <ProjectOwnerMessagePage />
+          //     </RolesAuthRouteGuard>
+          //   ),
+          // },
+          // {
+          //   path: "message/:influencerId",
+          //   element: (
+          //     <RolesAuthRouteGuard roles={["PROJECT_OWNER"]}>
+          //       <ProjectOwnerSingleMessagePage />
+          //     </RolesAuthRouteGuard>
+          //   ),
+          // },
           {
             path: "market-cap-vesting/:influencerId",
             element: (
@@ -151,6 +153,14 @@ export const router = createBrowserRouter([
             ),
           },
         ],
+      },
+      {
+        path: "/message",
+        element: <MessagePage />,
+      },
+      {
+        path: "/message/:receiverId",
+        element: <SingleMessagePage />,
       },
       {
         path: "/success",
