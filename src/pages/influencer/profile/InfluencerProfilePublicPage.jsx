@@ -24,6 +24,8 @@ import RandomAvatar from "../../../components/ui/RandomAvatar.jsx";
 import { CHAINS } from "../../../config.js";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK.js";
 import { getAlphanumericId } from "../../../utils/misc.js";
+import { parseDate, parseTime } from "@internationalized/date";
+import toast from "react-hot-toast";
 
 export default function InfluencerProfilePublicPage() {
   const params = useParams();
@@ -48,6 +50,8 @@ export default function InfluencerProfilePublicPage() {
 
     fetchInfluencer();
   }, [id]);
+
+  console.log({ influencer });
 
   if (isLoading) {
     return (
@@ -127,9 +131,23 @@ export default function InfluencerProfilePublicPage() {
                   </div>
 
                   {pkg.type === "TWITTER" ? (
-                    <TweetPackageModal />
+                    <TweetPackageModal
+                      solTotal={
+                        influencer.packages.find(
+                          (pkg) => pkg.type === "TWITTER"
+                        )?.price || 0
+                      }
+                      influencer={influencer}
+                    />
                   ) : (
-                    <TelegramPackageModal />
+                    <TelegramPackageModal
+                      solTotal={
+                        influencer.packages.find(
+                          (pkg) => pkg.type === "TELEGRAM_GROUP"
+                        )?.price || 0
+                      }
+                      influencer={influencer}
+                    />
                   )}
                 </div>
               );
@@ -141,71 +159,45 @@ export default function InfluencerProfilePublicPage() {
   }
 }
 
-function TelegramPackageModal() {
-  const { isOpen, onOpen, onClose } = useDisclosure();
-
-  const handleTelegramSubmit = (formData) => {
-    // Submit logic for Telegram Package
-    console.log("Submitting Telegram Package:", formData);
-    onClose(); // Close modal after submission
-  };
-
-  return (
-    <PackageModal
-      title="Telegram Post Package"
-      isOpen={isOpen}
-      onOpen={onOpen}
-      onClose={onClose}
-      total="2.30 SOL"
-      onSubmit={handleTelegramSubmit} // Submit handler passed as a prop
-    />
-  );
-}
-
-function TweetPackageModal() {
+function TelegramPackageModal({ solTotal, influencer }) {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [cookies] = useCookies(["session_token"]);
   const [isLoading, setIsLoading] = useState(false);
 
   const { wallet } = useWallet();
 
-  const handleTweetSubmit = async (formData) => {
+  const handleTelegramSubmit = async (formData) => {
     try {
-      // Submit logic for Twitter Package
       setIsLoading(true);
-      console.log("Submitting Twitter Package:", formData);
-
-      // onClose(); // Close modal after submission
-
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
         bearerToken: cookies.session_token,
-        chainId: 'devnet',
-        chains: CHAINS
-      })
+        chainId: "devnet",
+        chains: CHAINS,
+      });
 
       const DATA = {
         orderId: getAlphanumericId(16),
-        influencerId: 'cm1woosyd0002s3rywklvtzik',
+        influencerId: influencer.id,
         vestingType: "NONE",
         vestingCondition: {},
         mintAddress: NATIVE_MINT.toBase58(),
-        tokenAmount: 0.05,
-        campaignChannel: 'TWITTER',
-        promotionalPostText: 'This is a promotional text',
-        postDateAndTime: new Date()
-      }
+        tokenAmount: parseFloat(solTotal),
+        campaignChannel: "TELEGRAM",
+        promotionalPostText: formData.promotionalText,
+        postDateAndTime: new Date(formData.postDateAndTime).toISOString(),
+      };
 
       await escrowSDK.verifyOffer(DATA);
       console.log("Offer verified successfully");
 
       const createDealTx = await escrowSDK.prepareNativeCreateDealTransaction({
         orderId: DATA.orderId,
-        kolAddress: 'BhBjfxB7NvG4FugPg8d1HCtjRuj5UqDGgsEMxxRo1k3H',
+        kolAddress: influencer.user.wallet.address,
         userAddress: wallet.adapter.publicKey.toBase58(),
         vestingType: "NONE",
         amount: DATA.tokenAmount * LAMPORTS_PER_SOL,
-      })
+      });
       console.log("Create deal transaction prepared:", createDealTx);
 
       const signedTx = await wallet.adapter.signTransaction(createDealTx);
@@ -218,10 +210,96 @@ function TweetPackageModal() {
         txHash: txHash,
       });
       console.log("Offer created successfully:", created);
+      toast.success("Offer sent successfully");
     } catch (error) {
-      console.error("Error submitting Twitter Package:", error?.response?.data?.message || error);
+      console.error(
+        "Error submitting Twitter Package:",
+        error?.response?.data?.message || error
+      );
+      toast.error("Error submitting Twitter Package");
     } finally {
       setIsLoading(false);
+      onClose(); // Close modal after submission
+    }
+  };
+
+  return (
+    <PackageModal
+      title="Telegram Post Package"
+      isOpen={isOpen}
+      onOpen={onOpen}
+      onClose={onClose}
+      total={solTotal}
+      isLoading={isLoading}
+      onSubmit={handleTelegramSubmit}
+    />
+  );
+}
+
+function TweetPackageModal({ solTotal, influencer }) {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [cookies] = useCookies(["session_token"]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { wallet } = useWallet();
+
+  const handleTweetSubmit = async (formData) => {
+    try {
+      // Submit logic for Twitter Package
+      setIsLoading(true);
+      console.log("Submitting Twitter Package:", formData);
+
+      const escrowSDK = new MutualEscrowSDK({
+        backendEndpoint: import.meta.env.VITE_BACKEND_URL,
+        bearerToken: cookies.session_token,
+        chainId: "devnet",
+        chains: CHAINS,
+      });
+
+      const DATA = {
+        orderId: getAlphanumericId(16),
+        influencerId: influencer.id,
+        vestingType: "NONE",
+        vestingCondition: {},
+        mintAddress: NATIVE_MINT.toBase58(),
+        tokenAmount: parseFloat(solTotal),
+        campaignChannel: "TWITTER",
+        promotionalPostText: formData.promotionalText,
+        postDateAndTime: new Date(formData.postDateAndTime).toISOString(),
+      };
+
+      await escrowSDK.verifyOffer(DATA);
+      console.log("Offer verified successfully");
+
+      const createDealTx = await escrowSDK.prepareNativeCreateDealTransaction({
+        orderId: DATA.orderId,
+        kolAddress: influencer.user.wallet.address,
+        userAddress: wallet.adapter.publicKey.toBase58(),
+        vestingType: "NONE",
+        amount: DATA.tokenAmount * LAMPORTS_PER_SOL,
+      });
+      console.log("Create deal transaction prepared:", createDealTx);
+
+      const signedTx = await wallet.adapter.signTransaction(createDealTx);
+
+      const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
+      console.log("Deal created successfully. Tx:", txHash);
+
+      const created = await escrowSDK.createOffer({
+        dealData: DATA,
+        txHash: txHash,
+      });
+      console.log("Offer created successfully:", created);
+      toast.success("Offer sent successfully");
+    } catch (error) {
+      console.error(
+        "Error submitting Twitter Package:",
+        error?.response?.data?.message || error
+      );
+      toast.error("Error submitting Twitter Package");
+    } finally {
+      setIsLoading(false);
+      onClose(); // Close modal after submission
     }
   };
 
@@ -231,40 +309,44 @@ function TweetPackageModal() {
       isOpen={isOpen}
       onOpen={onOpen}
       onClose={onClose}
-      total="2.30 SOL"
+      total={solTotal}
+      isLoading={isLoading}
       onSubmit={handleTweetSubmit} // Submit handler passed as a prop
     />
   );
 }
 
-function PackageModal({ title, onClose, isOpen, onOpen, total, onSubmit }) {
+function PackageModal({
+  title,
+  onClose,
+  isOpen,
+  onOpen,
+  total,
+  onSubmit,
+  isLoading,
+}) {
   const [formData, setFormData] = useState({
     campaignTitle: "",
     promotionalText: "",
     notes: "",
-    postDate: null,
-    postTime: null,
+    postDateAndTime: null,
   });
+
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = String(currentDate.getMonth() + 1).padStart(2, "0");
+  const currentDay = String(currentDate.getDate()).padStart(2, "0");
+
+  const [selectedDate, setSelectedDate] = useState(
+    parseDate(`${currentYear}-${currentMonth}-${currentDay}`)
+  );
+  const [selectedTime, setSelectedTime] = useState(parseTime("12:00:00"));
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
       [name]: value,
-    });
-  };
-
-  const handleDateChange = (date) => {
-    setFormData({
-      ...formData,
-      postDate: date,
-    });
-  };
-
-  const handleTimeChange = (time) => {
-    setFormData({
-      ...formData,
-      postTime: time,
     });
   };
 
@@ -275,6 +357,33 @@ function PackageModal({ title, onClose, isOpen, onOpen, total, onSubmit }) {
   const handleSubmit = () => {
     onSubmit(formData);
   };
+
+  const handleDateInputChange = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const combineDateAndTime = (dateISO, timeObject) => {
+    if (!dateISO || !timeObject) return null;
+
+    const date = new Date(dateISO);
+
+    date.setHours(timeObject.hour);
+    date.setMinutes(timeObject.minute);
+    date.setSeconds(timeObject.second);
+    date.setMilliseconds(timeObject.millisecond || 0); // Set milliseconds, default to 0 if not provided
+
+    return date;
+  };
+
+  useEffect(() => {
+    if (selectedDate && selectedTime) {
+      const combinedDateTime = combineDateAndTime(selectedDate, selectedTime);
+      handleDateInputChange("postDateAndTime", combinedDateTime);
+    }
+  }, [selectedDate, selectedTime]);
 
   return (
     <>
@@ -358,8 +467,10 @@ function PackageModal({ title, onClose, isOpen, onOpen, total, onSubmit }) {
                     <DatePicker
                       variant="bordered"
                       className="flex-1"
-                      selected={formData.postDate}
-                      onChange={handleDateChange}
+                      aria-labelledby="date-input"
+                      aria-label="date-input"
+                      value={selectedDate}
+                      onChange={setSelectedDate}
                       dateInputClassNames={{
                         inputWrapper: "h-12 rounded-lg border shadow-none",
                       }}
@@ -367,8 +478,10 @@ function PackageModal({ title, onClose, isOpen, onOpen, total, onSubmit }) {
                     <TimeInput
                       className="max-w-32"
                       variant="bordered"
-                      value={formData.postTime}
-                      onChange={handleTimeChange}
+                      aria-labelledby="time-input"
+                      aria-label="time-input"
+                      value={selectedTime}
+                      onChange={setSelectedTime}
                       classNames={{
                         inputWrapper: "h-12 rounded-lg border shadow-none",
                       }}
@@ -377,7 +490,7 @@ function PackageModal({ title, onClose, isOpen, onOpen, total, onSubmit }) {
                 </div>
                 <div className="bg-creamy-300 px-4 py-3 mt-4 w-full flex items-center justify-between text-xl font-medium rounded-xl">
                   <p>Total</p>
-                  <p>{total}</p>
+                  <p>{total} SOL</p>
                 </div>
               </ModalBody>
               <ModalFooter>
@@ -389,6 +502,7 @@ function PackageModal({ title, onClose, isOpen, onOpen, total, onSubmit }) {
                   Cancel
                 </Button>
                 <Button
+                  isLoading={isLoading}
                   className="bg-orangy text-white rounded-full font-medium"
                   onPress={handleSubmit}
                 >

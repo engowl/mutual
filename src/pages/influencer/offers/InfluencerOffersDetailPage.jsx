@@ -1,7 +1,16 @@
-import { Button, Spinner } from "@nextui-org/react";
-import { useParams } from "react-router-dom";
+import {
+  Button,
+  Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalHeader,
+  Spinner,
+  useDisclosure,
+} from "@nextui-org/react";
+import { useNavigate, useParams } from "react-router-dom";
 import { shortenAddress } from ".././../../utils/string";
-import { Check, Clock } from "lucide-react";
+import { Check, Clock, X } from "lucide-react";
 import { cnm } from "../../../utils/style.js";
 import dayjs from "dayjs";
 import { DUMMY_LOGS } from "../../project-owner/offers/ProjectOwnerOffersDetailsPage.jsx";
@@ -16,6 +25,7 @@ import { sleep } from "../../../utils/misc.js";
 
 export default function InfluencerOffersDetailPage() {
   const params = useParams();
+  const navigate = useNavigate();
 
   const offerId = params.id;
 
@@ -24,6 +34,15 @@ export default function InfluencerOffersDetailPage() {
     isLoading,
     mutate,
   } = useSWR(offerId ? `/campaign/${offerId}/detail` : null, async (url) => {
+    const { data } = await mutualAPI.get(url);
+    return data;
+  });
+
+  const {
+    data: claimable,
+    isLoading: isLoadingClaimable,
+    mutate: mutateClaimable,
+  } = useSWR(offerId ? `/campaign/${offerId}/claimable` : null, async (url) => {
     const { data } = await mutualAPI.get(url);
     return data;
   });
@@ -76,9 +95,9 @@ export default function InfluencerOffersDetailPage() {
     }
   };
 
-  console.log({ offer, offerId }, "offer data");
+  console.log({ claimable, offer }, "offer data");
 
-  if (isLoading) {
+  if (isLoading || isLoadingClaimable) {
     return (
       <div className="h-full w-full flex items-center justify-center">
         <Spinner size="lg" color="primary" />
@@ -90,30 +109,38 @@ export default function InfluencerOffersDetailPage() {
     <div className="h-full overflow-y-auto w-full flex flex-col items-center font-clash px-5">
       <div className="w-full max-w-3xl flex flex-col py-20">
         <div className="w-full flex items-center justify-between">
-          <h1 className="text-3xl font-medium">Offers Detail</h1>
+          <h1 className="text-xl lg:text-3xl font-medium">Offers Detail</h1>
           <div className="flex gap-2">
             <Button
-              isLoading={isRejectLoading}
-              disabled={isRejectLoading || isAcceptLoading}
-              onClick={handleRejectOffer}
+              onClick={() => navigate(`/message/${offer?.projectOwner.userId}`)}
               color="default"
-              className="rounded-full font-medium px-8"
+              className="rounded-full font-medium lg:px-8 text-xs md:text-base"
             >
-              Decline Offer
+              Message
             </Button>
+
             {offer?.status === "ACCEPTED" ? (
-              <Button className="bg-orangy text-white rounded-full font-medium px-8">
-                Submit Offer
-              </Button>
+              <SubmitProofModal />
             ) : (
-              <Button
-                isLoading={isAcceptLoading}
-                disabled={isRejectLoading || isAcceptLoading}
-                onClick={handleAcceptOffer}
-                className="bg-orangy text-white rounded-full font-medium px-8"
-              >
-                Accept Offer
-              </Button>
+              <>
+                <Button
+                  isLoading={isRejectLoading}
+                  disabled={isRejectLoading || isAcceptLoading}
+                  onClick={handleRejectOffer}
+                  color="default"
+                  className="rounded-full font-medium lg:px-8 text-xs md:text-base"
+                >
+                  Decline Offer
+                </Button>
+                <Button
+                  isLoading={isAcceptLoading}
+                  disabled={isRejectLoading || isAcceptLoading}
+                  onClick={handleAcceptOffer}
+                  className="bg-orangy text-white rounded-full font-medium lg:px-8 text-xs md:text-base"
+                >
+                  Accept Offer
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -131,38 +158,42 @@ export default function InfluencerOffersDetailPage() {
 
         <div className="mt-4 p-4 rounded-xl bg-white border">
           <div className="w-full flex items-center justify-between">
-            <p className="text-2xl font-medium">
+            <p className="text-xl lg:text-2xl font-medium">
               {offer?.token.name} (${offer?.token.symbol})
             </p>
             <div className="font-medium">DexScreener</div>
           </div>
-          <div className="flex gap-7 mt-3">
+          <div className="flex gap-7 mt-3 text-sm md:text-base">
             <div>
               <p className="text-orangy font-medium">$150M</p>
-              <p className="text-sm text-neutral-500">Market Cap</p>
+              <p className="text-xs md:text-sm text-neutral-500">Market Cap</p>
             </div>
             <div>
               <p className="text-orangy font-medium">
                 {shortenAddress(offer?.token.mintAddress)}
               </p>
-              <p className="text-sm text-neutral-500">Contract Address</p>
+              <p className="text-xs md:text-sm text-neutral-500">
+                Contract Address
+              </p>
             </div>
             <div>
               <p className="text-orangy font-medium">
                 {offer?.token.totalSupply}
               </p>
-              <p className="text-sm text-neutral-500">Total Supply</p>
+              <p className="text-xs md:text-sm text-neutral-500">
+                Total Supply
+              </p>
             </div>
           </div>
         </div>
 
         {/* TODO add real first and second unlocks data */}
-        <Unlock unlocks={DUMMY_UNLOCKS} />
+        <Unlock unlocks={claimable?.phases || []} />
 
         {/* Details */}
         <div className="mt-4 py-5 px-4 rounded-xl bg-white border flex items-center justify-between">
           <div>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 text-sm md:text-base">
               <div className="flex items-center">
                 <p className="w-44 text-neutral-400">Status</p>
                 <OfferStatusBadgePill status={offer?.status} />
@@ -197,9 +228,9 @@ export default function InfluencerOffersDetailPage() {
                 </p>
               </div>
             </div>
-            <p className="font-medium mt-8">Promotional post text</p>
+            <p className="font-medium mt-6 md:mt-8">Promotional post text</p>
             {/* TODO add promotional text real data */}
-            <p className="mt-8">
+            <p className="mt-6 md:mt-8 text-sm md:text-base">
               🚀 $Michi is ready to take over the crypto space!🔥 Join the
               $Michi revolution and be part of the most exciting meme coin of
               the year! 📈 Strong community, rapid growth, and big plans ahead!
@@ -214,29 +245,121 @@ export default function InfluencerOffersDetailPage() {
 }
 
 function Unlock({ unlocks }) {
+  console.log({ unlocks }, "unlocks data");
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="flex flex-col md:flex-row gap-2 lg:gap-4 mt-2 lg:mt-4">
       {unlocks.map((unlock, index) => {
         return (
           <div
             key={index}
-            className="relative flex gap-5 w-full items-center justify-between mt-4 bg-white rounded-xl border p-4"
+            className="relative flex gap-5 flex-1 items-center justify-between bg-white rounded-xl border p-4"
           >
             <div className="flex flex-col gap-0.5 text-[#161616]">
-              <h1 className="font-medium">{unlock.title}</h1>
-              <p>
-                {unlock.value} {unlock.symbol}
-              </p>
-              <p>{unlock.conditionLabel}</p>
+              <h1 className="font-medium">{unlock.phaseName}</h1>
+              <p>{unlock.amountLabel}</p>
+              <p className="text-sm">{unlock.conditionLabel}</p>
             </div>
 
-            <Button className="bg-[#C9C9C9] rounded-full text-white font-medium text-sm w-24">
+            <Button className="bg-[#C9C9C9] rounded-full text-white font-medium text-sm w-20 md:w-24">
               Claim
             </Button>
           </div>
         );
       })}
     </div>
+  );
+}
+
+function SubmitProofModal() {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  function handleSubmitProof() {
+    // Submit proof logic here
+    setIsSuccess(true);
+  }
+  return (
+    <>
+      <Button
+        onClick={onOpen}
+        className="bg-orangy text-white rounded-full font-medium lg:px-8 text-xs md:text-base"
+      >
+        Submit Proof
+      </Button>
+      <Modal size={"lg"} isOpen={isOpen} onClose={onClose} hideCloseButton>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <button
+                onClick={onClose}
+                className="size-10 rounded-full absolute top-3 right-3 flex items-center justify-center"
+              >
+                <X className="size-5 text-neutral-400 stroke-2 hover:text-neutral-600" />
+              </button>
+              {isSuccess ? (
+                <ModalBody>
+                  <div className="flex flex-col items-start justify-center gap-3 px-2 py-4">
+                    <p className="text-2xl font-medium text-center">
+                      Thank You for Your Submission! 🎉
+                    </p>
+                    <p className="text-start text-neutral-500">
+                      We will verify that your tweet remains live for the next 6
+                      hours. Once the verification is complete, you can claim
+                      your fee on our Offer page.
+                    </p>
+                    <Button
+                      onClick={() => {
+                        setIsSuccess(false);
+                        onClose();
+                      }}
+                      className="bg-orangy text-white rounded-full font-medium text-sm w-20 md:w-24 ml-auto mt-1"
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </ModalBody>
+              ) : (
+                <>
+                  <ModalHeader>
+                    <p className="text-xl font-medium px-2 pt-2">
+                      Submit Proof
+                    </p>
+                  </ModalHeader>
+                  <ModalBody className="flex flex-col gap-2 px-8 pb-8">
+                    <p className="text-sm text-neutral-700">Twitter Link</p>
+                    <div className="flex flex-col gap-4">
+                      <Input
+                        placeholder="Enter your social media post URL"
+                        variant="bordered"
+                        classNames={{
+                          inputWrapper:
+                            "rounded-lg border p-4 shadow-none h-12",
+                        }}
+                      />
+                    </div>
+                    <div className="w-full flex items-center justify-end gap-2 mt-2">
+                      <Button
+                        onClick={onClose}
+                        className="rounded-full h-9"
+                        color="default"
+                      >
+                        Back
+                      </Button>
+                      <Button
+                        onClick={handleSubmitProof}
+                        className="bg-orangy h-9 text-white rounded-full font-medium text-sm w-20 md:w-24"
+                      >
+                        Submit
+                      </Button>
+                    </div>
+                  </ModalBody>
+                </>
+              )}
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+    </>
   );
 }
 

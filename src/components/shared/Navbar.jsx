@@ -98,7 +98,7 @@ function ProjectOwnerNav() {
         )}
       </NavLink>
       <NavLink
-        to={"/project-owner/message"}
+        to={"/message"}
         className={({ isActive }) =>
           cnm(
             "h-full w-24 flex items-center justify-center relative text-sm",
@@ -168,7 +168,7 @@ function InfluencerNav() {
         )}
       </NavLink>
       <NavLink
-        to={"/influencer/message"}
+        to={"/message"}
         className={({ isActive }) =>
           cnm(
             "h-full w-24 flex items-center justify-center relative text-sm",
