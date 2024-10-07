@@ -33,10 +33,6 @@ export const fetchTokenData = async ({
       throw e;
     });
 
-    fetchTokenHolderCount({
-      tokenId: existingToken.id
-    })
-
     existingToken = await prismaClient.token.upsert({
       where: {
         mintAddress_chainId: {
@@ -65,6 +61,10 @@ export const fetchTokenData = async ({
         uriData: token.uriData
       }
     });
+
+    fetchTokenHolderCount({
+      tokenId: existingToken.id
+    })
   }
 
   return existingToken;
