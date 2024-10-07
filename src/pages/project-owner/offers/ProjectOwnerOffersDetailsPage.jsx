@@ -34,6 +34,8 @@ export default function ProjectOwnerOffersDetailPage() {
     return data;
   });
 
+  console.log({ offer})
+
   if (isLoading || isLoadingClaimable) {
     return (
       <div className="h-full w-full flex items-center justify-center">
@@ -49,7 +51,7 @@ export default function ProjectOwnerOffersDetailPage() {
           <h1 className="text-3xl font-medium">Offers Detail</h1>
           <div className="flex gap-2">
             <Button
-              onClick={() => navigate(`/message/${offer?.projectOwner.userId}`)}
+              onClick={() => navigate(`/message/${offer?.influencer.userId}`)}
               color="default"
               className="rounded-full font-medium px-8"
             >
