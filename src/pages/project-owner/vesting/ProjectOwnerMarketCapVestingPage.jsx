@@ -83,6 +83,7 @@ function MarketCapVestingConfirmation({ setStep }) {
     `/influencer/${influencerId}`,
     async (url) => {
       const { data } = await mutualAPI.get(url);
+      console.log('influencerData:', data);
       return data;
     }
   );
@@ -102,11 +103,19 @@ function MarketCapVestingConfirmation({ setStep }) {
     }
   );
 
-  const tokenInfo =
+  const { data: tokenInfo } = useSWR(
+    `/token/info?tokenAddress=${user?.projectOwner?.projectDetails[0]?.contractAddress}`,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      return data;
+    }
+  )
+
+  const userTokenInfo =
     data && user
       ? data.find(
-          (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
-        )
+        (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
+      )
       : null;
 
   console.log({ tokenInfo });
@@ -117,11 +126,6 @@ function MarketCapVestingConfirmation({ setStep }) {
   console.log("formData:", formData);
 
   const [isLoading, setIsLoading] = useState(false);
-
-  console.log(
-    influencerData.data.user.wallet.address,
-    "influencerData.data.user.wallet.address"
-  );
 
   const handleCreateOffer = async () => {
     // TODO complete validation and data
@@ -150,7 +154,7 @@ function MarketCapVestingConfirmation({ setStep }) {
           marketcapThreshold: formData.marketCapMilestone,
         },
         chainId: "devnet",
-        mintAddress: tokenInfo?.mint,
+        mintAddress: tokenInfo?.mintAddress,
         tokenAmount: parseFloat(formData.tokenOfferAmount),
         campaignChannel: formData.marketingChannel,
         promotionalPostText: formData.promotionalPostText,
@@ -224,14 +228,16 @@ function MarketCapVestingConfirmation({ setStep }) {
             </div>
             <div>
               <p className="text-orangy font-medium">
-                {shortenAddress("0x8ad8asfha8f8iaf")}
+                {shortenAddress(tokenInfo?.mintAddress)}
               </p>
               <p className="text-xs md:text-sm text-neutral-500">
                 Contract Address
               </p>
             </div>
             <div>
-              <p className="text-orangy font-medium">821,893,121</p>
+              <p className="text-orangy font-medium">
+                {tokenInfo?.totalSupply.toLocaleString("en-US")}
+              </p>
               <p className="text-xs md:text-sm text-neutral-500">
                 Total Supply
               </p>
@@ -378,14 +384,20 @@ function MarketCapVestingForm({ setStep }) {
     }
   );
 
-  const tokenInfo =
+  const { data: tokenInfo } = useSWR(
+    `/token/info?tokenAddress=${user?.projectOwner?.projectDetails[0]?.contractAddress}`,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      return data;
+    }
+  )
+  const userTokenInfo =
     data && user
       ? data.find(
-          (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
-        )
+        (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
+      )
       : null;
 
-  console.log({ tokenInfo });
 
   useEffect(() => {
     if (selectedDate && selectedTime) {
@@ -417,7 +429,14 @@ function MarketCapVestingForm({ setStep }) {
               <p className="text-xl lg:text-2xl font-medium">
                 {tokenInfo?.name} (${tokenInfo?.symbol} )
               </p>
-              <div className="font-medium">DexScreener</div>
+              <Link
+                className="font-medium"
+                to={tokenInfo?.pair?.url || "#"}
+                target="_blank"
+                rel="noreferrer"
+              >
+                DexScreener
+              </Link>
             </div>
             <div className="flex gap-7 mt-3">
               <div>
@@ -426,12 +445,12 @@ function MarketCapVestingForm({ setStep }) {
               </div>
               <div>
                 <p className="text-orangy font-medium">
-                  {shortenAddress(tokenInfo?.mint)}
+                  {shortenAddress(tokenInfo?.mintAddress)}
                 </p>
                 <p className="text-sm text-neutral-500">Contract Address</p>
               </div>
               <div>
-                <p className="text-orangy font-medium">{tokenInfo?.amount}</p>
+                <p className="text-orangy font-medium">{tokenInfo?.totalSupply.toLocaleString("en-US")}</p>
                 <p className="text-sm text-neutral-500">Total Supply</p>
               </div>
             </div>
@@ -454,7 +473,7 @@ function MarketCapVestingForm({ setStep }) {
                 </div>
                 <div className="mt-2 w-full flex items-center justify-between">
                   <p className="text-sm text-neutral-400 px-4 py-2">
-                    Balance: {tokenInfo?.amount.toLocaleString("en-US")} $
+                    Balance: {userTokenInfo?.amount.toLocaleString("en-US")} $
                     {tokenInfo?.symbol}
                   </p>
                   <div className="p-2">
@@ -462,7 +481,7 @@ function MarketCapVestingForm({ setStep }) {
                       onClick={() => {
                         handleInputChange(
                           "tokenOfferAmount",
-                          tokenInfo?.amount.toLocaleString("en-US")
+                          userTokenInfo?.amount.toLocaleString("en-US")
                         );
                       }}
                       className="bg-orangy/10 text-orangy"
@@ -549,7 +568,7 @@ function MarketCapVestingForm({ setStep }) {
                 className={cnm(
                   "flex-1 bg-white h-20 border",
                   formValues.marketingChannel === "twitter" &&
-                    "bg-orangy/10 border-orangy"
+                  "bg-orangy/10 border-orangy"
                 )}
                 variant="bordered"
                 onClick={() => handleInputChange("marketingChannel", "twitter")}
@@ -560,7 +579,7 @@ function MarketCapVestingForm({ setStep }) {
                 className={cnm(
                   "flex-1 bg-white h-20 border",
                   formValues.marketingChannel === "telegram" &&
-                    "bg-orangy/10 border-orangy"
+                  "bg-orangy/10 border-orangy"
                 )}
                 variant="bordered"
                 onClick={() =>
