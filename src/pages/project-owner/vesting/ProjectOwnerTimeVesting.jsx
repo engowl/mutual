@@ -24,6 +24,9 @@ import { parseDate, parseTime } from "@internationalized/date";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { BN } from "bn.js";
+import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
+import bs58 from "bs58";
+import { Transaction } from "@solana/web3.js";
 
 dayjs.extend(utc);
 
@@ -83,6 +86,9 @@ function TimeVestingConfirmation({ setStep }) {
   const params = useParams();
   const influencerId = params.influencerId;
   const navigate = useNavigate();
+
+  const { signSolanaTxWithPortal, address: mpcAddress } = useMCWallet();
+  const { walletType } = useMCAuth();
 
   const { data: influencerData } = useSWR(
     `/influencer/${influencerId}`,
@@ -161,7 +167,10 @@ function TimeVestingConfirmation({ setStep }) {
         orderId: DATA.orderId,
         mintAddress: DATA.mintAddress,
         kolAddress: influencerData.data.user.wallet.address,
-        userAddress: wallet.adapter.publicKey.toBase58(),
+        userAddress:
+          walletType === "MPC"
+            ? mpcAddress
+            : wallet.adapter.publicKey.toBase58(),
         vestingType: DATA.vestingType,
         amount: new BN(DATA.tokenAmount).mul(
           new BN(10).pow(new BN(tokenInfo?.decimals))
@@ -169,8 +178,29 @@ function TimeVestingConfirmation({ setStep }) {
       });
       console.log("createDealTx:", createDealTx);
 
+      let signedTx;
+
       // Step 3: Sign and send the transaction
-      const signedTx = await wallet.adapter.signTransaction(createDealTx);
+      if (walletType === "MPC") {
+        // Step 3: Sign with MPC
+        const serializedTransaction = createDealTx.serialize({
+          requireAllSignatures: false,
+        });
+
+        // Convert the serialized Buffer to a Base64 string
+        const base64Transaction = serializedTransaction.toString("base64");
+
+        const signature = await signSolanaTxWithPortal({
+          messageToSign: base64Transaction,
+        });
+
+        console.log("Success sign using portal: ", signature);
+
+        const transactionBuffer = bs58.decode(signature);
+        signedTx = Transaction.from(transactionBuffer);
+      } else {
+        signedTx = await wallet.adapter.signTransaction(createDealTx);
+      }
 
       // Step 4: Send the transaction
       const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);

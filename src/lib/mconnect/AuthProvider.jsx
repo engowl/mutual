@@ -12,10 +12,11 @@ import toast from "react-hot-toast";
 import { AuthContext } from "../../contexts/AuthContext.js";
 import { useNavigate } from "react-router-dom";
 import { mutualAPI } from "../../api/mutual.js";
+import { CHAINS } from "../../config.js";
 
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
-export const AuthProvider = ({ children }) => {
+export const AuthProvider = ({ chainId = "devnet", children }) => {
   // Google setup
   const [user, setUser] = useState(null);
   const [portal, setPortal] = useState(null);
@@ -44,6 +45,11 @@ export const AuthProvider = ({ children }) => {
   const [isWalletLoading, setIsWalletLoading] = useState(false);
 
   const token = cookies.session_token;
+  const mainnetConfig = CHAINS.find((c) => c.id === "mainnet-beta");
+  const devnetConfig = CHAINS.find((c) => c.id === "devnet");
+
+  const selectedChainConfig = CHAINS.find((c) => c.id === chainId);
+  console.log("Auth Selected Chain Config: ", selectedChainConfig);
 
   // Get User
   const getUser = useCallback(
@@ -63,10 +69,8 @@ export const AuthProvider = ({ children }) => {
             apiKey: res.data.data.user.portalClientApiKey,
             autoApprove: true,
             rpcConfig: {
-              "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1":
-                "https://api.devnet.solana.com",
-              "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp":
-                "https://api.mainnet-beta.solana.com",
+              [devnetConfig.portalChainId]: devnetConfig.rpcUrl,
+              [mainnetConfig.portalChainId]: mainnetConfig.rpcUrl,
             },
           });
 
@@ -146,10 +150,8 @@ export const AuthProvider = ({ children }) => {
         apiKey: res.data.data.user.portalClientApiKey,
         autoApprove: true,
         rpcConfig: {
-          "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1":
-            "https://api.devnet.solana.com",
-          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp":
-            "https://api.mainnet-beta.solana.com",
+          [devnetConfig.portalChainId]: devnetConfig.rpcUrl,
+          [mainnetConfig.portalChainId]: mainnetConfig.rpcUrl,
         },
       });
 
@@ -188,10 +190,8 @@ export const AuthProvider = ({ children }) => {
         apiKey: client.clientApiKey,
         autoApprove: true,
         rpcConfig: {
-          "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1":
-            "https://api.devnet.solana.com",
-          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp":
-            "https://api.mainnet-beta.solana.com",
+          [devnetConfig.portalChainId]: devnetConfig.rpcUrl,
+          [mainnetConfig.portalChainId]: mainnetConfig.rpcUrl,
         },
       });
 
@@ -427,6 +427,7 @@ export const AuthProvider = ({ children }) => {
         isUserLoading,
         isLoggingIn,
         isCheckingSession,
+        chain: selectedChainConfig,
       }}
     >
       {children}
