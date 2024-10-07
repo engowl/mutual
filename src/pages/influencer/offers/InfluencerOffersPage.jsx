@@ -1,6 +1,6 @@
 import { Button, Spinner } from "@nextui-org/react";
 import { useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK";
 import { useCookies } from "react-cookie";
 import { mutualAPI } from "../../../api/mutual";
@@ -13,6 +13,7 @@ import {
   CoinsIcon,
   HandGiveIcon,
 } from "../../../components/icons/icons";
+import SubmitProofModal from "../../../components/influencer/offers/SubmitWorkModal";
 
 export default function InfluencerOffersPage() {
   return (
@@ -99,7 +100,7 @@ function OffersList() {
           </button>
         ))}
       </div>
-      <div className="w-full mt-1 bg-white rounded-2xl border p-4 h-[447px] overflow-y-auto">
+      <div className="w-full mt-1 bg-white rounded-2xl border p-4 h-[600px] overflow-y-auto">
         {!isLoading ? (
           <>
             {filteredOrders.length === 0 ? (
@@ -126,11 +127,13 @@ function OffersList() {
 
 function OfferCard({ order, mutate }) {
   console.log({ order }, "order");
+  const navigate = useNavigate();
 
   const [cookie] = useCookies(["session_token"]);
   const [isRejectLoading, setIsRejectLoading] = useState(false);
   const [isAcceptLoading, setIsAcceptLoading] = useState(false);
-  const handleAcceptOffer = async () => {
+  const handleAcceptOffer = async (e) => {
+    e.stopPropagation();
     try {
       setIsAcceptLoading(true);
 
@@ -154,7 +157,8 @@ function OfferCard({ order, mutate }) {
     }
   };
 
-  const handleRejectOffer = async () => {
+  const handleRejectOffer = async (e) => {
+    e.stopPropagation();
     try {
       setIsRejectLoading(true);
 
@@ -175,24 +179,29 @@ function OfferCard({ order, mutate }) {
     }
   };
 
+  function handleNavigation(e) {
+    e.stopPropagation();
+  }
+
   return (
     <Link
       to={`/influencer/offers/${order.id}`}
+      onClick={handleNavigation}
       className="flex items-center gap-4 p-3 border rounded-lg justify-between hover:bg-neutral-100"
     >
       <div>
-        <div className="flex items-center">
+        <div className="flex flex-col items-start lg:flex-row gap-1 lg:items-center">
           <p className="font-medium">
             {order.token.name} (${order.token.symbol})
           </p>
           {/* Offers status pill */}
-          <div className="ml-4">
+          <div className="lg:ml-4">
             <OfferStatusBadgePill status={order.status} />
           </div>
         </div>
 
         {/* Detail offers */}
-        <div className="flex items-center gap-4 text-sm mt-4 text-neutral-500">
+        <div className="flex flex-wrap items-center gap-4 text-sm mt-4 text-neutral-500">
           <div className="flex items-center gap-1">
             <HandGiveIcon className="mb-0.5" />
             <p>
@@ -218,26 +227,36 @@ function OfferCard({ order, mutate }) {
       {/* action buttons */}
       {order.status !== "REJECTED" && (
         <div className="flex flex-col items-center">
-          <div className="flex gap-2">
-            <Button
-              onClick={handleRejectOffer}
-              isLoading={isRejectLoading}
-              color="default"
-              className="text-xs rounded-full font-medium"
-            >
-              Decline
-            </Button>
-            <Button
-              onClick={handleAcceptOffer}
-              className="text-xs bg-orangy text-white rounded-full font-medium"
-              isLoading={isAcceptLoading}
-            >
-              Accept
-            </Button>
+          <div className="flex gap-2 flex-col lg:flex-row">
+            {order.status !== "ACCEPTED" && (
+              <Button
+                onClick={handleRejectOffer}
+                isLoading={isRejectLoading}
+                color="default"
+                className="text-xs rounded-full font-medium"
+              >
+                Decline
+              </Button>
+            )}
+
+            {order.status === "ACCEPTED" ? (
+              <SubmitProofModal orderId={order.id} className={"md:text-sm"} />
+            ) : (
+              <Button
+                onClick={handleAcceptOffer}
+                className="text-xs bg-orangy text-white rounded-full font-medium"
+                isLoading={isAcceptLoading}
+              >
+                Accept
+              </Button>
+            )}
           </div>
-          <p className="text-xs mt-3 text-neutral-500">
+          <p className="text-[10px] text-center md:text-sm mt-3 text-neutral-500">
             Respond in{" "}
-            <Countdown date={new Date(Date.now() + 50000)} daysInHours />
+            <Countdown
+              date={new Date(order.expiredAtUnix * 1000)}
+              daysInHours
+            />
           </p>
         </div>
       )}

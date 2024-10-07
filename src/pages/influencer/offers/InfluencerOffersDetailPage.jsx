@@ -22,6 +22,7 @@ import { useCookies } from "react-cookie";
 import { useState } from "react";
 import Countdown from "react-countdown";
 import { sleep } from "../../../utils/misc.js";
+import SubmitProofModal from "../../../components/influencer/offers/SubmitWorkModal.jsx";
 
 export default function InfluencerOffersDetailPage() {
   const params = useParams();
@@ -37,6 +38,8 @@ export default function InfluencerOffersDetailPage() {
     const { data } = await mutualAPI.get(url);
     return data;
   });
+
+  console.log({ offer }, "offer data");
 
   const {
     data: claimable,
@@ -120,7 +123,7 @@ export default function InfluencerOffersDetailPage() {
             </Button>
 
             {offer?.status === "ACCEPTED" ? (
-              <SubmitProofModal />
+              <SubmitProofModal orderId={offer.id} />
             ) : (
               <>
                 <Button
@@ -152,7 +155,10 @@ export default function InfluencerOffersDetailPage() {
             Respond in:
           </div>
           <div className="font-medium">
-            <Countdown date={new Date(Date.now()) + 60 * 1000} daysInHours />
+            <Countdown
+              date={new Date(offer?.expiredAtUnix * 1000)}
+              daysInHours
+            />
           </div>
         </div>
 
@@ -267,99 +273,6 @@ function Unlock({ unlocks }) {
         );
       })}
     </div>
-  );
-}
-
-function SubmitProofModal() {
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const [isSuccess, setIsSuccess] = useState(false);
-
-  function handleSubmitProof() {
-    // Submit proof logic here
-    setIsSuccess(true);
-  }
-  return (
-    <>
-      <Button
-        onClick={onOpen}
-        className="bg-orangy text-white rounded-full font-medium lg:px-8 text-xs md:text-base"
-      >
-        Submit Proof
-      </Button>
-      <Modal size={"lg"} isOpen={isOpen} onClose={onClose} hideCloseButton>
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <button
-                onClick={onClose}
-                className="size-10 rounded-full absolute top-3 right-3 flex items-center justify-center"
-              >
-                <X className="size-5 text-neutral-400 stroke-2 hover:text-neutral-600" />
-              </button>
-              {isSuccess ? (
-                <ModalBody>
-                  <div className="flex flex-col items-start justify-center gap-3 px-2 py-4">
-                    <p className="text-2xl font-medium text-center">
-                      Thank You for Your Submission! 🎉
-                    </p>
-                    <p className="text-start text-neutral-500">
-                      We will verify that your tweet remains live for the next 6
-                      hours. Once the verification is complete, you can claim
-                      your fee on our Offer page.
-                    </p>
-                    <Button
-                      onClick={() => {
-                        setIsSuccess(false);
-                        onClose();
-                      }}
-                      className="bg-orangy text-white rounded-full font-medium text-sm w-20 md:w-24 ml-auto mt-1"
-                    >
-                      Close
-                    </Button>
-                  </div>
-                </ModalBody>
-              ) : (
-                <>
-                  <ModalHeader>
-                    <p className="text-xl font-medium px-2 pt-2">
-                      Submit Proof
-                    </p>
-                  </ModalHeader>
-                  <ModalBody className="flex flex-col gap-2 px-8 pb-8">
-                    <p className="text-sm text-neutral-700">Twitter Link</p>
-                    <div className="flex flex-col gap-4">
-                      <Input
-                        placeholder="Enter your social media post URL"
-                        variant="bordered"
-                        classNames={{
-                          inputWrapper:
-                            "rounded-lg border p-4 shadow-none h-12",
-                        }}
-                      />
-                    </div>
-                    <div className="w-full flex items-center justify-end gap-2 mt-2">
-                      <Button
-                        onClick={onClose}
-                        className="rounded-full h-9"
-                        color="default"
-                      >
-                        Back
-                      </Button>
-                      <Button
-                        onClick={handleSubmitProof}
-                        className="bg-orangy h-9 text-white rounded-full font-medium text-sm w-20 md:w-24"
-                      >
-                        Submit
-                      </Button>
-                    </div>
-                  </ModalBody>
-                </>
-              )}
-            </>
-          )}
-        </ModalContent>
-      </Modal>
-    </>
   );
 }
 

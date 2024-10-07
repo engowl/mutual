@@ -24,10 +24,12 @@ import ProjectsPage from "./pages/admin/projects/ProjectsPage.jsx";
 import ProjectOwnerSingleMessagePage from "./pages/project-owner/ProjectOwnerSingleMessagePage.jsx";
 import MessagePage from "./pages/MessagePage.jsx";
 import SingleMessagePage from "./pages/SingleMessagePage.jsx";
+import ErrorPage from "./pages/error/ErrorPage.jsx";
 
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
+    errorElement: <ErrorPage />,
     children: [
       {
         path: "/",

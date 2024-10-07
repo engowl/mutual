@@ -1,4 +1,4 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import SignInButton from "./SignInButton";
 import { cnm } from "../../utils/style";
 import { useMCAuth } from "../../lib/mconnect/hooks/useMCAuth.jsx";
@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 export default function Navbar() {
   const { user, isLoggedIn } = useMCAuth();
   const [isRegistered, setIsRegistered] = useState(false);
+  const location = useLocation(); // Get the current pathname
+  const pathname = location.pathname;
 
   console.log({ user, isLoggedIn });
 
@@ -22,15 +24,17 @@ export default function Navbar() {
     }
   }, [user, isLoggedIn, setIsRegistered]);
 
+  const logoSrc = pathname.includes("/project-owner")
+    ? "/assets/mutual_text_logo.png"
+    : pathname.includes("/influencer")
+    ? "/assets/mutual_kol_logo.png"
+    : "/assets/mutual_text_logo.png";
+
   return (
-    <nav className="flex items-center px-5 md:px-8 h-12 justify-between border-b border-black/20">
+    <nav className="flex items-center px-5 md:px-8 h-12 justify-between border-b border-black/20 overflow-hidden">
       <div className="flex h-full items-center">
         <Link to={"/"} className="text-xl font-medium">
-          <img
-            src="/assets/mutual_text_logo.svg"
-            alt="mutaal_logo"
-            className="w-20"
-          />
+          <img src={logoSrc} alt="mutual_logo" className="w-24" />
         </Link>
 
         <div className="h-full hidden md:inline">

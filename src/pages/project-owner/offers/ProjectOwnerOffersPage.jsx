@@ -1,5 +1,15 @@
-import { Button } from "@nextui-org/react";
+import { Button, Spinner } from "@nextui-org/react";
+import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { mutualAPI } from "../../../api/mutual";
+import useSWR from "swr";
+import OfferStatusBadgePill from "../../../components/offers/OfferStatusBadgePill";
+import {
+  CoinsIcon,
+  HandGiveIcon,
+  TelegramIcon,
+  TwitterIcon,
+} from "../../../components/icons/icons";
 
 export default function ProjectOwnerOffersPage() {
   return (
@@ -12,84 +22,143 @@ export default function ProjectOwnerOffersPage() {
   );
 }
 
+function getStatus(status) {
+  switch (status) {
+    case "sent":
+      return "CREATED";
+    case "active":
+      return "ACCEPTED";
+    case "completed":
+      return "COMPLETED";
+    case "rejected":
+      return "REJECTED";
+    default:
+      return null;
+  }
+}
+
+const statusFilter = [
+  {
+    label: "Sent",
+    value: "sent",
+  },
+  {
+    label: "Active",
+    value: "active",
+  },
+  {
+    label: "Past",
+    value: "completed",
+  },
+  {
+    label: "Rejected",
+    value: "rejected",
+  },
+];
+
 function OffersList() {
   const [searchParams, setSearchParams] = useSearchParams({
     status: "sent",
   });
 
+  const { data, isLoading, mutate } = useSWR(
+    "/campaign/orders",
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      return data;
+    }
+  );
+
   const status = searchParams.get("status");
+
+  const filteredOrders = useMemo(() => {
+    if (!data) return [];
+    return data.filter((order) => order.status === getStatus(status));
+  }, [data, status]);
+
+  console.log({ filteredOrders }, "filtered orders");
 
   return (
     <div className="w-full flex flex-col mt-4">
       {/* tabs */}
-      <div className="flex items-center">
-        <button
-          onClick={() => setSearchParams({ status: "sent" })}
-          className={`py-2 flex justify-center rounded-lg ${
-            searchParams.get("status") === "sent"
-              ? "text-black"
-              : "text-neutral-500"
-          }`}
-        >
-          Sent
-        </button>
-        <button
-          onClick={() => setSearchParams({ status: "active" })}
-          className={`py-2 flex justify-center rounded-lg ml-8 ${
-            searchParams.get("status") === "active"
-              ? "text-black"
-              : "text-neutral-500"
-          }`}
-        >
-          Active
-        </button>
-        <button
-          onClick={() => setSearchParams({ status: "past" })}
-          className={`py-2 rounded-lg ml-8 ${
-            searchParams.get("status") === "past"
-              ? "text-black"
-              : "text-neutral-500"
-          }`}
-        >
-          Past
-        </button>
+      <div className="flex items-center gap-5">
+        {statusFilter.map((filter) => (
+          <button
+            key={filter.value}
+            onClick={() => setSearchParams({ status: filter.value })}
+            className={`py-2 flex justify-center rounded-lg ${
+              searchParams.get("status") === filter.value
+                ? "text-black"
+                : "text-neutral-500"
+            }`}
+          >
+            {filter.label}
+          </button>
+        ))}
       </div>
-      <div className="w-full mt-1 bg-white rounded-2xl border p-4 h-[447px] overflow-y-auto">
-        <OfferCard
-          data={{
-            id: 1,
-          }}
-        />
+      <div className="w-full mt-1 bg-white rounded-2xl border p-4 h-[600px] overflow-y-auto">
+        {!isLoading ? (
+          <>
+            {filteredOrders.length === 0 ? (
+              <div className="w-full h-full flex items-center justify-center">
+                No offers available
+              </div>
+            ) : (
+              <div className="w-full flex flex-col gap-2">
+                {filteredOrders.map((order) => (
+                  <OfferCard key={order.id} order={order} mutate={mutate} />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Spinner size="md" color="primary" />
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function OfferCard({ data }) {
+function OfferCard({ order }) {
   return (
     <Link
-      to={`/project-owner/offers/${data.id}`}
-      className="flex items-center gap-4 p-3 border rounded-lg justify-between"
+      to={`/project-owner/offers/${order.id}`}
+      className="flex items-center gap-4 p-3 border rounded-lg justify-between hover:bg-neutral-100"
     >
       <div>
-        <div className="flex items-center">
-          <p className="font-medium">MICHI ($MICHI)</p>
+        <div className="flex flex-col items-start lg:flex-row gap-1 lg:items-center">
+          <p className="font-medium">
+            {order.token.name} (${order.token.symbol})
+          </p>
           {/* Offers status pill */}
-          <span className="ml-3 px-2 py-1 rounded-full bg-orangy/10 border border-orangy text-orangy text-xs">
-            Waiting for confirmation
-          </span>
+          <div className="lg:ml-4">
+            <OfferStatusBadgePill status={order.status} />
+          </div>
         </div>
 
         {/* Detail offers */}
-        <div className="flex items-center gap-4 text-sm mt-4 text-neutral-500">
-          <div>
-            <p>Direct Payment</p>
+        <div className="flex flex-wrap items-center gap-4 text-sm mt-4 text-neutral-500">
+          <div className="flex items-center gap-1">
+            <HandGiveIcon className="mb-0.5" />
+            <p>
+              {order.vestingType === "MARKETCAP"
+                ? "Market Cap Vesting"
+                : order.vestingType === "TIME"
+                ? "Time Vesting"
+                : "Direct Payment"}
+            </p>
           </div>
-          <div>
-            <p>10 SOL</p>
+          <div className="flex items-center gap-1">
+            <CoinsIcon className="mb-0.5" />
+            <p>
+              {order.tokenAmount} ${order.token.symbol}
+            </p>
           </div>
-          <div>
-            <p>Twitter Post</p>
+          <div className="flex items-center gap-1">
+            {order.channel === "TWITTER" ? <TwitterIcon /> : <TelegramIcon />}
+            <p>{order.channel === "TWITTER" ? "Twitter" : "Telegram"} Post</p>
           </div>
         </div>
       </div>

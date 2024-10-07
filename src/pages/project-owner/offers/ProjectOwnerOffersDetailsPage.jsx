@@ -1,15 +1,46 @@
-import { Button } from "@nextui-org/react";
+import { Button, Spinner } from "@nextui-org/react";
 import { useNavigate, useParams } from "react-router-dom";
 import { shortenAddress } from ".././../../utils/string";
 import { Check, Clock } from "lucide-react";
 import Countdown from "react-countdown";
 import { cnm } from "../../../utils/style.js";
 import dayjs from "dayjs";
+import { mutualAPI } from "../../../api/mutual.js";
+import useSWR from "swr";
+import OfferStatusBadgePill from "../../../components/offers/OfferStatusBadgePill.jsx";
 
 export default function ProjectOwnerOffersDetailPage() {
-  const params = useParams();
   const isWaitingApproval = true;
+  const params = useParams();
   const navigate = useNavigate();
+
+  const offerId = params.id;
+
+  const {
+    data: offer,
+    isLoading,
+    mutate,
+  } = useSWR(offerId ? `/campaign/${offerId}/detail` : null, async (url) => {
+    const { data } = await mutualAPI.get(url);
+    return data;
+  });
+
+  const {
+    data: claimable,
+    isLoading: isLoadingClaimable,
+    mutate: mutateClaimable,
+  } = useSWR(offerId ? `/campaign/${offerId}/claimable` : null, async (url) => {
+    const { data } = await mutualAPI.get(url);
+    return data;
+  });
+
+  if (isLoading || isLoadingClaimable) {
+    return (
+      <div className="h-full w-full flex items-center justify-center">
+        <Spinner size="lg" color="primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center font-clash">
@@ -18,9 +49,7 @@ export default function ProjectOwnerOffersDetailPage() {
           <h1 className="text-3xl font-medium">Offers Detail</h1>
           <div className="flex gap-2">
             <Button
-              onClick={() => {
-                navigate(`/project-owner/message?influencerId=${3232323}`);
-              }}
+              onClick={() => navigate(`/message/${offer?.projectOwner.userId}`)}
               color="default"
               className="rounded-full font-medium px-8"
             >
@@ -41,12 +70,17 @@ export default function ProjectOwnerOffersDetailPage() {
             Respond in:
           </div>
           <div className="font-medium">
-            <Countdown date={Date.now() + 30000} daysInHours />
+            <Countdown
+              date={new Date(offer?.expiredAtUnix * 1000)}
+              daysInHours
+            />
           </div>
         </div>
         <div className="mt-4 p-4 rounded-xl bg-white border">
           <div className="w-full flex items-center justify-between">
-            <p className="text-2xl font-medium">MICHI ($MICHI)</p>
+            <p className="text-2xl font-medium">
+              {offer?.token.name} (${offer?.token.symbol})
+            </p>
             <div className="font-medium">DexScreener</div>
           </div>
           <div className="flex gap-7 mt-3">
@@ -56,12 +90,15 @@ export default function ProjectOwnerOffersDetailPage() {
             </div>
             <div>
               <p className="text-orangy font-medium">
-                {shortenAddress("0x8ad8asfha8f8iaf")}
+                {shortenAddress(offer?.token.mintAddress)}
               </p>
               <p className="text-sm text-neutral-500">Contract Address</p>
             </div>
             <div>
-              <p className="text-orangy font-medium">821,893,121</p>
+              <p className="text-orangy font-medium">
+                {" "}
+                {offer?.token.totalSupply}
+              </p>
               <p className="text-sm text-neutral-500">Total Supply</p>
             </div>
           </div>
@@ -72,25 +109,36 @@ export default function ProjectOwnerOffersDetailPage() {
             <div className="flex flex-col gap-3">
               <div className="flex items-center">
                 <p className="w-44 text-neutral-400">Status</p>
-                <div className="text-xs text-orangy bg-orangy/10 rounded-full px-2 py-1 border border-orangy">
-                  Waiting for Confirmation
-                </div>
+                <OfferStatusBadgePill status={offer?.status} />
               </div>
               <div className="flex items-center">
                 <p className="w-44 text-neutral-400">Offer Amount</p>
-                <p className="font-medium">20 SOL</p>
+                <p className="font-medium">
+                  {offer?.tokenAmount} {offer?.token.symbol}
+                </p>
               </div>
               <div className="flex items-center">
                 <p className="w-44 text-neutral-400">Payment Terms</p>
-                <p className="font-medium">Direct Payment</p>
+                <p className="font-medium">
+                  {offer.vestingType === "MARKETCAP"
+                    ? "Market Cap Vesting"
+                    : offer.vestingType === "TIME"
+                    ? "Time Vesting"
+                    : "Direct Payment"}
+                </p>
               </div>
               <div className="flex items-center">
                 <p className="w-44 text-neutral-400">Marketing Channel</p>
-                <p className="font-medium">Twitter Post</p>
+                <p className="font-medium">
+                  {offer.channel === "TWITTER" ? "Twitter" : "Telegram"} Post
+                </p>
               </div>
               <div className="flex items-center">
                 <p className="w-44 text-neutral-400">Schedule</p>
-                <p className="font-medium">15 October 2024 : 18:00 UTC</p>
+                <p className="font-medium">
+                  {/* TODO add real postDateandTime */}
+                  {dayjs().utc().format("D MMMM YYYY : HH:mm [UTC]")}
+                </p>
               </div>
             </div>
             <p className="font-medium mt-8">Promotional post text</p>

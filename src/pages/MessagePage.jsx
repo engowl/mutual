@@ -372,14 +372,14 @@ function SidebarSlideMobile({
           <p className="font-medium text-3xl">Messages</p>
           <div className="mt-6 flex flex-col">
             {/* Conversation List */}
-            {conversations?.length === 0 ? (
-              <div className="w-full h-full flex items-center justify-center">
+            {!conversations || conversations?.length === 0 ? (
+              <div className="w-full h-[400px] flex items-center justify-center">
                 <p className="text-center text-neutral-500">
                   No conversation yet
                 </p>
               </div>
             ) : (
-              conversations.map((conversation) => (
+              conversations?.map((conversation) => (
                 <div
                   key={conversation.id}
                   className={cnm(
