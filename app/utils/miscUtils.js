@@ -23,3 +23,9 @@ export const shortenId = (id, start = 3, end = 3) => {
 export const manyMinutesFromNowUnix = (minutes) => {
   return Math.floor(Date.now() / 1000) + 60 * minutes;
 }
+
+// Get tweetId from tweet URL
+export const getTweetIdFromUrl = (url) => {
+  const tweetId = url.split("/").pop();
+  return tweetId;
+}

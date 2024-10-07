@@ -14,6 +14,8 @@ import * as anchor from "@project-serum/anchor";
 import { BN } from "bn.js";
 import { manyMinutesFromNowUnix } from "../utils/miscUtils.js";
 import { generateEventLogs } from "../workers/helpers/campaignHelpers.js";
+import { validateRequiredFields } from "../utils/validationUtils.js";
+import { unTwitterApiGetTweet } from "../api/unTwitterApi/unTwitterApi.js";
 
 /**
  *
@@ -516,7 +518,8 @@ export const campaignRoutes = (app, _, done) => {
               user: true
             }
           },
-          token: true
+          token: true,
+          post: true
         }
       })
 
@@ -569,10 +572,71 @@ export const campaignRoutes = (app, _, done) => {
     },
     async (request, reply) => {
       try {
+        await validateRequiredFields(
+          request.body,
+          ['orderId', 'twitterPostLink'],
+          reply
+        )
+
         const { user } = request;
+        const { twitterPostLink, orderId } = request.body;
+
         // KOL submits the task (tweet, post, etc.) for verification by the Project Owner
 
-        return reply.send("OK");
+        const order = await prismaClient.campaignOrder.findUnique({
+          where: {
+            id: orderId,
+            influencer: {
+              userId: user.id,
+            }
+          }
+        });
+
+        if (!order) {
+          return reply.status(400).send({ message: "Order not found" });
+        }
+
+        const tweetId = twitterPostLink.split("/").pop();
+        console.log("Tweet ID:", tweetId);
+
+        if(!tweetId) {
+          return reply.status(400).send({ message: "Invalid tweet link" });
+        }
+
+        const tweet = await unTwitterApiGetTweet({
+          tweetId: tweetId
+        }).catch((e) => {
+          console.error("Error fetching tweet:", e);
+          return reply.status(400).send({ message: "Error while fetching tweet" });
+        });
+
+        console.log("Tweet:", tweet);
+
+        // TODO: Check is the poster the same as the KOL verified twitter account
+
+        // Update the campaign post
+        const posted = await prismaClient.campaignPost.upsert({
+          where: {
+            campaignOrderId: order.id,
+          },
+          create: {
+            campaignOrderId: order.id,
+            postId: tweet.tweet.id_str,
+            postUrl: twitterPostLink,
+            postedTimeUnix: tweet.tweet.created_at,
+            text: tweet.tweet.full_text,
+            data: tweet.tweet
+          },
+          update: {
+            postId: tweet.tweet.id_str,
+            postUrl: twitterPostLink,
+            postedTimeUnix: tweet.tweet.created_at,
+            text: tweet.tweet.full_text,
+            data: tweet.tweet
+          }
+        })
+
+        return reply.send(posted);
       } catch (error) {
         console.error("Error submitting work:", error);
         return reply.status(500).send({
