@@ -13,4 +13,5 @@ export const AuthContext = createContext({
   isUserLoading: false,
   isLoggingIn: false,
   isCheckingSession: false,
+  chain: null
 });
