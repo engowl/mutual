@@ -80,7 +80,7 @@ function OffersList() {
       return data;
     },
     {
-      refreshInterval: 3000
+      refreshInterval: 3000,
     }
   );
 
@@ -99,10 +99,11 @@ function OffersList() {
           <button
             key={filter.value}
             onClick={() => setSearchParams({ status: filter.value })}
-            className={`py-2 flex justify-center rounded-lg ${searchParams.get("status") === filter.value
-              ? "text-black"
-              : "text-neutral-500"
-              }`}
+            className={`py-2 flex justify-center rounded-lg ${
+              searchParams.get("status") === filter.value
+                ? "text-black"
+                : "text-neutral-500"
+            }`}
           >
             {filter.label}
           </button>
@@ -192,8 +193,9 @@ function OfferCard({ order, mutate }) {
     navigate(`/influencer/offers/${order.id}`);
   }
 
-  const projectDetail = order.projectOwner.projectDetails[0]
+  const projectDetail = order.projectOwner.projectDetails[0];
 
+  console.log({ order, status: order.status !== "REJECTED" }, "order");
   return (
     <button
       to={`/influencer/offers/${order.id}`}
@@ -214,7 +216,7 @@ function OfferCard({ order, mutate }) {
                 {projectDetail.token.name} (${projectDetail.token.symbol})
               </p>
               {/* Offers status pill */}
-              <InfluencerOfferStatusBadgePill status={order.status} /> 
+              <InfluencerOfferStatusBadgePill status={order.status} />
             </div>
           </div>
         </div>
@@ -227,8 +229,8 @@ function OfferCard({ order, mutate }) {
               {order.vestingType === "MARKETCAP"
                 ? "Market Cap Vesting"
                 : order.vestingType === "TIME"
-                  ? "Time Vesting"
-                  : "Direct Payment"}
+                ? "Time Vesting"
+                : "Direct Payment"}
             </p>
           </div>
           <div className="flex items-center gap-1">
@@ -244,44 +246,43 @@ function OfferCard({ order, mutate }) {
         </div>
       </div>
       {/* action buttons */}
-      {order.status !== "REJECTED" ||
-        (order.expiredAtUnix !== 0 && (
-          <div className="flex flex-col items-center">
-            <div className="flex gap-2 flex-col lg:flex-row">
-              {order.status !== "ACCEPTED" && (
-                <Button
-                  onClick={handleRejectOffer}
-                  isLoading={isRejectLoading}
-                  color="default"
-                  className="text-xs rounded-full font-medium"
-                >
-                  Decline
-                </Button>
-              )}
+      {order.status !== "REJECTED" && (
+        <div className="flex flex-col items-center">
+          <div className="flex gap-2 flex-col lg:flex-row">
+            {order.status !== "ACCEPTED" && (
+              <Button
+                onClick={handleRejectOffer}
+                isLoading={isRejectLoading}
+                color="default"
+                className="text-xs rounded-full font-medium"
+              >
+                Decline
+              </Button>
+            )}
 
-              {order.status === "ACCEPTED" ? (
-                <SubmitProofModal orderId={order.id} className={"md:text-sm"} />
-              ) : (
-                <Button
-                  onClick={handleAcceptOffer}
-                  className="text-xs bg-orangy text-white rounded-full font-medium"
-                  isLoading={isAcceptLoading}
-                >
-                  Accept
-                </Button>
-              )}
-            </div>
-            {order.status === "CREATED" && (
-              <p className="text-[10px] text-center md:text-sm mt-3 text-neutral-500">
-                Respond in{" "}
-                <Countdown
-                  date={new Date(order.expiredAtUnix * 1000)}
-                  daysInHours
-                />
-              </p>
+            {order.status === "ACCEPTED" ? (
+              <SubmitProofModal orderId={order.id} className={"md:text-sm"} />
+            ) : (
+              <Button
+                onClick={handleAcceptOffer}
+                className="text-xs bg-orangy text-white rounded-full font-medium"
+                isLoading={isAcceptLoading}
+              >
+                Accept
+              </Button>
             )}
           </div>
-        ))}
+          {order.status === "CREATED" && (
+            <p className="text-[10px] text-center md:text-sm mt-3 text-neutral-500">
+              Respond in{" "}
+              <Countdown
+                date={new Date(order.expiredAtUnix * 1000)}
+                daysInHours
+              />
+            </p>
+          )}
+        </div>
+      )}
     </button>
   );
 }

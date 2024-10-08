@@ -49,7 +49,7 @@ export default function ProjectOwnerOffersDetailPage() {
       return data;
     },
     {
-      refreshInterval: 3000
+      refreshInterval: 3000,
     }
   );
 
@@ -89,10 +89,6 @@ export default function ProjectOwnerOffersDetailPage() {
       ? "VERIFIED"
       : "PENDING"
     : offer.status;
-
-  console.log({ offer });
-
-  console;
 
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center font-clash px-5">
@@ -225,7 +221,13 @@ export default function ProjectOwnerOffersDetailPage() {
           </div>
         </div>
 
-        {offer && offer.post && <SubmissionCard post={offer.post} />}
+        {offer && offer.post && (
+          <SubmissionCard
+            post={offer.post}
+            approve={handleApproveWork}
+            isApproving={isApproving}
+          />
+        )}
 
         {events && <EventLogs events={events} />}
       </div>
@@ -233,7 +235,7 @@ export default function ProjectOwnerOffersDetailPage() {
   );
 }
 
-function SubmissionCard({ post }) {
+function SubmissionCard({ post, approve, isApproving, reject, isRejecting }) {
   return (
     <div className="w-full mt-4 bg-white rounded-xl border p-4">
       <p className="font-medium">Submission</p>
@@ -249,10 +251,20 @@ function SubmissionCard({ post }) {
         </div>
       ) : (
         <div className="flex gap-2 mt-5">
-          <Button color="default" className="rounded-full font-medium px-8">
+          <Button
+            isLoading={isRejecting}
+            onClick={reject}
+            color="default"
+            className="rounded-full font-medium px-8"
+          >
             Decline
           </Button>
-          <Button className="bg-orangy text-white rounded-full font-medium px-8">
+          <Button
+            isLoading={isApproving}
+            disabled={isApproving}
+            onClick={approve}
+            className="bg-orangy text-white rounded-full font-medium px-8"
+          >
             Approve Work
           </Button>
         </div>
