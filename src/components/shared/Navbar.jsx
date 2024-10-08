@@ -24,10 +24,12 @@ export default function Navbar() {
     }
   }, [user, isLoggedIn, setIsRegistered]);
 
-  const logoSrc = pathname.includes("/project-owner")
-    ? "/assets/mutual_text_logo.png"
-    : pathname.includes("/influencer")
-    ? "/assets/mutual_kol_logo.png"
+  console.log({ user });
+
+  const logoSrc = user
+    ? user.role === "PROJECT_OWNER"
+      ? "/assets/mutual_text_logo.png"
+      : "/assets/mutual_kol_logo.png"
     : "/assets/mutual_text_logo.png";
 
   return (

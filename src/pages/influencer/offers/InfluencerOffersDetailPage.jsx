@@ -26,6 +26,7 @@ import { CHAINS } from "../../../config.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { NATIVE_MINT } from "@solana/spl-token";
 import InfluencerOfferStatusBadgePill from "../../../components/offers/InfluencerOfferStatusBadgePill.jsx";
+import DexScreenerLogo from "../../../assets/dexscreener.svg?react";
 
 export default function InfluencerOffersDetailPage() {
   const [isWaitingApproval, setIsWaitingApproval] = useState(false);
@@ -62,25 +63,33 @@ export default function InfluencerOffersDetailPage() {
     data: claimable,
     isLoading: isLoadingClaimable,
     mutate: mutateClaimable,
-  } = useSWR(offerId ? `/campaign/${offerId}/claimable` : null, async (url) => {
-    const { data } = await mutualAPI.get(url);
-    return data;
-  }, {
-    refreshInterval: 3000
-  });
+  } = useSWR(
+    offerId ? `/campaign/${offerId}/claimable` : null,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      return data;
+    },
+    {
+      refreshInterval: 3000,
+    }
+  );
 
   const {
     data: events,
     isLoading: isLoadingEvents,
     mutate: mutateEvents,
-  } = useSWR(offerId ? `/campaign/${offerId}/logs` : null, async (url) => {
-    const { data } = await mutualAPI.get(url);
-    return data;
-  }, {
-    refreshInterval: 3000
-  });
+  } = useSWR(
+    offerId ? `/campaign/${offerId}/logs` : null,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      return data;
+    },
+    {
+      refreshInterval: 3000,
+    }
+  );
 
-  console.log({ events }, "events");
+  console.log({ events, offer }, "events");
 
   const [cookie] = useCookies(["session_token"]);
   const [isRejectLoading, setIsRejectLoading] = useState(false);
@@ -261,7 +270,14 @@ export default function InfluencerOffersDetailPage() {
             <p className="text-xl lg:text-2xl font-medium">
               {offer?.token.name} (${offer?.token.symbol})
             </p>
-            <div className="font-medium">DexScreener</div>
+            <a
+              href={""}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium"
+            >
+              <DexScreenerLogo />
+            </a>
           </div>
           <div className="flex gap-7 mt-3 text-sm md:text-base">
             <div>

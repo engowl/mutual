@@ -66,7 +66,6 @@ export default function SingleMessagePage() {
     if (!socket || !user) return;
 
     socket.on("connect", () => {
-      toast.success("Connected to message service");
       socket.emit("register", user.id);
       setSocketConnected(true);
     });
