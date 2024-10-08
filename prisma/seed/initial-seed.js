@@ -12,7 +12,7 @@ async function main() {
       wallet: {
         id: 'testing-joji-wallet',
         type: "EOA",
-        address: "66eUkcGecVqgwgrby1HBgCR5uL1U8tzcZNXMWynEwTXU",
+        address: "26CsThTWMaPgcLj9a8z5Tq2EEEBaMajWgP7wgeCJb4ed",
         amount: 123
       },
       influencer: {
@@ -41,13 +41,13 @@ async function main() {
           {
             id: 'testing-joji-package-twitter',
             type: "TWITTER",
-            price: 0.5,
+            price: 100,
             description: "Promote your project on Twitter",
           },
           {
             id: 'testing-joji-package-telegram',
             type: "TELEGRAM_GROUP",
-            price: 0.5,
+            price: 100,
             description: "Promote your project on Telegram",
           }
         ]
@@ -61,7 +61,7 @@ async function main() {
       wallet: {
         id: 'testing-murad-wallet',
         type: "EOA",
-        address: "3iNeQfn6UKB4b9Vh1vvFPh79AuHF1xJ6vCfyQCBJQEYc",
+        address: "BhBjfxB7NvG4FugPg8d1HCtjRuj5UqDGgsEMxxRo1k3H",
         amount: 123
       },
       influencer: {

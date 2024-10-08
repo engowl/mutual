@@ -286,6 +286,8 @@ export const authRoutes = (app, _, done) => {
         },
       });
 
+      console.log('logged in user', user);
+
       if (!user) {
         user = await prismaClient.user.create({
           data: {

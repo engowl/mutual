@@ -324,9 +324,9 @@ model UserConversation {
   lastMessage String
 
   userId      String
-  user        UserMessaging @relation("UserConversations", fields: [userId], references: [userId])
+  user        UserMessaging @relation("UserConversations", fields: [userId], references: [userId], onDelete: Cascade)
   otherUserId String
-  otherUser   UserMessaging @relation("OtherUserConversations", fields: [otherUserId], references: [userId])
+  otherUser   UserMessaging @relation("OtherUserConversations", fields: [otherUserId], references: [userId], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -340,7 +340,7 @@ model UserMessaging {
   status UserOnlineStatus @default(OFFLINE)
 
   userId String @unique
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   conversations      UserConversation[] @relation("UserConversations")
   otherConversations UserConversation[] @relation("OtherUserConversations")

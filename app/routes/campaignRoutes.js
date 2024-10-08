@@ -194,6 +194,7 @@ export const campaignRoutes = (app, _, done) => {
     async (request, reply) => {
       try {
         const { user } = request;
+        console.log('userz', user)
         const { orderId } = request.body;
 
         const kol = await prismaClient.influencer.findUnique({
@@ -452,8 +453,6 @@ export const campaignRoutes = (app, _, done) => {
     async (request, reply) => {
       try {
         const { user } = request;
-
-        console.log("User:", user);
         const ordersInfluencer = await prismaClient.campaignOrder.findMany({
           where: {
             influencer: {
@@ -524,10 +523,10 @@ export const campaignRoutes = (app, _, done) => {
 
         let orders = [];
         if (ordersInfluencer?.length > 0) {
-          console.log("Using influencer orders");
+          // console.log("Using influencer orders");
           orders = ordersInfluencer;
         } else if (ordersProjectOwner?.length > 0) {
-          console.log("Using project owner orders");
+          // console.log("Using project owner orders");
           orders = ordersProjectOwner;
         }
 

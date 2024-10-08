@@ -85,13 +85,11 @@ export const walletRoutes = async (app) => {
         }
 
         const connection = new Connection(chain.rpcUrl, "confirmed");
-        console.log("mintAddress: ", mintAddress);
         const tokenInfo = await getTokenInfo(
           mintAddress,
           connection
         )
         if (!tokenInfo) {
-          console.log("Token info not found for mint: ", mintAddress);
           existingCache = await prismaClient.mintDataCache.create({
             data: {
               mintAddress: mintAddress,
@@ -108,8 +106,6 @@ export const walletRoutes = async (app) => {
 
           return existingCache;
         }
-
-        console.log("Token info fetched successfully: ", tokenInfo);
 
         existingCache = await prismaClient.mintDataCache.create({
           data: {
@@ -139,7 +135,6 @@ export const walletRoutes = async (app) => {
         // Fetch mint data asynchronously
         const mintData = await fetchMintData(mint);
         if (mintData.isInvalid) {
-          console.log("Mint data not found for mint: ", mint);
           continue;
         }
 
@@ -157,8 +152,6 @@ export const walletRoutes = async (app) => {
           }
         });
       }
-
-      console.log("Portfolio info fetched successfully: ", portfolioData);
 
       // Get Native SOL balance
       const balance = await connection.getBalance(publicKey)
