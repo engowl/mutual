@@ -68,7 +68,7 @@ export default function MCWalletWidget() {
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
-        <MenuItems className="absolute right-0 mt-1 py-4 origin-top-right rounded-xl backdrop-blur-xl z-50 bg-white border-[1px] border-[#C9C9C9]">
+        <MenuItems className="absolute right-0 mt-1 py-4 origin-top-right rounded-xl backdrop-blur-xl z-50 bg-white border-[1px] border-[#C9C9C9] h-[20rem] overflow-y-scroll">
           <div className="flex flex-col items-start text-[#131523]">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 px-4">
               <div className="size-7">
