@@ -74,6 +74,8 @@ export default function InfluencerOffersDetailPage() {
   } = useSWR(offerId ? `/campaign/${offerId}/logs` : null, async (url) => {
     const { data } = await mutualAPI.get(url);
     return data;
+  }, {
+    refreshInterval: 3000
   });
 
   console.log({ events }, "events");
@@ -274,7 +276,7 @@ export default function InfluencerOffersDetailPage() {
             </div>
             <div>
               <p className="text-orangy font-medium">
-                {offer?.token.totalSupply}
+                {offer?.token.totalSupply?.toLocaleString()}
               </p>
               <p className="text-xs md:text-sm text-neutral-500">
                 Total Supply

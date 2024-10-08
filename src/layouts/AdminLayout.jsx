@@ -1,8 +1,9 @@
 import { Outlet, useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
-import AdminNavbar from "../components/admin/AdminNavbar.jsx";
+import AdminNavbar from "../pages/admin/components/AdminNavbar.jsx";
 import { Button, Input } from "@nextui-org/react";
 import { Toaster } from "react-hot-toast";
+import { AdminProvider } from "../pages/admin/providers/AdminProvider.jsx";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function AdminLayout() {
       const expiryTime = new Date().getTime() + 3 * 60 * 60 * 1000; // 3 hours
       localStorage.setItem("sessionExpiry", expiryTime);
       setLoggedIn(true);
+      navigate("/__admin/dashboard");
     } else {
       alert("Invalid password");
     }
@@ -46,7 +48,7 @@ export default function AdminLayout() {
     }, 8000);
 
     return () => clearInterval(interval);
-  }, [handleLogout]);
+  }, [handleLogout, navigate]);
 
   if (!isLoggedIn) {
     return (
@@ -81,13 +83,15 @@ export default function AdminLayout() {
 
   return (
     <>
-      <div className="min-h-screen w-full bg-creamy overflow-hidden">
-        <AdminNavbar handleLogout={handleLogout} />
-        <div className="h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden">
-          <Outlet />
+      <AdminProvider chainId={"devnet"}>
+        <div className="min-h-screen w-full bg-creamy overflow-hidden">
+          <AdminNavbar handleLogout={handleLogout} />
+          <div className="h-[calc(100vh-3rem)] overflow-y-auto overflow-x-hidden">
+            <Outlet />
+          </div>
         </div>
-      </div>
-      <Toaster />
+        <Toaster />
+      </AdminProvider>
     </>
   );
 }

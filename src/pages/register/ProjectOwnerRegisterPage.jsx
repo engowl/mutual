@@ -217,13 +217,6 @@ function FormContent({
           onSubmit={handleSubmit}
           className="mt-8 w-full flex flex-col gap-7"
         >
-          <FormInput
-            label="Project Name"
-            name="name"
-            value={formData.name}
-            onChange={handleInputChange}
-            placeholder="Enter Project Name"
-          />
           <div className="flex flex-col gap-1 w-full">
             <label>Project Twitter Account</label>
             {userTwitter && userTwitter.username ? (
@@ -242,6 +235,15 @@ function FormContent({
               </Button>
             )}
           </div>
+
+          <FormInput
+            label="Project Name"
+            name="name"
+            value={formData.name}
+            onChange={handleInputChange}
+            placeholder="Enter Project Name"
+          />
+
           <FormInput
             label="Project Contract Address"
             name="ca"
