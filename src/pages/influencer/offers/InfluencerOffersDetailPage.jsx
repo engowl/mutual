@@ -340,11 +340,19 @@ export default function InfluencerOffersDetailPage() {
         }
 
         {/* TODO add real first and second unlocks data */}
-        <Unlock
-          unlocks={claimable?.phases || []}
-          handleClaim={handleClaim}
-          isClaiming={isClaiming}
-        />
+        {claimable.isClaimedAll ?
+          <div className="bg-white rounded-xl p-4 text-center mt-2">
+            <div>
+              You have claimed all <span className="font-medium">{claimable.claimed.amount} {claimable.claimed.symbol}</span> 🎉
+            </div>
+          </div>
+          :
+          <Unlock
+            unlocks={claimable?.phases || []}
+            handleClaim={handleClaim}
+            isClaiming={isClaiming}
+          />
+        }
 
         {/* Details */}
         <div className="mt-4 py-5 px-4 rounded-xl bg-white border flex items-center justify-between">
@@ -432,7 +440,15 @@ function SubmissionCard({ post }) {
 }
 
 function Unlock({ unlocks, handleClaim, isClaiming }) {
-  console.log({ unlocks }, "unlocks data");
+  if (unlocks.isClaimedAll) {
+    return (
+      <div>
+        <div>
+          You have claimed allsss
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col md:flex-row gap-2 lg:gap-4 mt-2 lg:mt-4">
