@@ -169,7 +169,10 @@ export const AuthProvider = ({ chainId = "devnet", children }) => {
       await new Promise((resolve, reject) => {
         portalInstance.onReady(async () => {
           try {
-            saveSessionKey(res.data.data.session_token);
+            localStorage.setItem(
+              "session_key",
+              JSON.stringify(res.data.data.session_token)
+            );
 
             // Set state
             setPortal(portalInstance);
@@ -229,7 +232,10 @@ export const AuthProvider = ({ chainId = "devnet", children }) => {
               }
             );
 
-            localStorage.setItem(registerResponse.data.data.session_token);
+            localStorage.setItem(
+              "session_key",
+              JSON.stringify(registerResponse.data.data.session_token)
+            );
 
             // Set state
             setPortal(portalInstance);
@@ -309,7 +315,12 @@ export const AuthProvider = ({ chainId = "devnet", children }) => {
         type: _type,
       });
 
-      saveSessionKey(res.data.data.session_token);
+      localStorage.setItem(
+        "session_key",
+        JSON.stringify(res.data.data.session_token)
+      );
+
+      // saveSessionKey(res.data.data.session_token);
 
       // Set state
       setIsLoggedIn(true);
