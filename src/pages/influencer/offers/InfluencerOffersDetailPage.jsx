@@ -39,21 +39,24 @@ export default function InfluencerOffersDetailPage() {
     data: offer,
     isLoading,
     mutate,
-  } = useSWR(offerId ? `/campaign/${offerId}/detail` : null, async (url) => {
-    const { data } = await mutualAPI.get(url);
+  } = useSWR(
+    offerId ? `/campaign/${offerId}/detail` : null,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
 
-    // If there is data.post and data.post.isApproved is false, then it is waiting for approval
-    if (data.post && data.post.isApproved === false) {
-      setIsWaitingApproval(true);
-    } else {
-      setIsWaitingApproval(false);
+      // If there is data.post and data.post.isApproved is false, then it is waiting for approval
+      if (data.post && data.post.isApproved === false) {
+        setIsWaitingApproval(true);
+      } else {
+        setIsWaitingApproval(false);
+      }
+
+      return data;
+    },
+    {
+      refreshInterval: 5000,
     }
-
-    return data;
-  }, {
-    refreshInterval: 5000
-  });
-
+  );
 
   const {
     data: claimable,
@@ -64,9 +67,26 @@ export default function InfluencerOffersDetailPage() {
     return data;
   });
 
+  const {
+    data: events,
+    isLoading: isLoadingEvents,
+    mutate: mutateEvents,
+  } = useSWR(offerId ? `/campaign/${offerId}/logs` : null, async (url) => {
+    const { data } = await mutualAPI.get(url);
+    return data;
+  });
+
+  console.log({ events }, "events");
+
   const [cookie] = useCookies(["session_token"]);
   const [isRejectLoading, setIsRejectLoading] = useState(false);
   const [isAcceptLoading, setIsAcceptLoading] = useState(false);
+
+  function mutateAllData() {
+    mutate();
+    mutateClaimable();
+    mutateEvents();
+  }
 
   const handleAcceptOffer = async () => {
     try {
@@ -82,7 +102,7 @@ export default function InfluencerOffersDetailPage() {
 
       await escrowSDK.acceptOffer(offer.id);
       await sleep(2000);
-      mutate();
+      mutateAllData();
       console.log("Offer accepted successfully");
     } catch (error) {
       console.error("Error accepting offer:", error);
@@ -104,6 +124,8 @@ export default function InfluencerOffersDetailPage() {
       });
 
       await escrowSDK.rejectOffer(offer.id);
+      await sleep(2000);
+      mutateAllData();
       console.log("Offer rejected successfully");
     } catch (error) {
       console.error("Error rejecting offer:", error);
@@ -125,17 +147,18 @@ export default function InfluencerOffersDetailPage() {
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
         bearerToken: cookie.session_token,
-        chainId: 'devnet',
-        chains: CHAINS
+        chainId: "devnet",
+        chains: CHAINS,
       });
 
       if (offer.token.mintAddress === NATIVE_MINT.toBase58()) {
-        const resolveDealTx = await escrowSDK.prepareNativeResolveDealTransaction({
-          orderId: offer.id,
-          mintAddress: offer.token.mintAddress,
-          kolAddress: wallet.adapter.publicKey.toBase58(),
-          projectOwnerAddress: offer.projectOwner.user.wallet.address
-        })
+        const resolveDealTx =
+          await escrowSDK.prepareNativeResolveDealTransaction({
+            orderId: offer.id,
+            mintAddress: offer.token.mintAddress,
+            kolAddress: wallet.adapter.publicKey.toBase58(),
+            projectOwnerAddress: offer.projectOwner.user.wallet.address,
+          });
 
         const signedTx = await wallet.adapter.signTransaction(resolveDealTx);
         const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
@@ -146,8 +169,8 @@ export default function InfluencerOffersDetailPage() {
           orderId: offer.id,
           mintAddress: offer.token.mintAddress,
           kolAddress: wallet.adapter.publicKey.toBase58(),
-          projectOwnerAddress: offer.projectOwner.user.wallet.address
-        })
+          projectOwnerAddress: offer.projectOwner.user.wallet.address,
+        });
 
         const signedTx = await wallet.adapter.signTransaction(resolveDealTx);
         const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
@@ -161,7 +184,7 @@ export default function InfluencerOffersDetailPage() {
     } finally {
       setIsClaiming(false);
     }
-  }
+  };
 
   if (isLoading || isLoadingClaimable) {
     return (
@@ -185,11 +208,11 @@ export default function InfluencerOffersDetailPage() {
               Message
             </Button>
 
-            {offer?.status === "ACCEPTED" &&
+            {offer?.status === "ACCEPTED" && (
               <SubmitProofModal orderId={offer.id} />
-            }
+            )}
 
-            {offer?.status === "CREATED" &&
+            {offer?.status === "CREATED" && (
               <>
                 <Button
                   isLoading={isRejectLoading}
@@ -209,12 +232,12 @@ export default function InfluencerOffersDetailPage() {
                   Accept Offer
                 </Button>
               </>
-            }
+            )}
           </div>
         </div>
 
         {/* Respond in */}
-        {offer?.status === "CREATED" &&
+        {offer?.status === "CREATED" && (
           <div className="mt-10 py-3 px-4 rounded-xl bg-white border flex items-center justify-between">
             <div className="font-medium flex items-center gap-2">
               <Clock className="size-4" />
@@ -227,7 +250,7 @@ export default function InfluencerOffersDetailPage() {
               />
             </div>
           </div>
-        }
+        )}
 
         <div className="mt-4 p-4 rounded-xl bg-white border">
           <div className="w-full flex items-center justify-between">
@@ -287,8 +310,8 @@ export default function InfluencerOffersDetailPage() {
                   {offer.vestingType === "MARKETCAP"
                     ? "Market Cap Vesting"
                     : offer.vestingType === "TIME"
-                      ? "Time Vesting"
-                      : "Direct Payment"}
+                    ? "Time Vesting"
+                    : "Direct Payment"}
                 </p>
               </div>
               <div className="flex items-center">
@@ -308,18 +331,12 @@ export default function InfluencerOffersDetailPage() {
             <p className="font-medium mt-6 md:mt-8">Promotional post text</p>
             {/* TODO add promotional text real data */}
             <p className="mt-6 md:mt-8 text-sm md:text-base">
-              🚀 $Michi is ready to take over the crypto space!🔥 Join the
-              $Michi revolution and be part of the most exciting meme coin of
-              the year! 📈 Strong community, rapid growth, and big plans ahead!
+              {offer?.post.text}
             </p>
           </div>
         </div>
 
-        {(offer && offer?.post) &&
-          <SubmissionCard
-            post={offer.post}
-          />
-        }
+        {offer && offer?.post && <SubmissionCard post={offer.post} />}
 
         <EventLogs events={DUMMY_LOGS} />
       </div>
@@ -327,42 +344,32 @@ export default function InfluencerOffersDetailPage() {
   );
 }
 
-function SubmissionCard({
-  post
-}) {
+function SubmissionCard({ post }) {
   return (
     <div className="w-full mt-4 bg-white rounded-xl border p-4">
-      <p className="font-medium">
-        Your Submission
-      </p>
+      <p className="font-medium">Your Submission</p>
       <p className="mt-1 text-sm text-neutral-400">
         The post you submitted for approval
       </p>
-      <div className="px-4 py-2 rounded-full border mt-3">
-        {post.postUrl}
-      </div>
+      <div className="px-4 py-2 rounded-full border mt-3">{post.postUrl}</div>
 
-      {post.isApproved ?
+      {post.isApproved ? (
         <div className="bg-success-100 p-2 mt-2 rounded-lg">
           <p className="font-medium">Approved</p>
           <p className="text-sm opacity-60">
             Your submission has been approved by the project owner
           </p>
         </div>
-        :
+      ) : (
         <div className="gap-2 mt-5 text-center opacity-60">
           Waiting for approval from the project owner
         </div>
-      }
+      )}
     </div>
   );
 }
 
-function Unlock({
-  unlocks,
-  handleClaim,
-  isClaiming
-}) {
+function Unlock({ unlocks, handleClaim, isClaiming }) {
   console.log({ unlocks }, "unlocks data");
 
   return (
@@ -408,14 +415,14 @@ function EventLogs({ events }) {
                   <div
                     className={cnm(
                       "flex items-center justify-center size-4 rounded-full  aspect-square",
-                      `${index === 0 ? "bg-orangy" : "bg-[#D9D9D9]"}`
+                      "bg-orangy"
                     )}
                   >
-                    {index === 0 && <Check color="white" size={10} />}
+                    <Check color="white" size={10} />
                   </div>
                   <div
                     className={cnm(
-                      "h-full w-[2px] bg-[#D9D9D9]",
+                      "h-full w-[2px] bg-orangy",
                       `${index === events.length - 1 ? "hidden" : ""}`
                     )}
                   />
@@ -430,15 +437,15 @@ function EventLogs({ events }) {
                   </h1>
                 </div>
 
+                {/* TODO change to mainnet in prod */}
                 {event.txHash && (
-                  <button
-                    onClick={() =>
-                      window.open(`https://solscan.io/tx/${event.txHash}`)
-                    }
+                  <a
+                    target="_blank"
+                    href={`https://solscan.io/tx/${event.txHash}?cluster=devnet`}
                     className="my-auto ml-auto text-xs text-[#161616] hover:text-[#161616]/70 font-medium whitespace-nowrap underline"
                   >
                     View Transaction
-                  </button>
+                  </a>
                 )}
               </div>
             </div>

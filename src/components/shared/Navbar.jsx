@@ -33,7 +33,10 @@ export default function Navbar() {
   return (
     <nav className="flex items-center px-5 md:px-8 h-12 justify-between border-b border-black/20">
       <div className="flex h-full items-center">
-        <Link to={"/"} className="text-xl font-medium">
+        <Link
+          to={"/"}
+          className="text-xl font-medium overflow-hidden h-full flex items-center"
+        >
           <img src={logoSrc} alt="mutual_logo" className="w-24" />
         </Link>
 
