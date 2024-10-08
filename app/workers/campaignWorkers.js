@@ -34,6 +34,26 @@ export const campaignWorkers = (app, _, done) => {
     slot
   }) => {
     try {
+      // Sync the eligibility 
+      if (eventName === 'EligibilityStatusUpdated') {
+        let eligibility;
+        if (parsedEvent.eligibility.newStatus === 'fullyEligible') {
+          eligibility = 'FULLYELIGIBLE';
+        } else if (parsedEvent.eligibility.newStatus === 'partiallyEligible') {
+          eligibility = 'PARTIALLYELIGIBLE';
+        } else if (parsedEvent.eligibility.newStatus === 'notEligible') {
+          eligibility = 'NOTELIGIBLE';
+        }
+        await prismaClient.campaignOrder.update({
+          where: {
+            id: parsedEvent.orderId
+          },
+          data: {
+            eligibility: eligibility
+          }
+        })
+      }
+
       await prismaClient.escrowEventLog.create({
         data: {
           chainId: chainId,
@@ -203,8 +223,8 @@ export const campaignWorkers = (app, _, done) => {
     process.exit(0);
   };
 
-  process.on('SIGINT', handleExit);  
-  process.on('SIGTERM', handleExit); 
+  process.on('SIGINT', handleExit);
+  process.on('SIGTERM', handleExit);
   listenForEvents();
 
   done();

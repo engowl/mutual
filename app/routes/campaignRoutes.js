@@ -23,7 +23,7 @@ import * as splToken from "@solana/spl-token";
 import * as anchor from "@project-serum/anchor";
 import { BN } from "bn.js";
 import { manyMinutesFromNowUnix } from "../utils/miscUtils.js";
-import { generateEventLogs } from "../workers/helpers/campaignHelpers.js";
+import { approveOrder, generateEventLogs } from "../workers/helpers/campaignHelpers.js";
 import { validateRequiredFields } from "../utils/validationUtils.js";
 import { unTwitterApiGetTweet } from "../api/unTwitterApi/unTwitterApi.js";
 
@@ -776,85 +776,8 @@ export const campaignRoutes = (app, _, done) => {
         }
 
         console.log("Order:", order);
-        const chain = CHAINS.find((c) => c.dbChainId === order.chainId);
-        if (!chain) {
-          return reply.status(400).send({ message: "Invalid chain ID" });
-        }
 
-        const program = MUTUAL_ESCROW_PROGRAM(chain.id);
-
-        const [dealPda] = PublicKey.findProgramAddressSync(
-          [
-            Buffer.from("deal"),
-            prepareOrderId(order.id),
-            new PublicKey(order.projectOwner.user.wallet.address).toBuffer(),
-            new PublicKey(order.influencer.user.wallet.address).toBuffer(),
-            new PublicKey(order.token.mintAddress).toBuffer(),
-          ],
-          program.programId
-        );
-
-        const [escrowPda] = PublicKey.findProgramAddressSync(
-          [Buffer.from("escrow")],
-          program.programId
-        );
-
-        if (order.vestingType === "NONE" || order.vestingType === "TIME") {
-          // Become fully eligible
-          const txHash = await program.methods
-            .setEligibilityStatus({ fullyEligible: {} })
-            .accounts({
-              deal: dealPda,
-              escrow: escrowPda,
-              signer: adminKp.publicKey,
-            })
-            .signers([adminKp])
-            .rpc({ commitment: "confirmed" });
-
-          console.log("Fully eligibility txHash:", txHash);
-
-          await prismaClient.campaignOrder.update({
-            where: {
-              id: order.id,
-            },
-            data: {
-              status: "COMPLETED",
-            },
-          });
-        } else {
-          // Become partially eligible, to claim the 20% of the tokens
-          const txHash = await program.methods
-            // .setEligibilityStatus({ partiallyEligible: {} })
-            .setEligibilityStatus({ fullyEligible: {} })
-            .accounts({
-              deal: dealPda,
-              escrow: escrowPda,
-              signer: adminKp.publicKey,
-            })
-            .signers([adminKp])
-            .rpc({ commitment: "confirmed" });
-
-          console.log("Partial eligibility txHash:", txHash);
-
-          await prismaClient.campaignOrder.update({
-            where: {
-              id: order.id,
-            },
-            data: {
-              status: "PARTIALCOMPLETED",
-            },
-          });
-        }
-
-        // Update post to approved
-        await prismaClient.campaignPost.update({
-          where: {
-            campaignOrderId: order.id,
-          },
-          data: {
-            isApproved: true,
-          },
-        });
+        await approveOrder(order.id);
 
         return reply.send({ message: "Work approved" });
       } catch (error) {
@@ -1121,9 +1044,8 @@ export const campaignRoutes = (app, _, done) => {
                   phaseName: "Final Unlock",
                   amount: totalAmount,
                   amountLabel: `${totalAmount} $${order.token.symbol}`,
-                  conditionLabel: `Claimable ${
-                    MINIMUM_POST_LIVE_IN_MINUTES / 60
-                  } hours after the ${mediaLabel} is posted`,
+                  conditionLabel: `Claimable ${MINIMUM_POST_LIVE_IN_MINUTES / 60
+                    } hours after the ${mediaLabel} is posted`,
                   isClaimable: false,
                 },
               ],
@@ -1163,9 +1085,8 @@ export const campaignRoutes = (app, _, done) => {
                 {
                   phaseName: "Final Unlock",
                   amount: totalAmount - partialUnlockAmount,
-                  amountLabel: `${totalAmount - partialUnlockAmount} $${
-                    order.token.symbol
-                  }`,
+                  amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol
+                    }`,
                   conditionLabel: `Claim after $${order.token.symbol} reaches the target ... market cap`,
                   isClaimable: false,
                 },
@@ -1205,9 +1126,8 @@ export const campaignRoutes = (app, _, done) => {
                 {
                   phaseName: "Final Unlock",
                   amount: totalAmount - partialUnlockAmount,
-                  amountLabel: `${totalAmount - partialUnlockAmount} $${
-                    order.token.symbol
-                  } `,
+                  amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol
+                    } `,
                   conditionLabel: `Claim after the vesting period ends`,
                   isClaimable: false,
                 },

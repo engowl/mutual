@@ -65,7 +65,7 @@ model ProjectOwner {
   status ProjectOwnerStatus?
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @updatedAt @default(now())
 }
 
 model ProjectDetails {
@@ -102,7 +102,7 @@ model Influencer {
   orders CampaignOrder[]
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @updatedAt @default(now())
 }
 
 // Project Criteria for Influencers (KOL)
@@ -303,7 +303,7 @@ model EscrowEventLog {
 
   campaignOrderId String
   eventName       String
-  signature       String
+  signature       String @unique
   data            Json
   slot            Int    @default(0)
 

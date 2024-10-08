@@ -309,6 +309,22 @@ export const generateEventLogs = async (orderId) => {
     logs.push(fullyEligibleLogs[0]);
   }
 
+  // For 'resolve_deal', remove any duplicate same txHash logs
+  const partialDealResolvedLogs = logs.filter(l => l.id.startsWith('partial_deal_resolved_'));
+  const dealResolvedLogs = logs.filter(l => l.id === 'deal_resolved');
+
+  const uniquePartialDealResolvedLogs = [];
+  for (const log of partialDealResolvedLogs) {
+    if (!uniquePartialDealResolvedLogs.find(l => l.txHash === log.txHash)) {
+      uniquePartialDealResolvedLogs.push(log);
+    }
+  }
+
+  logs = logs.filter(l => !l.id.startsWith('partial_deal_resolved_'));
+  logs = logs.filter(l => l.id !== 'deal_resolved');
+  logs.push(...uniquePartialDealResolvedLogs);
+  logs.push(...dealResolvedLogs);
+
   // Sort the logs by 'time' to preserve the original order
   logs.sort((a, b) => new Date(b.time) - new Date(a.time));
 
@@ -398,7 +414,7 @@ export const handleCheckCampaignPost = async (campaignId) => {
   }
 }
 
-async function approveOrder(orderId) {
+export async function approveOrder(orderId) {
   // Find the order in your system (replace this with your logic for fetching an order by ID)
   const order = await prismaClient.campaignOrder.findUnique({
     where: { id: orderId },
@@ -486,7 +502,7 @@ async function approveOrder(orderId) {
         id: order.id,
       },
       data: {
-        status: "PARTIALCOMPLETED",
+        status: "COMPLETED",
       },
     });
   }
