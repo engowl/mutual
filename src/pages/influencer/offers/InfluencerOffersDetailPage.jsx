@@ -18,7 +18,7 @@ import useSWR from "swr";
 import { mutualAPI } from "../../../api/mutual";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK.js";
 import { useCookies } from "react-cookie";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Countdown from "react-countdown";
 import { sleep } from "../../../utils/misc.js";
 import SubmitProofModal from "../../../components/influencer/offers/SubmitWorkModal.jsx";
@@ -33,6 +33,8 @@ export default function InfluencerOffersDetailPage() {
   const params = useParams();
   const navigate = useNavigate();
   const { wallet } = useWallet();
+
+  const [projectDetail, setProjectDetail] = useState(null);
 
   const offerId = params.id;
 
@@ -58,6 +60,13 @@ export default function InfluencerOffersDetailPage() {
       refreshInterval: 5000,
     }
   );
+
+  useEffect(() => {
+    if (offer) {
+      console.log('data.projectOwner', offer.projectOwner)
+      setProjectDetail(offer.projectOwner.projectDetails[0])
+    }
+  }, [offer])
 
   const {
     data: claimable,
@@ -265,43 +274,45 @@ export default function InfluencerOffersDetailPage() {
           </div>
         )}
 
-        <div className="mt-4 p-4 rounded-xl bg-white border">
-          <div className="w-full flex items-center justify-between">
-            <p className="text-xl lg:text-2xl font-medium">
-              {offer?.token.name} (${offer?.token.symbol})
-            </p>
-            <a
-              href={""}
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium"
-            >
-              <DexScreenerLogo />
-            </a>
+        {projectDetail &&
+          <div className="mt-4 p-4 rounded-xl bg-white border">
+            <div className="w-full flex items-center justify-between">
+              <p className="text-xl lg:text-2xl font-medium">
+                {projectDetail.token.name} (${projectDetail.token.name})
+              </p>
+              <a
+                href={""}
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium"
+              >
+                <DexScreenerLogo />
+              </a>
+            </div>
+            <div className="flex gap-7 mt-3 text-sm md:text-base">
+              <div>
+                <p className="text-orangy font-medium">$150M</p>
+                <p className="text-xs md:text-sm text-neutral-500">Market Cap</p>
+              </div>
+              <div>
+                <p className="text-orangy font-medium">
+                  {shortenAddress(projectDetail.token.mintAddress)}
+                </p>
+                <p className="text-xs md:text-sm text-neutral-500">
+                  Contract Address
+                </p>
+              </div>
+              <div>
+                <p className="text-orangy font-medium">
+                  {projectDetail.token.name.toLocaleString()}
+                </p>
+                <p className="text-xs md:text-sm text-neutral-500">
+                  Total Supply
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-7 mt-3 text-sm md:text-base">
-            <div>
-              <p className="text-orangy font-medium">$150M</p>
-              <p className="text-xs md:text-sm text-neutral-500">Market Cap</p>
-            </div>
-            <div>
-              <p className="text-orangy font-medium">
-                {shortenAddress(offer?.token.mintAddress)}
-              </p>
-              <p className="text-xs md:text-sm text-neutral-500">
-                Contract Address
-              </p>
-            </div>
-            <div>
-              <p className="text-orangy font-medium">
-                {offer?.token.totalSupply?.toLocaleString()}
-              </p>
-              <p className="text-xs md:text-sm text-neutral-500">
-                Total Supply
-              </p>
-            </div>
-          </div>
-        </div>
+        }
 
         {/* TODO add real first and second unlocks data */}
         <Unlock
@@ -330,8 +341,8 @@ export default function InfluencerOffersDetailPage() {
                   {offer.vestingType === "MARKETCAP"
                     ? "Market Cap Vesting"
                     : offer.vestingType === "TIME"
-                    ? "Time Vesting"
-                    : "Direct Payment"}
+                      ? "Time Vesting"
+                      : "Direct Payment"}
                 </p>
               </div>
               <div className="flex items-center">
