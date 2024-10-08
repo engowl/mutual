@@ -1,24 +1,17 @@
 import {
   Button,
-  Input,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalHeader,
   Spinner,
-  useDisclosure,
 } from "@nextui-org/react";
 import { useNavigate, useParams } from "react-router-dom";
 import { shortenAddress } from ".././../../utils/string";
-import { Check, Clock, X } from "lucide-react";
+import { Check, Clock } from "lucide-react";
 import { cnm } from "../../../utils/style.js";
 import dayjs from "dayjs";
-import { DUMMY_LOGS } from "../../project-owner/offers/ProjectOwnerOffersDetailsPage.jsx";
 import useSWR from "swr";
 import { mutualAPI } from "../../../api/mutual";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK.js";
 import { useCookies } from "react-cookie";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Countdown from "react-countdown";
 import { sleep } from "../../../utils/misc.js";
 import SubmitProofModal from "../../../components/influencer/offers/SubmitWorkModal.jsx";
@@ -27,12 +20,16 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { NATIVE_MINT } from "@solana/spl-token";
 import InfluencerOfferStatusBadgePill from "../../../components/offers/InfluencerOfferStatusBadgePill.jsx";
 import DexScreenerLogo from "../../../assets/dexscreener.svg?react";
+import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
+import { useMCAuth } from "../../../lib/mconnect/hooks/useMCAuth.jsx";
 
 export default function InfluencerOffersDetailPage() {
   const [isWaitingApproval, setIsWaitingApproval] = useState(false);
   const params = useParams();
   const navigate = useNavigate();
   const { wallet } = useWallet();
+
+  const [projectDetail, setProjectDetail] = useState(null);
 
   const offerId = params.id;
 
@@ -58,6 +55,13 @@ export default function InfluencerOffersDetailPage() {
       refreshInterval: 5000,
     }
   );
+
+  useEffect(() => {
+    if (offer) {
+      console.log('data.projectOwner', offer.projectOwner)
+      setProjectDetail(offer.projectOwner.projectDetails[0])
+    }
+  }, [offer])
 
   const {
     data: claimable,
@@ -151,6 +155,9 @@ export default function InfluencerOffersDetailPage() {
 
   // Claiming
   const [isClaiming, setIsClaiming] = useState(false);
+  const { signSolanaTxWithPortal, address: mpcAddress } = useMCWallet();
+  const { walletType } = useMCAuth();
+
   const handleClaim = async () => {
     try {
       setIsClaiming(true);
@@ -169,11 +176,21 @@ export default function InfluencerOffersDetailPage() {
           await escrowSDK.prepareNativeResolveDealTransaction({
             orderId: offer.id,
             mintAddress: offer.token.mintAddress,
-            kolAddress: wallet.adapter.publicKey.toBase58(),
+            kolAddress:
+              walletType === "MPC"
+                ? mpcAddress
+                : wallet.adapter.publicKey.toBase58(),
             projectOwnerAddress: offer.projectOwner.user.wallet.address,
           });
 
-        const signedTx = await wallet.adapter.signTransaction(resolveDealTx);
+        let signedTx;
+
+        if (walletType === "MPC") {
+          signedTx = await signSolanaTxWithPortal(resolveDealTx);
+        } else {
+          signedTx = await wallet.adapter.signTransaction(resolveDealTx);
+        }
+
         const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
 
         console.log("Claimed successfully", txHash);
@@ -181,11 +198,20 @@ export default function InfluencerOffersDetailPage() {
         const resolveDealTx = await escrowSDK.prepareResolveDealTransaction({
           orderId: offer.id,
           mintAddress: offer.token.mintAddress,
-          kolAddress: wallet.adapter.publicKey.toBase58(),
+          kolAddress:
+            walletType === "MPC"
+              ? mpcAddress
+              : wallet.adapter.publicKey.toBase58(),
           projectOwnerAddress: offer.projectOwner.user.wallet.address,
         });
 
-        const signedTx = await wallet.adapter.signTransaction(resolveDealTx);
+        let signedTx;
+        if (walletType === "MPC") {
+          signedTx = await signSolanaTxWithPortal(resolveDealTx);
+        } else {
+          signedTx = await wallet.adapter.signTransaction(resolveDealTx);
+        }
+
         const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
 
         console.log("Claimed successfully", txHash);
@@ -265,43 +291,58 @@ export default function InfluencerOffersDetailPage() {
           </div>
         )}
 
-        <div className="mt-4 p-4 rounded-xl bg-white border">
-          <div className="w-full flex items-center justify-between">
-            <p className="text-xl lg:text-2xl font-medium">
-              {offer?.token.name} (${offer?.token.symbol})
-            </p>
-            <a
-              href={""}
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium"
-            >
-              <DexScreenerLogo />
-            </a>
+        {projectDetail &&
+          <div className="mt-4 p-4 rounded-xl bg-white border">
+            <div className="w-full flex items-center justify-between">
+              <div className="flex flex-row items-center gap-2">
+                <img
+                  src={projectDetail.token.imageUrl}
+                  alt="logo"
+                  className="w-12 h-12 rounded-full"
+                />
+                <div>
+                  <div className="text-xl lg:text-2xl font-medium">
+                    ${projectDetail.token.symbol}
+                  </div>
+                  <p className="text-md">
+                    {projectDetail.token.name}
+                  </p>
+                </div>
+
+              </div>
+              <a
+                href={projectDetail.token.pair.url}
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium"
+              >
+                <DexScreenerLogo />
+              </a>
+            </div>
+            <div className="flex gap-7 mt-3 text-sm md:text-base">
+              <div>
+                <p className="text-orangy font-medium">$150M</p>
+                <p className="text-xs md:text-sm text-neutral-500">Market Cap</p>
+              </div>
+              <div>
+                <p className="text-orangy font-medium">
+                  {shortenAddress(projectDetail.token.mintAddress)}
+                </p>
+                <p className="text-xs md:text-sm text-neutral-500">
+                  Contract Address
+                </p>
+              </div>
+              <div>
+                <p className="text-orangy font-medium">
+                  {projectDetail.token.totalSupply.toLocaleString()}
+                </p>
+                <p className="text-xs md:text-sm text-neutral-500">
+                  Total Supply
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-7 mt-3 text-sm md:text-base">
-            <div>
-              <p className="text-orangy font-medium">$150M</p>
-              <p className="text-xs md:text-sm text-neutral-500">Market Cap</p>
-            </div>
-            <div>
-              <p className="text-orangy font-medium">
-                {shortenAddress(offer?.token.mintAddress)}
-              </p>
-              <p className="text-xs md:text-sm text-neutral-500">
-                Contract Address
-              </p>
-            </div>
-            <div>
-              <p className="text-orangy font-medium">
-                {offer?.token.totalSupply?.toLocaleString()}
-              </p>
-              <p className="text-xs md:text-sm text-neutral-500">
-                Total Supply
-              </p>
-            </div>
-          </div>
-        </div>
+        }
 
         {/* TODO add real first and second unlocks data */}
         <Unlock
@@ -330,8 +371,8 @@ export default function InfluencerOffersDetailPage() {
                   {offer.vestingType === "MARKETCAP"
                     ? "Market Cap Vesting"
                     : offer.vestingType === "TIME"
-                    ? "Time Vesting"
-                    : "Direct Payment"}
+                      ? "Time Vesting"
+                      : "Direct Payment"}
                 </p>
               </div>
               <div className="flex items-center">

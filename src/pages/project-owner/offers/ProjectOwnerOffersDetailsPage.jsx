@@ -17,6 +17,8 @@ export default function ProjectOwnerOffersDetailPage() {
   const params = useParams();
   const navigate = useNavigate();
 
+  const [projectDetail, setProjectDetail] = useState(null);
+
   const offerId = params.id;
 
   const {
@@ -34,6 +36,8 @@ export default function ProjectOwnerOffersDetailPage() {
       } else {
         setIsWaitingApproval(false);
       }
+
+      setProjectDetail(data.projectOwner.projectDetails[0])
 
       return data;
     },
@@ -89,6 +93,8 @@ export default function ProjectOwnerOffersDetailPage() {
       ? "VERIFIED"
       : "PENDING"
     : offer.status;
+
+  console.log('offer', offer);
 
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center font-clash px-5">

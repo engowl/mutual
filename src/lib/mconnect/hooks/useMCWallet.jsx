@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useMCAuth } from "./useMCAuth.jsx";
 import { mutualAPI } from "../../../api/mutual.js";
+import bs58 from "bs58";
+import { Transaction } from "@solana/web3.js";
 
 export default function useMCWallet() {
   const { portal, isLoggedIn, walletType, chain } = useMCAuth();
@@ -56,19 +58,29 @@ export default function useMCWallet() {
     }
   }
 
-  async function signSolanaTxWithPortal({ messageToSign }) {
+  async function signSolanaTxWithPortal(tx) {
     if (portal && address) {
       console.log("chain :", chain);
       console.log("portal: ", portal);
 
       try {
-        const transactionHash = await portal.request({
-          chainId: chain.portalChainId,
-          method: "sol_signTransaction",
-          params: messageToSign,
+        const serializedTransaction = tx.serialize({
+          requireAllSignatures: false,
         });
 
-        return transactionHash;
+        // Convert the serialized Buffer to a Base64 string
+        const base64Transaction = serializedTransaction.toString("base64");
+
+        const signature = await portal.request({
+          chainId: chain.portalChainId,
+          method: "sol_signTransaction",
+          params: base64Transaction,
+        });
+
+        const txBuffer = bs58.decode(signature);
+        const signedTx = Transaction.from(txBuffer);
+        
+        return signedTx;
       } catch (error) {
         console.error("Failed to sign transaction:", error);
         throw error;

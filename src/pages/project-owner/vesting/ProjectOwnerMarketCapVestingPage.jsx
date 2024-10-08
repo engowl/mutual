@@ -8,17 +8,15 @@ import {
 import { useWallet } from "@solana/wallet-adapter-react";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import IconicButton from "../../../components/ui/IconicButton";
 import { CHAINS, OFFER_CONFIG } from "../../../config";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK";
-import { getAlphanumericId, sleep } from "../../../utils/misc";
+import { getAlphanumericId } from "../../../utils/misc";
 import { shortenAddress } from "../../../utils/string";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { cnm } from "../../../utils/style";
 import { parseDate, parseTime } from "@internationalized/date";
-import { useDateFormatter } from "@react-aria/i18n";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { BN } from "bn.js";
@@ -26,12 +24,9 @@ import useSWR from "swr";
 import { mutualAPI } from "../../../api/mutual";
 import { useMCAuth } from "../../../lib/mconnect/hooks/useMCAuth";
 import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
-import { Transaction } from "@solana/web3.js";
-import bs58 from "bs58";
 import { formatNumberToKMB } from "../../../utils/number.js";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import { handleNumericChange } from "../../../lib/mconnect/utils/formattingUtils.js";
-import { token } from "@coral-xyz/anchor/dist/cjs/utils/index.js";
 import DexScreenerLogo from "../../../assets/dexscreener.svg?react";
 
 dayjs.extend(utc);
@@ -83,7 +78,7 @@ export default function ProjectOwnerMarketCapVestingPage() {
 
 function MarketCapVestingConfirmation({ setStep }) {
   const { wallet } = useWallet();
-  const [sessionKey, saveSessionKey] = useLocalStorage("session_key", null);
+  const [sessionKey, _] = useLocalStorage("session_key", null);
 
   const params = useParams();
   const influencerId = params.influencerId;
@@ -184,21 +179,7 @@ function MarketCapVestingConfirmation({ setStep }) {
 
       // Step 3: Sign and send the transaction
       if (walletType === "MPC") {
-        const serializedTransaction = createDealTx.serialize({
-          requireAllSignatures: false,
-        });
-
-        // Convert the serialized Buffer to a Base64 string
-        const base64Transaction = serializedTransaction.toString("base64");
-
-        const signature = await signSolanaTxWithPortal({
-          messageToSign: base64Transaction,
-        });
-
-        console.log("Success sign using portal: ", signature);
-
-        const transactionBuffer = bs58.decode(signature);
-        signedTx = Transaction.from(transactionBuffer);
+        signedTx = await signSolanaTxWithPortal(createDealTx);
       } else {
         signedTx = await wallet.adapter.signTransaction(createDealTx);
       }
