@@ -573,6 +573,28 @@ export const campaignRoutes = (app, _, done) => {
                     wallet: true,
                   },
                 },
+                projectDetails: {
+                  select: {
+                    id: true,
+                    token: {
+                      select: {
+                        id: true,
+                        imageUrl: true,
+                        mintAddress: true,
+                        symbol: true,
+                        name: true,
+                        totalSupply: true,
+                        pair: {
+                          select: {
+                            marketCap: true,
+                            priceUsd: true,
+                            url: true,
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               },
             },
             token: true,
