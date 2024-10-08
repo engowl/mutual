@@ -27,8 +27,35 @@ import { BN } from "bn.js";
 import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
 import bs58 from "bs58";
 import { Transaction } from "@solana/web3.js";
+import { formatNumberToKMB } from "../../../utils/number.js";
+import DexScreenerLogo from "../../../assets/dexscreener.svg?react";
+import { handleNumericChange } from "../../../lib/mconnect/utils/formattingUtils.js";
 
 dayjs.extend(utc);
+
+const combineDateAndTime = (dateISO, timeObject) => {
+  console.log("date:", dateISO);
+  console.log("time:", timeObject);
+
+  if (!dateISO || !timeObject) return null;
+
+  const date = new Date(dateISO);
+
+  date.setHours(timeObject.hour);
+  date.setMinutes(timeObject.minute);
+  date.setSeconds(timeObject.second);
+  date.setMilliseconds(timeObject.millisecond || 0);
+
+  return date;
+};
+function getISONowDate() {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = String(currentDate.getMonth() + 1).padStart(2, "0");
+  const currentDay = String(currentDate.getDate()).padStart(2, "0");
+
+  return `${currentYear}-${currentMonth}-${currentDay}`;
+}
 
 const vestingPeriods = [
   {
@@ -67,7 +94,7 @@ const timeVestingFormAtom = atom({
   telegramAdminUsername: "",
   marketingChannel: "",
   promotionalPostText: "",
-  postDateAndTime: "",
+  postDateAndTime: combineDateAndTime(getISONowDate(), parseTime("12:00:00")),
 });
 
 export default function ProjectOwnerTimeVestingPage() {
@@ -113,14 +140,22 @@ function TimeVestingConfirmation({ setStep }) {
     }
   );
 
-  const tokenInfo =
+  const userTokenInfo =
     data && user
       ? data.find(
           (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
         )
       : null;
 
-  console.log("formData:", formData);
+  const { data: tokenInfo } = useSWR(
+    `/token/info?tokenAddress=${user?.projectOwner?.projectDetails[0]?.contractAddress}`,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      return data;
+    }
+  );
+
+  console.log({ tokenInfo }, "tome vesting");
 
   const [isLoading, setIsLoading] = useState(false);
   const handleCreateOffer = async () => {
@@ -236,7 +271,14 @@ function TimeVestingConfirmation({ setStep }) {
             <p className="text-2xl font-medium">
               {tokenInfo?.name} (${tokenInfo?.symbol})
             </p>
-            <div className="font-medium">DexScreener</div>
+            <a
+              href={tokenInfo?.pair.url || ""}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium"
+            >
+              <DexScreenerLogo />
+            </a>
           </div>
           <div className="flex gap-7 mt-3">
             <div>
@@ -245,13 +287,13 @@ function TimeVestingConfirmation({ setStep }) {
             </div>
             <div>
               <p className="text-orangy font-medium">
-                {shortenAddress(tokenInfo?.mint)}
+                {shortenAddress(tokenInfo?.mintAddress)}
               </p>
               <p className="text-sm text-neutral-500">Contract Address</p>
             </div>
             <div>
               <p className="text-orangy font-medium">
-                {tokenInfo?.amount.toLocaleString("en-US")}
+                {tokenInfo?.totalSupply.toLocaleString("en-US")}
               </p>
               <p className="text-sm text-neutral-500">Total Supply</p>
             </div>
@@ -262,7 +304,9 @@ function TimeVestingConfirmation({ setStep }) {
             <div className="flex flex-col gap-3 text-sm">
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Total Payment</p>
-                <p className="font-medium">{formData.tokenOfferAmount} MICHI</p>
+                <p className="font-medium">
+                  {formData.tokenOfferAmount} {tokenInfo?.symbol}
+                </p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Payment Terms</p>
@@ -272,20 +316,16 @@ function TimeVestingConfirmation({ setStep }) {
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">First Unlock</p>
                 <p className="font-medium">
-                  {(
-                    formData.tokenOfferAmount *
-                    OFFER_CONFIG.firstUnlockPercentage
-                  ).toFixed(3)}{" "}
+                  {parseInt(formData.tokenOfferAmount.replaceAll(",", "")) *
+                    OFFER_CONFIG.firstUnlockPercentage}{" "}
                   {tokenInfo?.symbol}
                 </p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Second Unlock</p>
                 <p className="font-medium">
-                  {(
-                    formData.tokenOfferAmount *
-                    OFFER_CONFIG.secondUnlockPercentage
-                  ).toFixed(3)}{" "}
+                  {parseInt(formData.tokenOfferAmount.replaceAll(",", "")) *
+                    OFFER_CONFIG.secondUnlockPercentage}{" "}
                   {tokenInfo?.symbol}
                 </p>
               </div>
@@ -322,11 +362,7 @@ function TimeVestingConfirmation({ setStep }) {
               </div>
             </div>
             <p className="font-medium mt-8">Promotional post text</p>
-            <p className="mt-4">
-              🚀 $Michi is ready to take over the crypto space!🔥 Join the
-              $Michi revolution and be part of the most exciting meme coin of
-              the year! 📈 Strong community, rapid growth, and big plans ahead!
-            </p>
+            <p className="mt-4">{formData.promotionalPostText}</p>
           </div>
         </div>
 
@@ -409,6 +445,15 @@ function TimeVestingForm({ setStep }) {
   }, [selectedDate, selectedTime]);
 
   const { user } = useMCAuth();
+
+  const { data: tokenInfo } = useSWR(
+    `/token/info?tokenAddress=${user?.projectOwner?.projectDetails[0]?.contractAddress}`,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      return data;
+    }
+  );
+
   // TODO change network to dynamic
   const { data } = useSWR(
     user
@@ -421,7 +466,7 @@ function TimeVestingForm({ setStep }) {
     }
   );
 
-  const tokenInfo =
+  const userTokenInfo =
     data && user
       ? data.find(
           (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
@@ -451,21 +496,32 @@ function TimeVestingForm({ setStep }) {
               <p className="text-2xl font-medium">
                 {tokenInfo?.name} (${tokenInfo?.symbol} )
               </p>
-              <div className="font-medium">DexScreener</div>
+              <a
+                href={tokenInfo?.pair.url}
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium"
+              >
+                <DexScreenerLogo />
+              </a>
             </div>
             <div className="flex gap-7 mt-3">
               <div>
-                <p className="text-orangy font-medium">$150M</p>
+                <p className="text-orangy font-medium">
+                  ${formatNumberToKMB(tokenInfo?.pair.marketCap || 0)}
+                </p>
                 <p className="text-sm text-neutral-500">Market Cap</p>
               </div>
               <div>
                 <p className="text-orangy font-medium">
-                  {shortenAddress(tokenInfo?.mint)}
+                  {shortenAddress(tokenInfo?.mintAddress)}
                 </p>
                 <p className="text-sm text-neutral-500">Contract Address</p>
               </div>
               <div>
-                <p className="text-orangy font-medium">{tokenInfo?.balance}</p>
+                <p className="text-orangy font-medium">
+                  {tokenInfo?.totalSupply.toLocaleString("en-US")}
+                </p>
                 <p className="text-sm text-neutral-500">Total Supply</p>
               </div>
             </div>
@@ -478,24 +534,28 @@ function TimeVestingForm({ setStep }) {
               <div className="bg-white rounded-xl border mt-1">
                 <div className="px-5 py-5">
                   <input
-                    className="outline-none text-2xl"
+                    className="outline-none text-2xl w-full"
                     placeholder="1.000.000"
                     value={formData.tokenOfferAmount}
-                    onChange={handleChange("tokenOfferAmount")}
+                    onChange={(e) =>
+                      handleNumericChange((val) => {
+                        handleInputChange("tokenOfferAmount", val);
+                      })(e)
+                    }
                   />
                 </div>
                 <div className="mt-2 w-full flex items-center justify-between">
                   <p className="text-sm text-neutral-400 px-4 py-2">
-                    Balance: {tokenInfo?.amount.toLocaleString("en-US")} $
+                    Balance: {userTokenInfo?.amount.toLocaleString("en-US")} $
                     {tokenInfo?.symbol}
                   </p>
                   <div className="p-2">
                     <Button
                       onClick={() => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          tokenOfferAmount: tokenInfo?.amount.toString(),
-                        }));
+                        handleInputChange(
+                          "tokenOfferAmount",
+                          userTokenInfo?.amount.toLocaleString("en-US")
+                        );
                       }}
                       className="bg-orangy/10 text-orangy"
                       size="sm"
