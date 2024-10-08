@@ -14,10 +14,9 @@ import {
 } from "@nextui-org/react";
 import { NATIVE_MINT } from "@solana/spl-token";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { LAMPORTS_PER_SOL, Transaction } from "@solana/web3.js";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
 import { useParams } from "react-router-dom";
 import { mutualAPI } from "../../../api/mutual.js";
 import RandomAvatar from "../../../components/ui/RandomAvatar.jsx";
@@ -27,7 +26,6 @@ import { getAlphanumericId } from "../../../utils/misc.js";
 import { parseDate, parseTime } from "@internationalized/date";
 import toast from "react-hot-toast";
 import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
-import bs58 from "bs58";
 import { useMCAuth } from "../../../lib/mconnect/hooks/useMCAuth.jsx";
 import { useLocalStorage } from "@uidotdev/usehooks";
 
@@ -223,24 +221,8 @@ function TelegramPackageModal({ solTotal, influencer }) {
       let signedTx;
 
       if (walletType === "MPC") {
-        // Sign with MPC wallet
-        const serializedTransaction = createDealTx.serialize({
-          requireAllSignatures: false,
-        });
-
-        // Convert the serialized Buffer to a Base64 string
-        const base64Transaction = serializedTransaction.toString("base64");
-
-        const signature = await signSolanaTxWithPortal({
-          messageToSign: base64Transaction,
-        });
-
-        console.log("success sign using portal: ", signature);
-
-        const transactionBuffer = bs58.decode(signature);
-        signedTx = Transaction.from(transactionBuffer);
+        signedTx = await signSolanaTxWithPortal(createDealTx);
       } else {
-        // Sign with EOA wallet
         signedTx = await wallet.adapter.signTransaction(createDealTx);
       }
 
@@ -283,7 +265,7 @@ function TelegramPackageModal({ solTotal, influencer }) {
 
 function TweetPackageModal({ solTotal, influencer }) {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [sessionKey, saveSessionKey] = useLocalStorage("session_key", null);
+  const [sessionKey, _] = useLocalStorage("session_key", null);
   const [isLoading, setIsLoading] = useState(false);
 
   const { signSolanaTxWithPortal, address: mpcAddress } = useMCWallet();
@@ -332,29 +314,14 @@ function TweetPackageModal({ solTotal, influencer }) {
             ? mpcAddress
             : wallet.adapter.publicKey.toBase58(),
         vestingType: "NONE",
-        amount: DATA.tokenAmount * 10 ** chain.directPaymentToken.decimals
+        amount: DATA.tokenAmount * 10 ** chain.directPaymentToken.decimals,
       });
       console.log("Create deal transaction prepared:", createDealTx);
 
       let signedTx;
 
       if (walletType === "MPC") {
-        // Sign with MPC wallet
-        const serializedTransaction = createDealTx.serialize({
-          requireAllSignatures: false,
-        });
-
-        // Convert the serialized Buffer to a Base64 string
-        const base64Transaction = serializedTransaction.toString("base64");
-
-        const signature = await signSolanaTxWithPortal({
-          messageToSign: base64Transaction,
-        });
-
-        console.log("success sign using portal: ", signature);
-
-        const transactionBuffer = bs58.decode(signature);
-        signedTx = Transaction.from(transactionBuffer);
+        signedTx = await signSolanaTxWithPortal(createDealTx);
       } else {
         // Sign with EOA wallet
         signedTx = await wallet.adapter.signTransaction(createDealTx);
@@ -571,7 +538,9 @@ function PackageModal({
                 </div>
                 <div className="bg-creamy-300 px-4 py-3 mt-4 w-full flex items-center justify-between text-xl font-medium rounded-xl">
                   <p>Total</p>
-                  <p>{total} {DIRECT_PAYMENT_TOKEN.symbol}</p>
+                  <p>
+                    {total} {DIRECT_PAYMENT_TOKEN.symbol}
+                  </p>
                 </div>
               </ModalBody>
               <ModalFooter>

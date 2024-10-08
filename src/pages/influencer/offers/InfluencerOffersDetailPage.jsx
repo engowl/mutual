@@ -1,19 +1,12 @@
 import {
   Button,
-  Input,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalHeader,
   Spinner,
-  useDisclosure,
 } from "@nextui-org/react";
 import { useNavigate, useParams } from "react-router-dom";
 import { shortenAddress } from ".././../../utils/string";
-import { Check, Clock, X } from "lucide-react";
+import { Check, Clock } from "lucide-react";
 import { cnm } from "../../../utils/style.js";
 import dayjs from "dayjs";
-import { DUMMY_LOGS } from "../../project-owner/offers/ProjectOwnerOffersDetailsPage.jsx";
 import useSWR from "swr";
 import { mutualAPI } from "../../../api/mutual";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK.js";
@@ -27,6 +20,8 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { NATIVE_MINT } from "@solana/spl-token";
 import InfluencerOfferStatusBadgePill from "../../../components/offers/InfluencerOfferStatusBadgePill.jsx";
 import DexScreenerLogo from "../../../assets/dexscreener.svg?react";
+import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
+import { useMCAuth } from "../../../lib/mconnect/hooks/useMCAuth.jsx";
 
 export default function InfluencerOffersDetailPage() {
   const [isWaitingApproval, setIsWaitingApproval] = useState(false);
@@ -151,6 +146,9 @@ export default function InfluencerOffersDetailPage() {
 
   // Claiming
   const [isClaiming, setIsClaiming] = useState(false);
+  const { signSolanaTxWithPortal, address: mpcAddress } = useMCWallet();
+  const { walletType } = useMCAuth();
+
   const handleClaim = async () => {
     try {
       setIsClaiming(true);
@@ -169,11 +167,21 @@ export default function InfluencerOffersDetailPage() {
           await escrowSDK.prepareNativeResolveDealTransaction({
             orderId: offer.id,
             mintAddress: offer.token.mintAddress,
-            kolAddress: wallet.adapter.publicKey.toBase58(),
+            kolAddress:
+              walletType === "MPC"
+                ? mpcAddress
+                : wallet.adapter.publicKey.toBase58(),
             projectOwnerAddress: offer.projectOwner.user.wallet.address,
           });
 
-        const signedTx = await wallet.adapter.signTransaction(resolveDealTx);
+        let signedTx;
+
+        if (walletType === "MPC") {
+          signedTx = await signSolanaTxWithPortal(resolveDealTx);
+        } else {
+          signedTx = await wallet.adapter.signTransaction(resolveDealTx);
+        }
+
         const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
 
         console.log("Claimed successfully", txHash);
@@ -181,11 +189,20 @@ export default function InfluencerOffersDetailPage() {
         const resolveDealTx = await escrowSDK.prepareResolveDealTransaction({
           orderId: offer.id,
           mintAddress: offer.token.mintAddress,
-          kolAddress: wallet.adapter.publicKey.toBase58(),
+          kolAddress:
+            walletType === "MPC"
+              ? mpcAddress
+              : wallet.adapter.publicKey.toBase58(),
           projectOwnerAddress: offer.projectOwner.user.wallet.address,
         });
 
-        const signedTx = await wallet.adapter.signTransaction(resolveDealTx);
+        let signedTx;
+        if (walletType === "MPC") {
+          signedTx = await signSolanaTxWithPortal(resolveDealTx);
+        } else {
+          signedTx = await wallet.adapter.signTransaction(resolveDealTx);
+        }
+
         const txHash = await escrowSDK.sendAndConfirmTransaction(signedTx);
 
         console.log("Claimed successfully", txHash);

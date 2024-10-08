@@ -11,7 +11,6 @@ import {
 import { useEffect, useState } from "react";
 import IconicButton from "../../../components/ui/IconicButton";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useCookies } from "react-cookie";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { getAlphanumericId } from "../../../utils/misc";
 import { CHAINS, OFFER_CONFIG } from "../../../config";
@@ -25,8 +24,6 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { BN } from "bn.js";
 import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
-import bs58 from "bs58";
-import { Transaction } from "@solana/web3.js";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import { formatNumberToKMB } from "../../../utils/number.js";
 import DexScreenerLogo from "../../../assets/dexscreener.svg?react";
@@ -218,22 +215,7 @@ function TimeVestingConfirmation({ setStep }) {
 
       // Step 3: Sign and send the transaction
       if (walletType === "MPC") {
-        // Step 3: Sign with MPC
-        const serializedTransaction = createDealTx.serialize({
-          requireAllSignatures: false,
-        });
-
-        // Convert the serialized Buffer to a Base64 string
-        const base64Transaction = serializedTransaction.toString("base64");
-
-        const signature = await signSolanaTxWithPortal({
-          messageToSign: base64Transaction,
-        });
-
-        console.log("Success sign using portal: ", signature);
-
-        const transactionBuffer = bs58.decode(signature);
-        signedTx = Transaction.from(transactionBuffer);
+        signedTx = await signSolanaTxWithPortal(createDealTx);
       } else {
         signedTx = await wallet.adapter.signTransaction(createDealTx);
       }
