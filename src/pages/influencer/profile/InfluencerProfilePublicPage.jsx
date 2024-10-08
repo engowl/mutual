@@ -262,6 +262,7 @@ function TelegramPackageModal({ solTotal, influencer }) {
       total={solTotal}
       isLoading={isLoading}
       onSubmit={handleTelegramSubmit}
+      isComingSoon={true}
     />
   );
 }
@@ -372,6 +373,7 @@ function PackageModal({
   total,
   onSubmit,
   isLoading,
+  isComingSoon = false,
 }) {
   const [formData, setFormData] = useState({
     campaignTitle: "",
@@ -438,8 +440,9 @@ function PackageModal({
       <Button
         onClick={handleOpen}
         className="w-full h-10 bg-orangy text-white rounded-full mt-8"
+        isDisabled={isComingSoon}
       >
-        Get this package
+        {isComingSoon ? "Coming Soon" : "Send Offer"}
       </Button>
       <Modal size={"xl"} isOpen={isOpen} onClose={onClose} hideCloseButton>
         <ModalContent>
