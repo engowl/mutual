@@ -313,7 +313,7 @@ function TweetPackageModal({ solTotal, influencer }) {
         influencerId: influencer.id,
         vestingType: "NONE",
         vestingCondition: {},
-        mintAddress: chain.USDC.mintAddress,
+        mintAddress: chain.directPaymentToken.mintAddress,
         tokenAmount: parseFloat(solTotal),
         campaignChannel: "TWITTER",
         promotionalPostText: formData.promotionalText,
@@ -325,14 +325,14 @@ function TweetPackageModal({ solTotal, influencer }) {
 
       const createDealTx = await escrowSDK.prepareCreateDealTransaction({
         orderId: DATA.orderId,
-        mintAddress: chain.USDC.mintAddress,
+        mintAddress: chain.directPaymentToken.mintAddress,
         kolAddress: influencer.user.wallet.address,
         userAddress:
           walletType === "MPC"
             ? mpcAddress
             : wallet.adapter.publicKey.toBase58(),
         vestingType: "NONE",
-        amount: DATA.tokenAmount * 10 ** chain.USDC.decimals
+        amount: DATA.tokenAmount * 10 ** chain.directPaymentToken.decimals
       });
       console.log("Create deal transaction prepared:", createDealTx);
 

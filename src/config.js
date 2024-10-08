@@ -22,7 +22,7 @@ export const CHAINS = [
       import.meta.env.VITE_MAINNET_RPC_URL ||
       "https://api.mainnet-beta.solana.com",
     escrowProgramId: import.meta.env.VITE_ESCROW_PROGRAM_ID,
-    USDC: {
+    directPaymentToken: {
       ...USDC_MINT,
       mintAddress: ""
     }
@@ -35,7 +35,7 @@ export const CHAINS = [
     rpcUrl:
       import.meta.env.VITE_DEVNET_RPC_URL || "https://api.devnet.solana.com",
     escrowProgramId: import.meta.env.VITE_ESCROW_PROGRAM_ID,
-    USDC: {
+    directPaymentToken: {
       ...USDC_MINT,
       mintAddress: "7B85SqobCqr5mBMBz9QeCpgxcAnhThFu2anpkoUdAdfb"
     }
@@ -46,7 +46,7 @@ export const CHAINS = [
     name: "Localnet",
     rpcUrl: import.meta.env.VITE_LOCALNET_RPC_URL || "http://localhost:8899",
     escrowProgramId: import.meta.env.VITE_ESCROW_PROGRAM_ID,
-    USDC: {
+    directPaymentToken: {
       ...USDC_MINT,
       mintAddress: "7B85SqobCqr5mBMBz9QeCpgxcAnhThFu2anpkoUdAdfb"
     }
