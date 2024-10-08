@@ -246,43 +246,44 @@ function OfferCard({ order, mutate }) {
         </div>
       </div>
       {/* action buttons */}
-      {order.status !== "REJECTED" && (
-        <div className="flex flex-col items-center">
-          <div className="flex gap-2 flex-col lg:flex-row">
-            {order.status !== "ACCEPTED" && (
-              <Button
-                onClick={handleRejectOffer}
-                isLoading={isRejectLoading}
-                color="default"
-                className="text-xs rounded-full font-medium"
-              >
-                Decline
-              </Button>
-            )}
+      {order.status !== "REJECTED" ||
+        (order.status !== "COMPLETED" && (
+          <div className="flex flex-col items-center">
+            <div className="flex gap-2 flex-col lg:flex-row">
+              {order.status !== "ACCEPTED" && (
+                <Button
+                  onClick={handleRejectOffer}
+                  isLoading={isRejectLoading}
+                  color="default"
+                  className="text-xs rounded-full font-medium"
+                >
+                  Decline
+                </Button>
+              )}
 
-            {order.status === "ACCEPTED" ? (
-              <SubmitProofModal orderId={order.id} className={"md:text-sm"} />
-            ) : (
-              <Button
-                onClick={handleAcceptOffer}
-                className="text-xs bg-orangy text-white rounded-full font-medium"
-                isLoading={isAcceptLoading}
-              >
-                Accept
-              </Button>
+              {order.status === "ACCEPTED" ? (
+                <SubmitProofModal orderId={order.id} className={"md:text-sm"} />
+              ) : (
+                <Button
+                  onClick={handleAcceptOffer}
+                  className="text-xs bg-orangy text-white rounded-full font-medium"
+                  isLoading={isAcceptLoading}
+                >
+                  Accept
+                </Button>
+              )}
+            </div>
+            {order.status === "CREATED" && (
+              <p className="text-[10px] text-center md:text-sm mt-3 text-neutral-500">
+                Respond in{" "}
+                <Countdown
+                  date={new Date(order.expiredAtUnix * 1000)}
+                  daysInHours
+                />
+              </p>
             )}
           </div>
-          {order.status === "CREATED" && (
-            <p className="text-[10px] text-center md:text-sm mt-3 text-neutral-500">
-              Respond in{" "}
-              <Countdown
-                date={new Date(order.expiredAtUnix * 1000)}
-                daysInHours
-              />
-            </p>
-          )}
-        </div>
-      )}
+        ))}
     </button>
   );
 }
