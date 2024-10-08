@@ -469,6 +469,23 @@ export const campaignRoutes = (app, _, done) => {
             projectOwner: {
               include: {
                 user: true,
+                projectDetails: {
+                  select: {
+                    id: true,
+                    contractAddress: true,
+                    token: {
+                      select: {
+                        id: true,
+                        imageUrl: true,
+                        holderCount: true,
+                        decimals: true,
+                        name: true,
+                        symbol: true,
+                        description: true,
+                      }
+                    }
+                  }
+                },
               },
             },
             token: true,

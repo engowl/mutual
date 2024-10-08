@@ -7,7 +7,10 @@ import {
   adminKp,
   MUTUAL_ESCROW_PROGRAM,
 } from "../../lib/contract/contracts.js";
-import { prepareOrderId } from "../../utils/contractUtils.js";
+import {
+  formatTokenAmount,
+  prepareOrderId,
+} from "../../utils/contractUtils.js";
 import { BN } from "bn.js";
 import { nanoid } from "nanoid";
 import { unTwitterApiGetTweet } from "../../api/unTwitterApi/unTwitterApi.js";
@@ -180,7 +183,7 @@ export const generateEventLogs = async (orderId) => {
   // Remove the created offer event
   events = events.filter((e) => e.eventName !== "DealCreated");
 
-  const logs = [];
+  let logs = [];
 
   let vestingLabel = "";
   if (order.vestingType === "MARKETCAP") {
@@ -273,9 +276,10 @@ export const generateEventLogs = async (orderId) => {
       }
     } else if (event.eventName === "DealResolved") {
       if (event.data.status === "partialCompleted") {
-        const amount = new BN(event.data.claimAmount)
-          .div(new BN(10 ** order.token.decimals))
-          .toNumber();
+        const amount = formatTokenAmount(
+          event.data.claimAmount,
+          order.token.decimals
+        );
         const claimLabel = `A partial unlock of ${amount} $${order.token.symbol} has been claimed.`;
 
         const log = {
@@ -286,9 +290,10 @@ export const generateEventLogs = async (orderId) => {
         };
         logs.push(log);
       } else if (event.data.status === "completed") {
-        const amount = new BN(event.data.releasedAmount)
-          .div(new BN(10 ** order.token.decimals))
-          .toNumber();
+        const amount = formatTokenAmount(
+          event.data.claimAmount,
+          order.token.decimals
+        );
         const claimLabel = `All ${amount} $${order.token.symbol} has been claimed.`;
 
         const log = {
@@ -302,6 +307,24 @@ export const generateEventLogs = async (orderId) => {
       }
     }
   }
+
+  // Filter out duplicate 'accepted_offer' logs, keeping only the first one
+  const acceptOfferLogs = logs.filter((l) => l.id === "accepted_offer");
+  if (acceptOfferLogs.length > 1) {
+    // Keep only the first 'accepted_offer' log and remove the rest
+    logs = logs.filter((l) => l.id !== "accepted_offer");
+    logs.push(acceptOfferLogs[0]); // Add the first accepted offer back to logs
+  }
+
+  // The 'fully_eligible' too
+  const fullyEligibleLogs = logs.filter((l) => l.id === "fully_eligible");
+  if (fullyEligibleLogs.length > 1) {
+    logs = logs.filter((l) => l.id !== "fully_eligible");
+    logs.push(fullyEligibleLogs[0]);
+  }
+
+  // Sort the logs by 'time' to preserve the original order
+  logs.sort((a, b) => new Date(b.time) - new Date(a.time));
 
   return logs;
 };
