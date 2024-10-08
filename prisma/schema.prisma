@@ -63,6 +63,9 @@ model ProjectOwner {
   orders         CampaignOrder[]
 
   status ProjectOwnerStatus?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ProjectDetails {
@@ -97,6 +100,9 @@ model Influencer {
   twitterAccount   TwitterAccount? @relation(fields: [twitterAccountId], references: [id], onDelete: Cascade)
 
   orders CampaignOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Project Criteria for Influencers (KOL)
@@ -190,7 +196,7 @@ model Token {
   holderCount Int?
 
   orders CampaignOrder[]
-  pair  Pair?
+  pair   Pair?
 
   projects ProjectDetails[]
 
@@ -227,15 +233,15 @@ model Pair {
   tokenId String @unique
   token   Token  @relation(fields: [tokenId], references: [id], onDelete: Cascade)
 
-  address String 
-  url     String
-  priceNative Float
-  priceUsd    Float
-  fdv         Float
-  marketCap   Float
+  address      String
+  url          String
+  priceNative  Float
+  priceUsd     Float
+  fdv          Float
+  marketCap    Float
   liquidityUsd Float
 
-  info        Json
+  info Json
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -273,15 +279,15 @@ model CampaignOrder {
 model CampaignPost {
   id String @id @default(cuid())
 
-  campaignOrderId String @unique
+  campaignOrderId String        @unique
   order           CampaignOrder @relation(fields: [campaignOrderId], references: [id], onDelete: Cascade)
 
-  postId   String
-  postUrl  String
+  postId         String
+  postUrl        String
   postedTimeUnix Int
 
-  text String @db.Text
-  data Json
+  text           String @db.Text
+  data           Json
   impressionData Json?
 
   isApproved Boolean @default(false)
@@ -299,7 +305,7 @@ model EscrowEventLog {
   eventName       String
   signature       String
   data            Json
-  slot            Int @default(0)
+  slot            Int    @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -308,6 +314,7 @@ model EscrowEventLog {
 enum ProjectOwnerStatus {
   PENDING
   APPROVED
+  DECLINED
 }
 
 model UserConversation {
