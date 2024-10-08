@@ -99,7 +99,7 @@ export default function InfluencerProfilePublicPage() {
             <div className="flex items-center gap-8">
               <div>
                 <p className="font-medium">
-                  {influencer.twitterAccount.followersCount}
+                  {influencer.twitterAccount.followersCount?.toLocaleString() || 0}
                 </p>
                 <p className="text-sm">Followers</p>
               </div>

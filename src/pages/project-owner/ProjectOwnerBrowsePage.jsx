@@ -200,9 +200,14 @@ function InfluencerCard({ influencerData }) {
         </div>
         <div className="flex-1">
           <div className="w-full flex items-center justify-between">
-            <p className="md:text-lg font-medium">
-              @{influencerData.twitterAccount.username}
-            </p>
+            <div>
+              <p className="md:text-lg font-medium">
+                @{influencerData.twitterAccount.username}
+              </p>
+              <p className="text-sm">
+                {influencerData.user.name}
+              </p>
+            </div>
             {/* Best match badge */}
             <div className="bg-gradient-to-br from-[#8E00C5] via-[#FF6E63] to-[#FFA427] px-3 py-1 rounded-full text-[10px] md:text-xs text-white">
               Best Match
@@ -238,7 +243,7 @@ function InfluencerCard({ influencerData }) {
             <img src={PeopleIconSvg} alt="icon" className="size-4" />
           </div>
           <p className="font-medium text-sm leading-none mt-2">
-            {influencerData.twitterAccount.followersCount}
+            {influencerData.twitterAccount.followersCount?.toLocaleString() || 0}
           </p>
           <p className="text-xs mt-1">Followers</p>
         </div>
@@ -253,7 +258,8 @@ function InfluencerCard({ influencerData }) {
           <div className="size-10 rounded-full border flex items-center justify-center">
             <img src={GrowthIconSvg} alt="icon" className="size-4" />
           </div>
-          <p className="font-medium text-sm leading-none mt-2">0%</p>
+          {/* TODO: KOL Success Rate */}
+          <p className="font-medium text-sm leading-none mt-2">100%</p>
           <p className="text-xs mt-1">Success</p>
         </div>
         <div>
@@ -488,7 +494,7 @@ function GraphRangeSlider({
                 width: `${60 / barHeights.length}%`, // Reduced width to create space
                 opacity:
                   index >= (normalizedMinValue / 100) * barHeights.length &&
-                  index <= (normalizedMaxValue / 100) * barHeights.length
+                    index <= (normalizedMaxValue / 100) * barHeights.length
                     ? 1
                     : 0.3,
               }}
