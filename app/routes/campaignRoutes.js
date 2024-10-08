@@ -466,7 +466,16 @@ export const campaignRoutes = (app, _, done) => {
                 user: true,
               },
             },
+            projectOwner: {
+              include: {
+                user: true,
+              },
+            },
             token: true,
+            post: true,
+          },
+          orderBy: {
+            createdAt: "desc",
           },
         });
 
@@ -482,7 +491,17 @@ export const campaignRoutes = (app, _, done) => {
                 user: true,
               },
             },
+            influencer: {
+              include: {
+                user: true,
+                twitterAccount: true,
+              },
+            },
             token: true,
+            post: true,
+          },
+          orderBy: {
+            createdAt: "desc",
           },
         });
 
@@ -525,8 +544,9 @@ export const campaignRoutes = (app, _, done) => {
                 user: {
                   include: {
                     wallet: true,
-                  }
+                  },
                 },
+                twitterAccount: true,
               },
             },
             projectOwner: {
@@ -534,7 +554,7 @@ export const campaignRoutes = (app, _, done) => {
                 user: {
                   include: {
                     wallet: true,
-                  }
+                  },
                 },
               },
             },
@@ -658,8 +678,8 @@ export const campaignRoutes = (app, _, done) => {
               quote_count: tweet.tweet.quote_count,
               reply_count: tweet.tweet.reply_count,
               retweet_count: tweet.tweet.retweet_count,
-              view_count: tweet.tweet.view_count
-            }
+              view_count: tweet.tweet.view_count,
+            },
           },
           update: {
             postId: tweet.tweet.id_str,
@@ -672,8 +692,8 @@ export const campaignRoutes = (app, _, done) => {
               quote_count: tweet.tweet.quote_count,
               reply_count: tweet.tweet.reply_count,
               retweet_count: tweet.tweet.retweet_count,
-              view_count: tweet.tweet.view_count
-            }
+              view_count: tweet.tweet.view_count,
+            },
           },
         });
 
@@ -705,7 +725,7 @@ export const campaignRoutes = (app, _, done) => {
             id: orderId,
             projectOwner: {
               userId: user.id,
-            }
+            },
           },
           include: {
             projectOwner: {
@@ -734,11 +754,11 @@ export const campaignRoutes = (app, _, done) => {
           return reply.status(400).send({ message: "Order not found" });
         }
 
-        if(order.post.isApproved){
+        if (order.post.isApproved) {
           return reply.status(400).send({ message: "Work already approved" });
         }
 
-        console.log('Order:', order);
+        console.log("Order:", order);
         const chain = CHAINS.find((c) => c.dbChainId === order.chainId);
         if (!chain) {
           return reply.status(400).send({ message: "Invalid chain ID" });
@@ -1084,8 +1104,9 @@ export const campaignRoutes = (app, _, done) => {
                   phaseName: "Final Unlock",
                   amount: totalAmount,
                   amountLabel: `${totalAmount} $${order.token.symbol}`,
-                  conditionLabel: `Claimable ${MINIMUM_POST_LIVE_IN_MINUTES / 60
-                    } hours after the ${mediaLabel} is posted`,
+                  conditionLabel: `Claimable ${
+                    MINIMUM_POST_LIVE_IN_MINUTES / 60
+                  } hours after the ${mediaLabel} is posted`,
                   isClaimable: false,
                 },
               ],
@@ -1125,8 +1146,9 @@ export const campaignRoutes = (app, _, done) => {
                 {
                   phaseName: "Final Unlock",
                   amount: totalAmount - partialUnlockAmount,
-                  amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol
-                    }`,
+                  amountLabel: `${totalAmount - partialUnlockAmount} $${
+                    order.token.symbol
+                  }`,
                   conditionLabel: `Claim after $${order.token.symbol} reaches the target ... market cap`,
                   isClaimable: false,
                 },
@@ -1166,8 +1188,9 @@ export const campaignRoutes = (app, _, done) => {
                 {
                   phaseName: "Final Unlock",
                   amount: totalAmount - partialUnlockAmount,
-                  amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol
-                    } `,
+                  amountLabel: `${totalAmount - partialUnlockAmount} $${
+                    order.token.symbol
+                  } `,
                   conditionLabel: `Claim after the vesting period ends`,
                   isClaimable: false,
                 },
