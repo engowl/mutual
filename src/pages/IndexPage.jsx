@@ -56,7 +56,15 @@ export default function IndexPage() {
     );
 
   return (
-    <div className="w-full flex items-center justify-center min-h-full bg-creamy px-5 md:px-10 py-12">
+    <div className="w-full flex flex-col gap-5 items-center justify-center min-h-full bg-creamy px-5 md:px-10 pt-12 pb-20">
+      <div className="size-20">
+        <img
+          src="public/assets/mutual_logo.svg"
+          alt="ic"
+          className="object-contain w-full h-full"
+        />
+      </div>
+
       <div className="fixed pointer-events-none bottom-0 w-full h-[20vh]">
         <AsciiFlame />
       </div>
