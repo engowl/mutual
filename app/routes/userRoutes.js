@@ -3,6 +3,7 @@ import { formatGetUserResponse } from "../api/unTwitterApi/helpers.js";
 import { unTwitterApiGetUser } from "../api/unTwitterApi/unTwitterApi.js";
 import { prismaClient } from "../db/prisma.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
+import { fetchTokenData } from "../workers/helpers/tokenHelpers.js";
 /**
  *
  * @param {import("fastify").FastifyInstance} app
@@ -209,9 +210,18 @@ export const userRoutes = (app, _, done) => {
           const { telegramAdmin, projectDetail } = projectOwner;
           const { userTwitter } = projectDetail;
 
+          console.log('contract address', projectDetail.contractAddress);
+          const token = await fetchTokenData({
+            mintAddress: projectDetail.contractAddress,
+            chainId: 'devnet'
+          })
+          console.log('Token validated:', token);
+
           if (userTwitter) {
             updateData.name = userTwitter.username;
           }
+
+          console.log('twitter', userTwitter);
 
           updateData.projectOwner = {
             update: {
@@ -222,6 +232,11 @@ export const userRoutes = (app, _, done) => {
                   projectName: projectDetail.projectName,
                   contractAddress: projectDetail.contractAddress,
                   telegramGroupLink: projectDetail.telegramGroupLink,
+                  token: {
+                    connect: {
+                      id: token.id
+                    }
+                  },
                   twitterAccount: {
                     create: {
                       accountId: userTwitter.id,
@@ -229,6 +244,7 @@ export const userRoutes = (app, _, done) => {
                       username: userTwitter.username,
                     },
                   },
+                  // twitterAccountId: userTwitter.id,
                 },
               },
             },

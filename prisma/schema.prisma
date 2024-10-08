@@ -74,6 +74,9 @@ model ProjectDetails {
   age               Int?
   holders           Int?
 
+  tokenId String
+  token   Token  @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
   projectOwnerId String       @unique
   projectOwner   ProjectOwner @relation(fields: [projectOwnerId], references: [id], onDelete: Cascade)
 
@@ -188,6 +191,8 @@ model Token {
 
   orders CampaignOrder[]
   pair  Pair?
+
+  projects ProjectDetails[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
