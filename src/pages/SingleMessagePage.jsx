@@ -76,14 +76,6 @@ export default function SingleMessagePage() {
     });
 
     socket.on("direct-message", (message) => {
-      toast.success("New message received");
-      toast(JSON.stringify(message, null, 2));
-      // if (
-      //   (message.senderId === user.id && message.receiverId === receiverId) ||
-      //   (message.senderId === receiverId && message.receiverId === receiverId)
-      // ) {
-      //   setMessages((prevMessages) => [...prevMessages, message]);
-      // }
       setMessages((prevMessages) => {
         const day = dayjs(message.timestamp).format("YYYY-MM-DD");
         const updatedMessages = [...prevMessages];
@@ -127,10 +119,6 @@ export default function SingleMessagePage() {
     });
   }
 
-  const yes = true;
-
-  console.log({ messages });
-
   if (!socketConnected) {
     return (
       <div className="h-full overflow-y-auto w-full flex items-center justify-center">
@@ -158,7 +146,7 @@ export default function SingleMessagePage() {
         <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6 h-full">
           {/* Message Box */}
           <div className="p-6 border rounded-2xl bg-white w-full ml-6">
-            {!messagesHistory ? (
+            {isMessageHistoryLoading || isReceiverDetailLoading ? (
               <div className="w-full h-[450px] flex items-center justify-center">
                 <Spinner size="md" color="primary" />
               </div>
@@ -178,7 +166,7 @@ export default function SingleMessagePage() {
                           <p className="font-medium">
                             {receiverDetail?.name || ""}
                           </p>
-                          {receiverDetail?.messagesSent?.status === "ONLINE" ? (
+                          {receiverDetail?.messaging?.status === "ONLINE" ? (
                             <div className="flex items-center gap-1 text-sm text-neutral-400">
                               <span className="size-2 bg-green-700 rounded-full"></span>
                               <p>Active Now</p>

@@ -24,7 +24,7 @@ export default function MCWidget() {
 
   if (!isLoggedIn) {
     return (
-      <div className="flex w-full items-center justify-center px-5 md:px-10 bg-[#F0EFEA]">
+      <div className="flex w-full items-center justify-center px-5 md:px-10 bg-[#F0EFEA] relative">
         <div className="flex flex-col gap-5 items-center justify-center w-full max-w-md text-[#161616] rounded-xl mx-auto bg-[#F7F8FA] p-6 drop-shadow-sm border-[#EDEEF0] border-[1px]">
           {isGoogleLoading || isWalletLoading ? (
             <Loading />

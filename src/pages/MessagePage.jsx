@@ -3,7 +3,7 @@ import { io } from "socket.io-client";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import useSWR from "swr";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Button, Spinner } from "@nextui-org/react";
 import { useMCAuth } from "../lib/mconnect/hooks/useMCAuth";
 import { mutualAPI } from "../api/mutual";
@@ -268,7 +268,6 @@ export default function MessagePage() {
                         isLoading={isMessageHistoryLoading}
                         userId={user.id}
                       />{" "}
-                      *
                     </div>
                   ) : (
                     <div className="w-full h-[450px] flex items-center justify-center">
@@ -394,46 +393,58 @@ function MessageChat({ sendMessage, messages, isLoading, userId }) {
             {messages.map(([date, dayMessages]) => (
               <motion.div
                 key={date}
-                initial={{ opacity: 0, translateY: 50 }}
-                animate={{ opacity: 1, translateY: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
               >
                 <p className="text-center text-sm text-neutral-500 mb-4">
                   {dayjs(date).format("YYYY-MM-DD")}
                 </p>
-                {dayMessages.map((msg) => (
-                  <div key={msg.sentAt} className="py-2 w-full flex">
-                    <div
+                <AnimatePresence mode="popLayout">
+                  {dayMessages.map((msg) => (
+                    <motion.div
+                      key={msg.sentAt}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
                       className={cnm(
-                        "flex items-end gap-2",
+                        "py-2 w-full flex",
                         msg.role === "you"
-                          ? "ml-auto flex-row-reverse"
-                          : "mr-auto"
+                          ? "origin-bottom-right"
+                          : "origin-bottom-left"
                       )}
                     >
-                      <div className="size-6 rounded-full overflow-hidden">
-                        <RandomAvatar
-                          seed={msg.role === "you" ? userId : msg.senderId}
-                          className="w-full h-full"
-                        />
-                      </div>
                       <div
                         className={cnm(
-                          "chat-bubble px-4 py-2 rounded-lg text-sm",
+                          "flex items-end gap-2",
                           msg.role === "you"
-                            ? " border border-orangy/50 text-neutral-600"
-                            : "bg-neutral-200"
+                            ? "ml-auto flex-row-reverse"
+                            : "mr-auto"
                         )}
                       >
-                        {msg.text}
+                        <div className="size-6 rounded-full overflow-hidden">
+                          <RandomAvatar
+                            seed={msg.role === "you" ? userId : msg.senderId}
+                            className="w-full h-full"
+                          />
+                        </div>
+                        <div
+                          className={cnm(
+                            "chat-bubble px-4 py-2 rounded-lg text-sm",
+                            msg.role === "you"
+                              ? " border border-orangy/50 text-neutral-600"
+                              : "bg-neutral-200"
+                          )}
+                        >
+                          {msg.text}
+                        </div>
+                        <p className="text-xs text-neutral-400">
+                          {dayjs(msg.timestamp).format("HH:mm")}{" "}
+                          {/* Message time */}
+                        </p>
                       </div>
-                      <p className="text-xs text-neutral-400">
-                        {dayjs(msg.timestamp).format("HH:mm")}{" "}
-                        {/* Message time */}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </motion.div>
             ))}
             <div ref={chatEndRef} />

@@ -60,7 +60,7 @@ export default function IndexPage() {
       <div className="fixed pointer-events-none bottom-0 w-full h-[20vh]">
         <AsciiFlame />
       </div>
-      
+
       <>
         {isLoggedIn && user ? (
           <ChooseRole user={user} getUser={getUser} />
@@ -92,7 +92,7 @@ function ChooseRole({ getUser }) {
   };
 
   return (
-    <div className="w-full max-w-2xl flex flex-col items-center z-10">
+    <div className="w-full max-w-2xl flex flex-col items-center z-10 relative">
       <h1 className="text-3xl lg:text-4xl font-medium text-center">
         Get Started by Choosing Your Role
       </h1>
