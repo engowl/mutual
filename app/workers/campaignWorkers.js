@@ -1,12 +1,18 @@
-import bs58 from 'bs58';
-import solanaWeb3 from '@solana/web3.js';
-import cron from 'node-cron';
-import { CHAINS, OFFER_EXPIRY_IN_MINUTES } from '../../config.js';
-import { MUTUAL_ESCROW_PROGRAM } from '../lib/contract/contracts.js';
-import { getAlphanumericId, manyMinutesFromNowUnix } from '../utils/miscUtils.js';
-import { parseEventData } from '../utils/contractUtils.js';
-import { prismaClient } from '../db/prisma.js';
-import { handleCheckCampaignPost, handleExpiredOffer } from './helpers/campaignHelpers.js';
+import bs58 from "bs58";
+import solanaWeb3 from "@solana/web3.js";
+import cron from "node-cron";
+import { CHAINS, OFFER_EXPIRY_IN_MINUTES } from "../../config.js";
+import { MUTUAL_ESCROW_PROGRAM } from "../lib/contract/contracts.js";
+import {
+  getAlphanumericId,
+  manyMinutesFromNowUnix,
+} from "../utils/miscUtils.js";
+import { parseEventData } from "../utils/contractUtils.js";
+import { prismaClient } from "../db/prisma.js";
+import {
+  handleCheckCampaignPost,
+  handleExpiredOffer,
+} from "./helpers/campaignHelpers.js";
 
 /**
  *
@@ -16,12 +22,14 @@ import { handleCheckCampaignPost, handleExpiredOffer } from './helpers/campaignH
  */
 export const campaignWorkers = (app, _, done) => {
   const parseKp = () => {
-    const kp = [];  // Fill this with your keypair data
-    const keypair = solanaWeb3.Keypair.fromSecretKey(bs58.decode(bs58.encode(Buffer.from(kp))));
+    const kp = []; // Fill this with your keypair data
+    const keypair = solanaWeb3.Keypair.fromSecretKey(
+      bs58.decode(bs58.encode(Buffer.from(kp)))
+    );
 
-    console.group('Keypair Details');
-    console.log('Address:', keypair.publicKey.toBase58());
-    console.log('Secret Key (Base58):', bs58.encode(keypair.secretKey));
+    console.group("Keypair Details");
+    console.log("Address:", keypair.publicKey.toBase58());
+    console.log("Secret Key (Base58):", bs58.encode(keypair.secretKey));
     console.groupEnd();
   };
 
@@ -31,7 +39,7 @@ export const campaignWorkers = (app, _, done) => {
     eventName,
     signature,
     parsedEvent,
-    slot
+    slot,
   }) => {
     try {
       // Sync the eligibility 
@@ -62,14 +70,14 @@ export const campaignWorkers = (app, _, done) => {
           eventName: eventName,
           signature: signature,
           data: parsedEvent,
-          slot: slot
-        }
-      })
-      console.log('Escrow event log saved successfully');
+          slot: slot,
+        },
+      });
+      console.log("Escrow event log saved successfully");
     } catch (error) {
-      console.error('Error saving escrow event log:', error.stack || error);
+      console.error("Error saving escrow event log:", error.stack || error);
     }
-  }
+  };
 
   const handleEvent = async ({
     chain,
@@ -82,14 +90,17 @@ export const campaignWorkers = (app, _, done) => {
     try {
       console.group(`Event: ${eventName}`);
       console.log(`New event detected: ${eventName}`);
-      console.log('Event data:', event);
-      console.log('Slot:', slot);
-      console.log('Transaction signature:', signature);
+      console.log("Event data:", event);
+      console.log("Slot:", slot);
+      console.log("Transaction signature:", signature);
       console.groupEnd();
 
       // Parse the event data
-      const parsedEvent = parseEventData(event, program.idl.events.find((e) => e.name === eventName));
-      console.log('New Event Detected:', {
+      const parsedEvent = parseEventData(
+        event,
+        program.idl.events.find((e) => e.name === eventName)
+      );
+      console.log("New Event Detected:", {
         name: eventName,
         signature: signature,
         data: parsedEvent,
@@ -105,9 +116,12 @@ export const campaignWorkers = (app, _, done) => {
         slot: slot,
       });
     } catch (error) {
-      console.error(`Error handling event ${eventName} on chain ${chain.id}:`, error.stack || error);
+      console.error(
+        `Error handling event ${eventName} on chain ${chain.id}:`,
+        error.stack || error
+      );
     }
-  }
+  };
 
   // Listen for Escrow Contract events
   const listenForEvents = async () => {
@@ -121,19 +135,25 @@ export const campaignWorkers = (app, _, done) => {
         console.groupEnd();
 
         eventNames.forEach((eventName) => {
-          program.addEventListener(eventName, async (event, slot, signature) => {
-            await handleEvent({
-              chain,
-              program,
-              eventName,
-              event,
-              slot,
-              signature,
-            });
-          });
+          program.addEventListener(
+            eventName,
+            async (event, slot, signature) => {
+              await handleEvent({
+                chain,
+                program,
+                eventName,
+                event,
+                slot,
+                signature,
+              });
+            }
+          );
         });
       } catch (error) {
-        console.error(`Error listening for escrow events on chain ${chain.id}:`, error.stack || error);
+        console.error(
+          `Error listening for escrow events on chain ${chain.id}:`,
+          error.stack || error
+        );
       }
     }
   };
@@ -142,7 +162,6 @@ export const campaignWorkers = (app, _, done) => {
 
   // TODO: Scans for Token price updates. For the devnet, just make everything $1 for the price
 
-
   // TODO: Handle offer expiry, if the order createdAt more than expiry time threshold, auto reject it, and refund the tokens
   const handleCheckExpiredOffer = async () => {
     try {
@@ -150,33 +169,32 @@ export const campaignWorkers = (app, _, done) => {
       const expiredOffers = await prismaClient.campaignOrder.findMany({
         where: {
           expiredAtUnix: {
-            lt: nowUnix
+            lt: nowUnix,
           },
-          status: 'CREATED'
+          status: "CREATED",
         },
         orderBy: {
-          expiredAtUnix: 'asc'
-        }
-      })
+          expiredAtUnix: "asc",
+        },
+      });
 
       for (const offer of expiredOffers) {
         // console.log('Expired Offer:', offer);
         await handleExpiredOffer(offer.id);
       }
 
-      console.log('Expired Offers:', expiredOffers.length);
+      console.log("Expired Offers:", expiredOffers.length);
     } catch (error) {
-      console.error('Error checking expired offers:', error.stack || error);
+      console.error("Error checking expired offers:", error.stack || error);
     }
-  }
+  };
 
   // Check every 1 minute
   cron.schedule(`*/1 * * * *`, async () => {
-    console.log('Checking for expired offers...');
-    await handleCheckExpiredOffer();
+    console.log("Checking for expired offers...");
+    // await handleCheckExpiredOffer();
   });
-  handleCheckExpiredOffer();
-
+  // handleCheckExpiredOffer();
 
   // Post Impression & age
   const checkCampaignPost = async () => {
@@ -189,37 +207,37 @@ export const campaignWorkers = (app, _, done) => {
       where: {
         // Last updated 15 minutes ago
         updatedAt: {
-          lt: new Date(Date.now() - 1000 * 60 * 15) // 15 minutes
+          lt: new Date(Date.now() - 1000 * 60 * 15), // 15 minutes
         },
         order: {
           status: {
-            in: ['CREATED', 'ACCEPTED', 'COMPLETED']
-          }
-        }
+            in: ["CREATED", "ACCEPTED", "COMPLETED"],
+          },
+        },
       },
       orderBy: {
-        createdAt: 'asc'
-      }
-    })
+        createdAt: "asc",
+      },
+    });
 
-    console.log('Posts to check:', posts.length);
+    console.log("Posts to check:", posts.length);
     const campaignOrderIds = posts.map((p) => p.campaignOrderId);
 
-    console.log('Campaigns to check:', campaignOrderIds.length);
+    console.log("Campaigns to check:", campaignOrderIds.length);
     for (const campaign of campaignOrderIds) {
       await handleCheckCampaignPost(campaign);
     }
-  }
+  };
 
   // Every 1 min
   cron.schedule(`*/1 * * * *`, async () => {
-    console.log('Checking for campaign posts...');
+    console.log("Checking for campaign posts...");
     // await checkCampaignPost();
   });
 
   // Graceful Shutdown: Ensure proper cleanup on exit
   const handleExit = () => {
-    console.log('\nGracefully shutting down the event listeners...');
+    console.log("\nGracefully shutting down the event listeners...");
     process.exit(0);
   };
 
@@ -229,4 +247,3 @@ export const campaignWorkers = (app, _, done) => {
 
   done();
 };
-

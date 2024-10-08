@@ -113,6 +113,22 @@ export const authRoutes = (app, _, done) => {
         });
       }
 
+      // add user messaging
+      await prismaClient.userMessaging.upsert({
+        where: {
+          userId: user.id,
+        },
+        update: {},
+        create: {
+          user: {
+            connect: {
+              id: user.id,
+            },
+          },
+          status: "OFFLINE",
+        },
+      });
+
       const token = jwt.sign(
         {
           id: user.id,
@@ -151,6 +167,22 @@ export const authRoutes = (app, _, done) => {
         where: { email: email },
         include: {
           wallet: true,
+        },
+      });
+
+      // add user messaging
+      await prismaClient.userMessaging.upsert({
+        where: {
+          userId: user.id,
+        },
+        update: {},
+        create: {
+          user: {
+            connect: {
+              id: user.id,
+            },
+          },
+          status: "OFFLINE",
         },
       });
 
@@ -270,6 +302,22 @@ export const authRoutes = (app, _, done) => {
           },
         });
       }
+
+      // add user messaging
+      await prismaClient.userMessaging.upsert({
+        where: {
+          userId: user.id,
+        },
+        update: {},
+        create: {
+          user: {
+            connect: {
+              id: user.id,
+            },
+          },
+          status: "OFFLINE",
+        },
+      });
 
       const token = jwt.sign(
         {

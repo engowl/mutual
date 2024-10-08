@@ -3,8 +3,14 @@ import * as splToken from "@solana/spl-token";
 import * as anchor from "@project-serum/anchor";
 import { CHAINS, MINIMUM_POST_LIVE_IN_MINUTES } from "../../../config.js";
 import { prismaClient } from "../../db/prisma.js";
-import { adminKp, MUTUAL_ESCROW_PROGRAM } from "../../lib/contract/contracts.js";
-import { formatTokenAmount, prepareOrderId } from "../../utils/contractUtils.js";
+import {
+  adminKp,
+  MUTUAL_ESCROW_PROGRAM,
+} from "../../lib/contract/contracts.js";
+import {
+  formatTokenAmount,
+  prepareOrderId,
+} from "../../utils/contractUtils.js";
 import { BN } from "bn.js";
 import { nanoid } from "nanoid";
 import { unTwitterApiGetTweet } from "../../api/unTwitterApi/unTwitterApi.js";
@@ -12,45 +18,47 @@ import { manyMinutesFromNowUnix, sleep } from "../../utils/miscUtils.js";
 
 export const handleExpiredOffer = async (offerId) => {
   try {
-    console.log('handling expired offer', offerId);
+    console.log("handling expired offer", offerId);
 
     const offer = await prismaClient.campaignOrder.findUnique({
       where: {
-        id: offerId
+        id: offerId,
       },
       include: {
         influencer: {
           include: {
             user: {
               include: {
-                wallet: true
-              }
-            }
-          }
+                wallet: true,
+              },
+            },
+          },
         },
         projectOwner: {
           include: {
             user: {
               include: {
-                wallet: true
-              }
-            }
-          }
+                wallet: true,
+              },
+            },
+          },
         },
-        token: true
-      }
+        token: true,
+      },
     });
 
-    const orderChain = CHAINS.find(c => c.dbChainId === offer.chainId);
+    const orderChain = CHAINS.find((c) => c.dbChainId === offer.chainId);
     if (!orderChain) {
-      console.log('Chain not found:', offer.chainId);
+      console.log("Chain not found:", offer.chainId);
       return;
     }
     const program = MUTUAL_ESCROW_PROGRAM(orderChain.id);
 
     const orderIdBuffer = prepareOrderId(offer.id);
     const kolPublicKey = new PublicKey(offer.influencer.user.wallet.address);
-    const projectOwnerPublicKey = new PublicKey(offer.projectOwner.user.wallet.address);
+    const projectOwnerPublicKey = new PublicKey(
+      offer.projectOwner.user.wallet.address
+    );
     const mintPublicKey = new PublicKey(offer.token.mintAddress);
 
     const [dealPda] = PublicKey.findProgramAddressSync(
@@ -78,14 +86,13 @@ export const handleExpiredOffer = async (offerId) => {
       program.programId
     );
 
-    const projectOwnerTokenAccount =
-      await splToken.getAssociatedTokenAddress(
-        mintPublicKey,
-        projectOwnerPublicKey
-      );
+    const projectOwnerTokenAccount = await splToken.getAssociatedTokenAddress(
+      mintPublicKey,
+      projectOwnerPublicKey
+    );
 
     if (!offer) {
-      console.log('Offer not found:', offerId);
+      console.log("Offer not found:", offerId);
       return;
     }
 
@@ -115,45 +122,45 @@ export const handleExpiredOffer = async (offerId) => {
     // Update the order status to rejected
     await prismaClient.campaignOrder.update({
       where: {
-        id: offer.id
+        id: offer.id,
       },
       data: {
         status: "REJECTED",
       },
     });
   } catch (error) {
-    console.error('Error handling expired offer:', error);
+    console.error("Error handling expired offer:", error);
   }
-}
+};
 
 export const generateEventLogs = async (orderId) => {
-  console.log('Generating event logs for order:', orderId);
+  console.log("Generating event logs for order:", orderId);
 
   const order = await prismaClient.campaignOrder.findUnique({
     where: {
-      id: orderId
+      id: orderId,
     },
     include: {
       influencer: {
         include: {
           user: {
             include: {
-              wallet: true
-            }
-          }
-        }
+              wallet: true,
+            },
+          },
+        },
       },
       projectOwner: {
         include: {
           user: {
             include: {
-              wallet: true
-            }
-          }
-        }
+              wallet: true,
+            },
+          },
+        },
       },
-      token: true
-    }
+      token: true,
+    },
   });
 
   // Fetch contract logs for the order
@@ -161,29 +168,29 @@ export const generateEventLogs = async (orderId) => {
     where: {
       campaignOrderId: order.id,
       // campaignOrderId: 'marketcaporderz',
-      chainId: order.chainId
+      chainId: order.chainId,
     },
     orderBy: [
       {
-        createdAt: 'asc'
+        createdAt: "asc",
       },
       {
-        slot: 'asc'
-      }
-    ]
+        slot: "asc",
+      },
+    ],
   });
-  const createdOfferTx = events.find(e => e.eventName === 'DealCreated');
+  const createdOfferTx = events.find((e) => e.eventName === "DealCreated");
   // Remove the created offer event
-  events = events.filter(e => e.eventName !== 'DealCreated');
+  events = events.filter((e) => e.eventName !== "DealCreated");
 
-  let logs = []
+  let logs = [];
 
-  let vestingLabel = '';
-  if (order.vestingType === 'MARKETCAP') {
+  let vestingLabel = "";
+  if (order.vestingType === "MARKETCAP") {
     vestingLabel = `Market-cap vesting terms for $${order.token.symbol}.`;
-  } else if (order.vestingType === 'TIME') {
+  } else if (order.vestingType === "TIME") {
     vestingLabel = `Time-based vesting terms for $${order.token.symbol}.`;
-  } else if (order.vestingType === 'NONE') {
+  } else if (order.vestingType === "NONE") {
     vestingLabel = `Direct token transfer for $${order.token.symbol}.`;
   } else {
     vestingLabel = `Unknown vesting terms for $${order.token.symbol}.`;
@@ -191,102 +198,109 @@ export const generateEventLogs = async (orderId) => {
 
   // Created offer log
   const createdOfferLog = {
-    id: 'created_offer',
-    title: 'Offer Created',
+    id: "created_offer",
+    title: "Offer Created",
     description: `An offer was submitted with ${vestingLabel}`,
     time: order.createdAt,
-    txHash: createdOfferTx.signature,
+    txHash: createdOfferTx?.signature,
   };
   logs.push(createdOfferLog);
 
   for (const event of events) {
-    console.log('Event:', event);
+    console.log("Event:", event);
 
-    if (event.eventName === 'DealStatusChanged') {
-      if (event.data.status === 'accepted') {
+    if (event.eventName === "DealStatusChanged") {
+      if (event.data.status === "accepted") {
         const log = {
-          id: 'accepted_offer',
-          description: 'The offer has been accepted. The post is scheduled for ...',
+          id: "accepted_offer",
+          description:
+            "The offer has been accepted. The post is scheduled for ...",
           time: event.createdAt,
-          txHash: null
+          txHash: null,
         };
         logs.push(log);
-      } else if (event.data.status === 'rejected') {
+      } else if (event.data.status === "rejected") {
         const log = {
-          id: 'rejected_offer',
-          description: 'The offer was rejected. A refund has been initiated.',
+          id: "rejected_offer",
+          description: "The offer was rejected. A refund has been initiated.",
           time: event.createdAt,
-          txHash: event.signature
+          txHash: event.signature,
         };
         logs.push(log);
-      } else if (event.data.status === 'completed') {
+      } else if (event.data.status === "completed") {
         const log = {
-          id: 'completed_offer',
-          description: 'The offer is completed. All tokens have been released.',
+          id: "completed_offer",
+          description: "The offer is completed. All tokens have been released.",
           time: event.createdAt,
-          txHash: null
+          txHash: null,
         };
         logs.push(log);
       }
-    } else if (event.eventName === 'EligibilityStatusUpdated') {
-      if (event.data.newStatus === 'partiallyEligible') {
+    } else if (event.eventName === "EligibilityStatusUpdated") {
+      if (event.data.newStatus === "partiallyEligible") {
         // Check the first event with EligibilityStatusUpdated and status partiallyEligible
-        let mediaLabel = '';
-        if (order.channel === 'TELEGRAM') {
-          mediaLabel = 'The Telegram post has been verified';
-        } else if (order.channel === 'TWITTER') {
-          mediaLabel = 'The tweet has been verified';
+        let mediaLabel = "";
+        if (order.channel === "TELEGRAM") {
+          mediaLabel = "The Telegram post has been verified";
+        } else if (order.channel === "TWITTER") {
+          mediaLabel = "The tweet has been verified";
         }
 
         const log = {
-          id: 'partially_eligible',
+          id: "partially_eligible",
           description: `${mediaLabel}, the first unlock is now available for claiming.`,
           time: event.createdAt,
-          txHash: event.signature
+          txHash: event.signature,
         };
         logs.push(log);
-      } else if (event.data.newStatus === 'fullyEligible') {
-        let vestingLabel = '';
+      } else if (event.data.newStatus === "fullyEligible") {
+        let vestingLabel = "";
 
-        if (order.vestingType === 'MARKETCAP') {
+        if (order.vestingType === "MARKETCAP") {
           vestingLabel = `$${order.token.symbol} has reached the target market cap! All remaining tokens are now available for claiming.`;
-        } else if (order.vestingType === 'TIME') {
+        } else if (order.vestingType === "TIME") {
           vestingLabel = `...`;
-        } else if (order.vestingType === 'NONE') {
+        } else if (order.vestingType === "NONE") {
           vestingLabel = `All tokens are now available for claiming.`;
         } else {
           vestingLabel = `Eligibility conditions met. Tokens are available for claiming.`;
         }
 
         const log = {
-          id: 'fully_eligible',
+          id: "fully_eligible",
           description: vestingLabel,
           time: event.createdAt,
-          txHash: event.signature
+          txHash: event.signature,
         };
         logs.push(log);
       }
-    } else if (event.eventName === 'DealResolved') {
-      if (event.data.status === 'partialCompleted') {
-        const amount = formatTokenAmount(event.data.claimAmount, order.token.decimals);
+    } else if (event.eventName === "DealResolved") {
+      if (event.data.status === "partialCompleted") {
+        const amount = formatTokenAmount(
+          event.data.claimAmount,
+          order.token.decimals
+        );
         const claimLabel = `A partial unlock of ${amount} $${order.token.symbol} has been claimed.`;
 
         const log = {
           id: `partial_deal_resolved_${nanoid(3)}`,
           description: claimLabel,
           time: event.createdAt,
-          txHash: event.signature
+          txHash: event.signature,
         };
         logs.push(log);
-      } else if (event.data.status === 'completed') {
-        const amount = formatTokenAmount(event.data.claimAmount, order.token.decimals);
+      } else if (event.data.status === "completed") {
+        const amount = formatTokenAmount(
+          event.data.claimAmount,
+          order.token.decimals
+        );
         const claimLabel = `All ${amount} $${order.token.symbol} has been claimed.`;
 
         const log = {
-          id: 'deal_resolved',
+          id: "deal_resolved",
           description: claimLabel,
           time: event.createdAt,
-          txHash: event.signature
+          txHash: event.signature,
         };
 
         logs.push(log);
@@ -295,17 +309,17 @@ export const generateEventLogs = async (orderId) => {
   }
 
   // Filter out duplicate 'accepted_offer' logs, keeping only the first one
-  const acceptOfferLogs = logs.filter(l => l.id === 'accepted_offer');
+  const acceptOfferLogs = logs.filter((l) => l.id === "accepted_offer");
   if (acceptOfferLogs.length > 1) {
     // Keep only the first 'accepted_offer' log and remove the rest
-    logs = logs.filter(l => l.id !== 'accepted_offer');
+    logs = logs.filter((l) => l.id !== "accepted_offer");
     logs.push(acceptOfferLogs[0]); // Add the first accepted offer back to logs
   }
 
   // The 'fully_eligible' too
-  const fullyEligibleLogs = logs.filter(l => l.id === 'fully_eligible');
+  const fullyEligibleLogs = logs.filter((l) => l.id === "fully_eligible");
   if (fullyEligibleLogs.length > 1) {
-    logs = logs.filter(l => l.id !== 'fully_eligible');
+    logs = logs.filter((l) => l.id !== "fully_eligible");
     logs.push(fullyEligibleLogs[0]);
   }
 
@@ -329,7 +343,7 @@ export const generateEventLogs = async (orderId) => {
   logs.sort((a, b) => new Date(b.time) - new Date(a.time));
 
   return logs;
-}
+};
 
 export const handleCheckCampaignPost = async (campaignId) => {
   try {
@@ -362,7 +376,7 @@ export const handleCheckCampaignPost = async (campaignId) => {
     });
 
     // Get the current post
-    if (campaign.channel === 'TWITTER') {
+    if (campaign.channel === "TWITTER") {
       const post = campaign.post;
 
       const tweet = await unTwitterApiGetTweet({
@@ -391,7 +405,7 @@ export const handleCheckCampaignPost = async (campaignId) => {
       // Update the impression count
       await prismaClient.campaignPost.update({
         where: {
-          id: post.id
+          id: post.id,
         },
         data: {
           impressionData: {
@@ -399,20 +413,20 @@ export const handleCheckCampaignPost = async (campaignId) => {
             quote_count: tweet.tweet.quote_count,
             reply_count: tweet.tweet.reply_count,
             retweet_count: tweet.tweet.retweet_count,
-            view_count: tweet.tweet.view_count
+            view_count: tweet.tweet.view_count,
           },
           data: tweet.tweet,
-        }
-      })
-    } else if (campaign.channel === 'TELEGRAM') {
+        },
+      });
+    } else if (campaign.channel === "TELEGRAM") {
       // TODO: Check the telegram post
     }
 
-    await sleep(2000)
+    await sleep(2000);
   } catch (error) {
-    console.error('Error checking campaign post:', error);
+    console.error("Error checking campaign post:", error);
   }
-}
+};
 
 export async function approveOrder(orderId) {
   // Find the order in your system (replace this with your logic for fetching an order by ID)
@@ -442,7 +456,7 @@ export async function approveOrder(orderId) {
     },
   });
 
-  const chain = CHAINS.find(c => c.dbChainId === order.chainId);
+  const chain = CHAINS.find((c) => c.dbChainId === order.chainId);
   const program = MUTUAL_ESCROW_PROGRAM(chain.id);
 
   const [dealPda] = PublicKey.findProgramAddressSync(
