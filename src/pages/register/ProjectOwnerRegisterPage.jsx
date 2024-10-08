@@ -141,7 +141,10 @@ export default function ProjectOwnerRegisterPage() {
       console.error("Error updating role:", error);
       if (error instanceof AxiosError) {
         if (error.status === 500) {
-          dispatch({ type: FORM_SUBMIT_ERROR, error: "Internal Server Error" });
+          dispatch({
+            type: FORM_SUBMIT_ERROR,
+            error: error.message || "Internal Server Error",
+          });
         }
         if (error.status === 400) {
           dispatch({ type: FORM_SUBMIT_ERROR, error: "Bad Request" });
