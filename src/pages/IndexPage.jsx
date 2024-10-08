@@ -92,7 +92,7 @@ function ChooseRole({ getUser }) {
   };
 
   return (
-    <div className="w-full max-w-2xl flex flex-col items-center">
+    <div className="w-full max-w-2xl flex flex-col items-center z-10">
       <h1 className="text-3xl lg:text-4xl font-medium text-center">
         Get Started by Choosing Your Role
       </h1>

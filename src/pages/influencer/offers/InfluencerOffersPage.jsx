@@ -93,11 +93,10 @@ function OffersList() {
           <button
             key={filter.value}
             onClick={() => setSearchParams({ status: filter.value })}
-            className={`py-2 flex justify-center rounded-lg ${
-              searchParams.get("status") === filter.value
-                ? "text-black"
-                : "text-neutral-500"
-            }`}
+            className={`py-2 flex justify-center rounded-lg ${searchParams.get("status") === filter.value
+              ? "text-black"
+              : "text-neutral-500"
+              }`}
           >
             {filter.label}
           </button>
@@ -187,6 +186,8 @@ function OfferCard({ order, mutate }) {
     navigate(`/influencer/offers/${order.id}`);
   }
 
+  const projectDetail = order.projectOwner.projectDetails[0]
+
   return (
     <button
       to={`/influencer/offers/${order.id}`}
@@ -195,12 +196,20 @@ function OfferCard({ order, mutate }) {
     >
       <div>
         <div className="flex flex-col items-start lg:flex-row gap-1 lg:items-center">
-          <p className="font-medium">
-            {order.token.name} (${order.token.symbol})
-          </p>
-          {/* Offers status pill */}
-          <div className="lg:ml-4">
-            <InfluencerOfferStatusBadgePill status={order.status} />
+          <div className="flex flex-row gap-3 items-center">
+            <img
+              src={projectDetail.token.imageUrl}
+              alt="project-logo"
+              className="w-12 h-12 rounded-full"
+            />
+
+            <div className="flex flex-col items-start">
+              <p className="font-medium">
+                {projectDetail.token.name} (${projectDetail.token.symbol})
+              </p>
+              {/* Offers status pill */}
+              <InfluencerOfferStatusBadgePill status={order.status} /> 
+            </div>
           </div>
         </div>
 
@@ -212,8 +221,8 @@ function OfferCard({ order, mutate }) {
               {order.vestingType === "MARKETCAP"
                 ? "Market Cap Vesting"
                 : order.vestingType === "TIME"
-                ? "Time Vesting"
-                : "Direct Payment"}
+                  ? "Time Vesting"
+                  : "Direct Payment"}
             </p>
           </div>
           <div className="flex items-center gap-1">
