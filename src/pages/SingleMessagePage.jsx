@@ -17,64 +17,41 @@ export default function SingleMessagePage() {
   const params = useParams();
   const receiverId = params.receiverId;
 
-  const [newMessage, setNewMessage] = useState("");
   const { user } = useMCAuth();
   const [socket, setSocket] = useState(null);
-  const [messages, setMessages] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [socketConnected, setSocketConnected] = useState(false);
   const [socketError, setSocketError] = useState(null);
 
-  const {
-    data: messagesHistory,
-    isLoading,
-    mutate: mutateMessagesHistory,
-  } = useSWR(
-    user && receiverId
-      ? `/messages/conversation/${user.id}/${receiverId}?timezone=UTC`
-      : null,
+  const { data: messagesHistory, isLoading: isMessageHistoryLoading } = useSWR(
+    user && receiverId && `/messaging/history/${user.id}/${receiverId}`,
     async (url) => {
-      console.log({ url }, "messages");
-      const { data } = await mutualAPI.get(url);
-      return data;
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+      console.log({ timezone });
+      return mutualAPI
+        .get(`${url}?timezone=${timezone}`)
+        .then((res) => res.data);
     }
   );
 
-  console.log("MESSAGE TEST", {
-    messagesHistory,
-  });
+  const {
+    data: receiverDetail,
+    isLoading: isReceiverDetailLoading,
+    mutate: mutateOtherUserDetails,
+  } = useSWR(
+    receiverId && `/messaging/user-details/${receiverId}`,
+    async (url) => {
+      return mutualAPI.get(url).then((res) => res.data);
+    }
+  );
+
+  console.log({ messagesHistory, receiverDetail });
 
   useEffect(() => {
     if (!messagesHistory) return;
-
-    setMessages((prev) => ({
-      ...prev,
-      ...messagesHistory,
-    }));
+    setMessages(messagesHistory);
   }, [messagesHistory]);
-
-  const { data: conversations, mutate: mutateConversations } = useSWR(
-    user ? `/messages/conversations/${user.id}` : null,
-    async (url) => {
-      const { data } = await mutualAPI.get(url);
-      return data;
-    }
-  );
-
-  const {
-    data: otherUserDetail,
-    isLoading: otherUserDetailLoading,
-    mutate: mutateOtherUserDetails,
-  } = useSWR(
-    receiverId ? `/messages/other-user-details/${receiverId}` : null,
-    async (url) => {
-      console.log({ url });
-      const { data } = await mutualAPI.get(url);
-      return data;
-    }
-  );
-
-  console.log({ otherUserDetail });
-  console.log({ conversations });
 
   useEffect(() => {
     if (!user) return;
@@ -89,39 +66,42 @@ export default function SingleMessagePage() {
     if (!socket || !user) return;
 
     socket.on("connect", () => {
-      socket.emit("join", { userId: user.id });
+      toast.success("Connected to message service");
+      socket.emit("register", user.id);
       setSocketConnected(true);
     });
 
-    socket.on("error", (error) => {
-      setSocketError(error);
-    });
-
     socket.on("userStatusChange", () => {
-      console.log("userStatusChange");
       mutateOtherUserDetails();
     });
 
-    socket.on("personal-message", (data) => {
-      setMessages((currentMessages) => {
-        const currentDate = dayjs().format("YYYY-MM-DD");
-        return {
-          ...currentMessages,
-          [currentDate]: [
-            ...(currentMessages?.[currentDate] || []),
-            {
-              id: Date.now(),
-              content: data.content,
-              senderId: data.senderId,
-              receiverId: data.receiverId,
-              role: data.senderId === user.id ? "user" : "other",
-              sentAt: new Date().toISOString(),
-            },
-          ],
-        };
+    socket.on("direct-message", (message) => {
+      toast.success("New message received");
+      toast(JSON.stringify(message, null, 2));
+      // if (
+      //   (message.senderId === user.id && message.receiverId === receiverId) ||
+      //   (message.senderId === receiverId && message.receiverId === receiverId)
+      // ) {
+      //   setMessages((prevMessages) => [...prevMessages, message]);
+      // }
+      setMessages((prevMessages) => {
+        const day = dayjs(message.timestamp).format("YYYY-MM-DD");
+        const updatedMessages = [...prevMessages];
+        const existingDayIndex = updatedMessages.findIndex(
+          ([date]) => date === day
+        );
+        if (existingDayIndex !== -1) {
+          updatedMessages[existingDayIndex][1].push(message);
+        } else {
+          updatedMessages.push([day, [message]]);
+        }
+        return updatedMessages;
       });
-      mutateMessagesHistory();
-      mutateConversations();
+    });
+
+    socket.on("error", (error) => {
+      toast.error("Error connecting to message service");
+      setSocketError(error);
     });
 
     return () => {
@@ -129,7 +109,7 @@ export default function SingleMessagePage() {
     };
   }, [socket, user]);
 
-  function sendMessage() {
+  function sendMessage(newMessage) {
     console.log({ newMessage });
 
     if (!receiverId) {
@@ -140,15 +120,16 @@ export default function SingleMessagePage() {
       return toast.error("Please enter a message");
     }
 
-    socket.emit("personal-message", {
+    socket.emit("direct-message", {
       senderId: user.id,
       receiverId: receiverId,
-      content: newMessage,
-      role: "user",
+      text: newMessage,
     });
-    setNewMessage("");
-    mutateConversations();
   }
+
+  const yes = true;
+
+  console.log({ messages });
 
   if (!socketConnected) {
     return (
@@ -177,28 +158,27 @@ export default function SingleMessagePage() {
         <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6 h-full">
           {/* Message Box */}
           <div className="p-6 border rounded-2xl bg-white w-full ml-6">
-            {isLoading || otherUserDetailLoading ? (
+            {!messagesHistory ? (
               <div className="w-full h-[450px] flex items-center justify-center">
                 <Spinner size="md" color="primary" />
               </div>
             ) : (
               <>
-                {otherUserDetail ? (
+                {receiverDetail ? (
                   <div className="w-full">
                     <div className="w-full flex items-center justify-between">
                       <div className="flex gap-4">
                         <div className="size-10 bg-neutral-200 rounded-full">
                           <RandomAvatar
-                            seed={otherUserDetail?.data.name || ""}
+                            seed={receiverDetail?.id}
                             className="w-full h-full"
                           />
                         </div>
                         <div>
                           <p className="font-medium">
-                            {otherUserDetail?.data.name || ""}
+                            {receiverDetail?.name || ""}
                           </p>
-                          {otherUserDetail.data?.messagesSent?.status ===
-                          "ONLINE" ? (
+                          {receiverDetail?.messagesSent?.status === "ONLINE" ? (
                             <div className="flex items-center gap-1 text-sm text-neutral-400">
                               <span className="size-2 bg-green-700 rounded-full"></span>
                               <p>Active Now</p>
@@ -222,20 +202,24 @@ export default function SingleMessagePage() {
                         </button> */}
                       </div>
                     </div>
+
                     {/* Message chat */}
                     <MessageChat
                       messages={messages}
-                      newMessage={newMessage}
-                      setNewMessage={setNewMessage}
                       sendMessage={sendMessage}
-                      isLoading={isLoading}
+                      isLoading={
+                        isMessageHistoryLoading || isReceiverDetailLoading
+                      }
+                      userId={user.id}
                       selectedMessageUserId={receiverId}
                     />
+
+                    {/* testing */}
                   </div>
                 ) : (
                   <div className="w-full h-[450px] flex items-center justify-center">
                     <p className="text-center text-neutral-500">
-                      Select a message to view
+                      User not found
                     </p>
                   </div>
                 )}
@@ -248,28 +232,14 @@ export default function SingleMessagePage() {
   );
 }
 
-function MessageChat({
-  sendMessage,
-  messages,
-  setNewMessage,
-  newMessage,
-  isLoading,
-}) {
-  const chatEndRef = useRef(null); // Reference to the bottom of the chat container
+function MessageChat({ sendMessage, messages, isLoading, userId }) {
+  const chatEndRef = useRef(null);
 
   useEffect(() => {
     if (chatEndRef.current) {
-      // chatEndRef.current.scrollIntoView({ behavior: "smooth" });
       chatEndRef.current.scrollTop = chatEndRef.current.scrollHeight;
     }
   }, [messages]);
-
-  const handleSend = () => {
-    console.log("send");
-    sendMessage();
-  };
-
-  console.log(Object.entries(messages));
 
   return (
     <div className="mt-4 rounded-2xl bg-creamy-300 h-[412px] relative overflow-hidden">
@@ -288,7 +258,7 @@ function MessageChat({
         >
           <div className="pb-14 w-full flex flex-col">
             {/* Loop through the messages grouped by date */}
-            {Object.entries(messages).map(([date, dayMessages]) => (
+            {messages.map(([date, dayMessages]) => (
               <motion.div
                 key={date}
                 initial={{ opacity: 0, translateY: 50 }}
@@ -303,33 +273,30 @@ function MessageChat({
                     <div
                       className={cnm(
                         "flex items-end gap-2",
-                        msg.role === "user"
+                        msg.role === "you"
                           ? "ml-auto flex-row-reverse"
                           : "mr-auto"
                       )}
                     >
                       <div className="size-6 rounded-full overflow-hidden">
                         <RandomAvatar
-                          seed={
-                            msg.user === "user"
-                              ? msg.senderId || ""
-                              : msg.receiverId || ""
-                          }
+                          seed={msg.role === "you" ? userId : msg.senderId}
                           className="w-full h-full"
                         />
                       </div>
                       <div
                         className={cnm(
                           "chat-bubble px-4 py-2 rounded-lg text-sm",
-                          msg.role === "user"
+                          msg.role === "you"
                             ? " border border-orangy/50 text-neutral-600"
                             : "bg-neutral-200"
                         )}
                       >
-                        {msg.content}
+                        {msg.text}
                       </div>
                       <p className="text-xs text-neutral-400">
-                        {dayjs(msg.sentAt).format("HH:mm")} {/* Message time */}
+                        {dayjs(msg.timestamp).format("HH:mm")}{" "}
+                        {/* Message time */}
                       </p>
                     </div>
                   </div>
@@ -344,20 +311,32 @@ function MessageChat({
       <div className="absolute w-[calc(100%-10px)] bottom-0 left-0 h-24 bg-gradient-to-t from-creamy-300 to-transparent"></div>
 
       {/* Input box for sending new messages */}
-      <div className="absolute bottom-0 left-0 right-0 p-4">
-        <div className="flex gap-4 bg-white border rounded-xl items-center pr-4 h-12 focus-within:border-orangy/50">
-          <input
-            type="text"
-            placeholder="Enter your message here"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            className="flex-1 py-2 bg-transparent placeholder:text-sm outline-none px-4"
-          />
-          <button onClick={handleSend}>
-            <Send className="size-6 text-orangy" />
-          </button>
-        </div>
+      <MessageInput sendMessage={sendMessage} />
+    </div>
+  );
+}
+
+function MessageInput({ sendMessage }) {
+  const [newMessage, setNewMessage] = useState("");
+
+  const handleSend = () => {
+    sendMessage(newMessage);
+    setNewMessage("");
+  };
+  return (
+    <div className="absolute bottom-0 left-0 right-0 p-4">
+      <div className="flex gap-4 bg-white border rounded-xl items-center pr-4 h-12 focus-within:border-orangy/50">
+        <input
+          type="text"
+          placeholder="Enter your message here"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          className="flex-1 py-2 bg-transparent placeholder:text-sm outline-none px-4"
+        />
+        <button onClick={handleSend}>
+          <Send className="size-6 text-orangy" />
+        </button>
       </div>
     </div>
   );
