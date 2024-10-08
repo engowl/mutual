@@ -241,7 +241,7 @@ function MessageChat({ sendMessage, messages, isLoading, userId }) {
       ) : (
         <div
           ref={chatEndRef}
-          className="flex flex-col p-4 overflow-y-auto size-full max-h-[412px]"
+          className="flex flex-col p-4 overflow-y-auto size-full"
         >
           <div className="pb-14 w-full flex flex-col">
             {/* Loop through the messages grouped by date */}

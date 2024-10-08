@@ -229,7 +229,7 @@ export const AuthProvider = ({ chainId = "devnet", children }) => {
               }
             );
 
-            saveSessionKey(registerResponse.data.data.session_token);
+            localStorage.setItem(registerResponse.data.data.session_token);
 
             // Set state
             setPortal(portalInstance);
