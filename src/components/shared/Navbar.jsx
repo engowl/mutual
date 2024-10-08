@@ -40,7 +40,7 @@ export default function Navbar() {
           <img src={logoSrc} alt="mutual_logo" className="w-24" />
         </Link>
 
-        <div className="h-full hidden md:inline">
+        <div className="h-full inline">
           {user &&
           isLoggedIn &&
           isRegistered &&
@@ -84,7 +84,7 @@ function ProjectOwnerNav() {
         )}
       </NavLink>
       <NavLink
-        to={"/project-owner/offers"}
+        to={"/project-owner/campaigns"}
         className={({ isActive }) =>
           cnm(
             "h-full w-24 flex items-center justify-center relative text-sm",
@@ -100,7 +100,7 @@ function ProjectOwnerNav() {
                 isActive ? "block" : "hidden"
               )}
             />
-            Offers
+            Campaigns
           </>
         )}
       </NavLink>

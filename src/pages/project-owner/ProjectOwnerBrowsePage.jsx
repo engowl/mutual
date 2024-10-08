@@ -220,12 +220,13 @@ function InfluencerCard({ influencerData }) {
             >
               Package
             </Button>
-            <Button
-              variant="bordered"
-              className="border h-8 w-8 rounded-full p-0 min-w-max shrink-0"
+            <a
+              href={`https://x.com/${influencerData.twitterAccount.username}`}
+              target="_blank"
+              className="border size-8 rounded-full p-0 min-w-max shrink-0 flex items-center justify-center hover:bg-neutral-100"
             >
               <ArrowUpRight className="size-3" />
-            </Button>
+            </a>
           </div>
         </div>
       </div>

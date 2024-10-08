@@ -109,7 +109,7 @@ export const router = createBrowserRouter([
             ),
           },
           {
-            path: "offers",
+            path: "campaigns",
             element: (
               <RolesAuthRouteGuard roles={["PROJECT_OWNER"]}>
                 <ProjectOwnerOffersPage />

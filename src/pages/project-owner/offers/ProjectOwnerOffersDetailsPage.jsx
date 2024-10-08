@@ -1,15 +1,16 @@
 import { Button, Spinner } from "@nextui-org/react";
 import { useNavigate, useParams } from "react-router-dom";
 import { shortenAddress } from ".././../../utils/string";
-import { Check, Clock } from "lucide-react";
+import { Check, Clock, Link } from "lucide-react";
 import Countdown from "react-countdown";
 import { cnm } from "../../../utils/style.js";
 import dayjs from "dayjs";
 import { mutualAPI } from "../../../api/mutual.js";
 import useSWR from "swr";
-import OfferStatusBadgePill from "../../../components/offers/OfferStatusBadgePill.jsx";
 import toast from "react-hot-toast";
 import { useState } from "react";
+import ProjectOwnerOfferStatusBadgePill from "../../../components/offers/ProjectOwnerStatusBadgePill.jsx";
+import { formatNumberToKMB } from "../../../utils/number.js";
 
 export default function ProjectOwnerOffersDetailPage() {
   const [isWaitingApproval, setIsWaitingApproval] = useState(false);
@@ -22,44 +23,44 @@ export default function ProjectOwnerOffersDetailPage() {
     data: offer,
     isLoading,
     mutate,
-  } = useSWR(offerId ? `/campaign/${offerId}/detail` : null, async (url) => {
-    const { data } = await mutualAPI.get(url);
+  } = useSWR(
+    offerId ? `/campaign/${offerId}/detail` : null,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
 
-    // If there is data.post and data.post.isApproved is false, then it is waiting for approval
-    if (data.post && data.post.isApproved === false) {
-      setIsWaitingApproval(true);
-    } else {
-      setIsWaitingApproval(false);
+      // If there is data.post and data.post.isApproved is false, then it is waiting for approval
+      if (data.post && data.post.isApproved === false) {
+        setIsWaitingApproval(true);
+      } else {
+        setIsWaitingApproval(false);
+      }
+
+      return data;
+    },
+    {
+      refreshInterval: 5000,
     }
+  );
 
-    return data;
-  }, {
-    refreshInterval: 5000
-  });
-
-  const {
-    data: claimable,
-    isLoading: isLoadingClaimable,
-    mutate: mutateClaimable,
-  } = useSWR(offerId ? `/campaign/${offerId}/claimable` : null, async (url) => {
-    const { data } = await mutualAPI.get(url);
-    return data;
-  });
+  const { data: events, isLoading: isLoadingEvents } = useSWR(
+    offerId ? `/campaign/${offerId}/logs` : null,
+    async (url) => {
+      const { data } = await mutualAPI.get(url);
+      return data;
+    }
+  );
 
   const [isApproving, setIsApproving] = useState(false);
   const handleApproveWork = async () => {
     try {
       setIsApproving(true);
-      const res = await mutualAPI.post(
-        '/campaign/approve-work',
-        {
-          orderId: offer.id
-        }
-      )
+      const res = await mutualAPI.post("/campaign/approve-work", {
+        orderId: offer.id,
+      });
 
-      console.log({ res })
+      console.log({ res });
 
-      await mutate()
+      await mutate();
 
       toast.success("Work approved successfully");
     } catch (error) {
@@ -68,9 +69,9 @@ export default function ProjectOwnerOffersDetailPage() {
     } finally {
       setIsApproving(false);
     }
-  }
+  };
 
-  if (isLoading || isLoadingClaimable) {
+  if (isLoading || isLoadingEvents) {
     return (
       <div className="h-full w-full flex items-center justify-center">
         <Spinner size="lg" color="primary" />
@@ -78,8 +79,20 @@ export default function ProjectOwnerOffersDetailPage() {
     );
   }
 
+  console.log({ events });
+
+  const offerStatus = offer.post
+    ? offer.post.isApproved
+      ? "VERIFIED"
+      : "PENDING"
+    : offer.status;
+
+  console.log({ offer });
+
+  console;
+
   return (
-    <div className="h-full overflow-y-auto w-full flex flex-col items-center font-clash">
+    <div className="h-full overflow-y-auto w-full flex flex-col items-center font-clash px-5">
       <div className="w-full max-w-3xl flex flex-col py-20">
         <div className="w-full flex items-center justify-between">
           <h1 className="text-3xl font-medium">Offers Detail</h1>
@@ -104,7 +117,7 @@ export default function ProjectOwnerOffersDetailPage() {
         </div>
 
         {/* Respond in */}
-        {offer?.status === "CREATED" &&
+        {offer?.status === "CREATED" && (
           <div className="mt-10 py-3 px-4 rounded-xl bg-white border flex items-center justify-between">
             <div className="font-medium flex items-center gap-2">
               <Clock className="size-4" />
@@ -117,32 +130,48 @@ export default function ProjectOwnerOffersDetailPage() {
               />
             </div>
           </div>
-        }
+        )}
 
         <div className="mt-4 p-4 rounded-xl bg-white border">
           <div className="w-full flex items-center justify-between">
-            <p className="text-2xl font-medium">
-              {offer?.token.name} (${offer?.token.symbol})
-            </p>
-            <div className="font-medium">DexScreener</div>
+            <div className="flex items-center gap-2">
+              <div className="size-8 rounded-full overflow-hidden">
+                <img
+                  src={offer.influencer.twitterAccount.profileImageUrl}
+                  alt={offer.influencer.user.name}
+                  className="w-full h-full object-cover"
+                  height={64}
+                  width={64}
+                />
+              </div>
+              <p className="text-2xl font-medium">
+                @{offer?.influencer.user.name}
+              </p>
+            </div>
+            <div className="flex items-center gap-1 hover:opacity-60">
+              <a
+                href={`https://x.com/${offer?.influencer.twitterAccount.username}`}
+                target="_blank"
+                className="font-medium"
+              >
+                Twitter
+              </a>
+              <Link className="size-4" />
+            </div>
           </div>
           <div className="flex gap-7 mt-3">
             <div>
-              <p className="text-orangy font-medium">$150M</p>
-              <p className="text-sm text-neutral-500">Market Cap</p>
-            </div>
-            <div>
               <p className="text-orangy font-medium">
-                {shortenAddress(offer?.token.mintAddress)}
+                {formatNumberToKMB(
+                  offer.influencer.twitterAccount.followersCount
+                )}
               </p>
-              <p className="text-sm text-neutral-500">Contract Address</p>
+              <p className="text-sm text-neutral-500">Followers</p>
             </div>
+
             <div>
-              <p className="text-orangy font-medium">
-                {" "}
-                {offer?.token.totalSupply}
-              </p>
-              <p className="text-sm text-neutral-500">Total Supply</p>
+              <p className="text-orangy font-medium">{0}%</p>
+              <p className="text-sm text-neutral-500">Completion Rate</p>
             </div>
           </div>
         </div>
@@ -152,7 +181,7 @@ export default function ProjectOwnerOffersDetailPage() {
             <div className="flex flex-col gap-3">
               <div className="flex items-center">
                 <p className="w-44 text-neutral-400">Status</p>
-                <OfferStatusBadgePill status={offer?.status} />
+                <ProjectOwnerOfferStatusBadgePill status={offerStatus} />
               </div>
               <div className="flex items-center">
                 <p className="w-44 text-neutral-400">Offer Amount</p>
@@ -166,8 +195,8 @@ export default function ProjectOwnerOffersDetailPage() {
                   {offer.vestingType === "MARKETCAP"
                     ? "Market Cap Vesting"
                     : offer.vestingType === "TIME"
-                      ? "Time Vesting"
-                      : "Direct Payment"}
+                    ? "Time Vesting"
+                    : "Direct Payment"}
                 </p>
               </div>
               <div className="flex items-center">
@@ -184,46 +213,38 @@ export default function ProjectOwnerOffersDetailPage() {
                 </p>
               </div>
             </div>
-            <p className="font-medium mt-8">Promotional post text</p>
-            <p className="mt-8">
-              🚀 $Michi is ready to take over the crypto space!🔥 Join the
-              $Michi revolution and be part of the most exciting meme coin of
-              the year! 📈 Strong community, rapid growth, and big plans ahead!
-            </p>
+            {offer.post && (
+              <>
+                <p className="font-medium mt-5">Promotional post text</p>
+                <p className="mt-5">{offer.post.text}</p>
+              </>
+            )}
           </div>
         </div>
 
-        {(offer && offer.post) &&
-          <SubmissionCard
-            post={offer.post}
-          />
-        }
+        {offer && offer.post && <SubmissionCard post={offer.post} />}
 
-        <EventLogs events={DUMMY_LOGS} />
+        {events && <EventLogs events={events} />}
       </div>
     </div>
   );
 }
 
-function SubmissionCard({
-  post
-}) {
+function SubmissionCard({ post }) {
   return (
     <div className="w-full mt-4 bg-white rounded-xl border p-4">
       <p className="font-medium">Submission</p>
       <p className="mt-1 text-sm text-neutral-400">
         Please review and approve influencer submissions for your project
       </p>
-      <div className="px-4 py-2 rounded-full border mt-3">
-        {post.postUrl}
-      </div>
+      <div className="px-4 py-2 rounded-full border mt-3">{post.postUrl}</div>
 
-      {post.isApproved ?
+      {post.isApproved ? (
         <div className="bg-success-100 p-2 mt-2 rounded-lg">
           <p className="font-medium">Approved</p>
           <p className="text-sm opacity-60">The submission has been approved</p>
         </div>
-        :
+      ) : (
         <div className="flex gap-2 mt-5">
           <Button color="default" className="rounded-full font-medium px-8">
             Decline
@@ -232,7 +253,7 @@ function SubmissionCard({
             Approve Work
           </Button>
         </div>
-      }
+      )}
     </div>
   );
 }

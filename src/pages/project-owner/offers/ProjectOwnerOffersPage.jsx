@@ -1,21 +1,21 @@
 import { Button, Spinner } from "@nextui-org/react";
 import { useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { mutualAPI } from "../../../api/mutual";
 import useSWR from "swr";
-import OfferStatusBadgePill from "../../../components/offers/OfferStatusBadgePill";
 import {
   CoinsIcon,
   HandGiveIcon,
   TelegramIcon,
   TwitterIcon,
 } from "../../../components/icons/icons";
+import ProjectOwnerOfferStatusBadgePill from "../../../components/offers/ProjectOwnerStatusBadgePill";
 
 export default function ProjectOwnerOffersPage() {
   return (
-    <div className="h-full overflow-y-auto w-full flex flex-col items-center">
+    <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
       <div className="w-full max-w-3xl flex flex-col py-20">
-        <h1 className="text-3xl font-medium">Project Offers</h1>
+        <h1 className="text-3xl font-medium">Campaigns</h1>
         <OffersList />
       </div>
     </div>
@@ -76,6 +76,7 @@ function OffersList() {
     return data.filter((order) => order.status === getStatus(status));
   }, [data, status]);
 
+  console.log({ data }, "campaign order data");
   console.log({ filteredOrders }, "filtered orders");
 
   return (
@@ -122,19 +123,41 @@ function OffersList() {
 }
 
 function OfferCard({ order }) {
+  const navigate = useNavigate();
+
+  const orderStatus = order.post
+    ? order.post.isApproved
+      ? "VERIFIED"
+      : "PENDING"
+    : order.status;
+
+  console.log({ orderStatus });
+
   return (
-    <Link
-      to={`/project-owner/offers/${order.id}`}
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        navigate(`/project-owner/offers/${order.id}`);
+      }}
       className="flex items-center gap-4 p-3 border rounded-lg justify-between hover:bg-neutral-100"
     >
       <div>
-        <div className="flex flex-col items-start lg:flex-row gap-1 lg:items-center">
-          <p className="font-medium">
-            {order.token.name} (${order.token.symbol})
-          </p>
+        <div className="flex flex-col items-start lg:flex-row gap-1.5 lg:items-center">
+          <div className="flex items-center gap-2">
+            <div className="size-7 rounded-full overflow-hidden">
+              <img
+                src={order.influencer.twitterAccount.profileImageUrl}
+                alt={order.influencer.user.name}
+                className="w-full h-full object-cover"
+                height={60}
+                width={60}
+              />
+            </div>
+            <p className="font-medium">@{order.influencer.user.name}</p>
+          </div>
           {/* Offers status pill */}
-          <div className="lg:ml-4">
-            <OfferStatusBadgePill status={order.status} />
+          <div className="lg:ml-2">
+            <ProjectOwnerOfferStatusBadgePill status={orderStatus} />
           </div>
         </div>
 
@@ -162,6 +185,19 @@ function OfferCard({ order }) {
           </div>
         </div>
       </div>
-    </Link>
+
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/message/${order.influencer.userId}`);
+          }}
+          color="default"
+          className="rounded-full bg-neutral-200"
+        >
+          Chat
+        </Button>
+      </div>
+    </button>
   );
 }

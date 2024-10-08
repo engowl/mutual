@@ -28,6 +28,7 @@ import { useMCAuth } from "../../../lib/mconnect/hooks/useMCAuth";
 import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
 import { Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
+import { formatNumberToKMB } from "../../../utils/number.js";
 
 dayjs.extend(utc);
 
@@ -41,29 +42,6 @@ const marketCapVestingFormAtom = atom({
   promotionalPostText: "",
   postDateAndTime: "",
 });
-
-function formatNumberToKMB(number) {
-  if (number >= 1_000_000_000) {
-    return (
-      (number / 1_000_000_000).toLocaleString(undefined, {
-        maximumFractionDigits: 1,
-      }) + "B"
-    );
-  } else if (number >= 1_000_000) {
-    return (
-      (number / 1_000_000).toLocaleString(undefined, {
-        maximumFractionDigits: 1,
-      }) + "M"
-    );
-  } else if (number >= 1_000) {
-    return (
-      (number / 1_000).toLocaleString(undefined, { maximumFractionDigits: 1 }) +
-      "K"
-    );
-  } else {
-    return number.toLocaleString();
-  }
-}
 
 export default function ProjectOwnerMarketCapVestingPage() {
   const [step, setStep] = useState(1);

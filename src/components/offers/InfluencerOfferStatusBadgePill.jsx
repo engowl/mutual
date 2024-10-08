@@ -1,4 +1,4 @@
-export default function OfferStatusBadgePill({ status }) {
+export default function InfluencerOfferStatusBadgePill({ status }) {
   switch (status) {
     case "CREATED":
       return (

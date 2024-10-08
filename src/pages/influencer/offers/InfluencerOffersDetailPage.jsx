@@ -16,7 +16,6 @@ import dayjs from "dayjs";
 import { DUMMY_LOGS } from "../../project-owner/offers/ProjectOwnerOffersDetailsPage.jsx";
 import useSWR from "swr";
 import { mutualAPI } from "../../../api/mutual";
-import OfferStatusBadgePill from "../../../components/offers/OfferStatusBadgePill.jsx";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK.js";
 import { useCookies } from "react-cookie";
 import { useState } from "react";
@@ -26,6 +25,7 @@ import SubmitProofModal from "../../../components/influencer/offers/SubmitWorkMo
 import { CHAINS } from "../../../config.js";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { NATIVE_MINT } from "@solana/spl-token";
+import InfluencerOfferStatusBadgePill from "../../../components/offers/InfluencerOfferStatusBadgePill.jsx";
 
 export default function InfluencerOffersDetailPage() {
   const [isWaitingApproval, setIsWaitingApproval] = useState(false);
@@ -296,7 +296,7 @@ export default function InfluencerOffersDetailPage() {
             <div className="flex flex-col gap-3 text-sm md:text-base">
               <div className="flex items-center">
                 <p className="w-44 text-neutral-400">Status</p>
-                <OfferStatusBadgePill status={offer?.status} />
+                <InfluencerOfferStatusBadgePill status={offer?.status} />
               </div>
               <div className="flex items-center">
                 <p className="w-44 text-neutral-400">Offer Amount</p>
@@ -328,17 +328,23 @@ export default function InfluencerOffersDetailPage() {
                 </p>
               </div>
             </div>
-            <p className="font-medium mt-6 md:mt-8">Promotional post text</p>
-            {/* TODO add promotional text real data */}
-            <p className="mt-6 md:mt-8 text-sm md:text-base">
-              {offer?.post.text}
-            </p>
+            {offer.post && (
+              <>
+                <p className="font-medium mt-6 md:mt-8">
+                  Promotional post text
+                </p>
+                {/* TODO add promotional text real data */}
+                <p className="mt-6 md:mt-8 text-sm md:text-base">
+                  {offer?.post.text}
+                </p>
+              </>
+            )}
           </div>
         </div>
 
         {offer && offer?.post && <SubmissionCard post={offer.post} />}
 
-        <EventLogs events={DUMMY_LOGS} />
+        <EventLogs events={events} />
       </div>
     </div>
   );

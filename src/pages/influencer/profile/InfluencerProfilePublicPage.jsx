@@ -29,6 +29,7 @@ import toast from "react-hot-toast";
 import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
 import bs58 from "bs58";
 import { useMCAuth } from "../../../lib/mconnect/hooks/useMCAuth.jsx";
+import AsciiFlame from "../../../lib/mconnect/components/AsciiFlame.jsx";
 
 export default function InfluencerProfilePublicPage() {
   const params = useParams();
@@ -67,7 +68,10 @@ export default function InfluencerProfilePublicPage() {
   if (!isLoading && influencer) {
     return (
       <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
-        <div className="w-full max-w-3xl flex flex-col py-20">
+        <div className="fixed pointer-events-none bottom-0 w-full h-[20vh]">
+          <AsciiFlame />
+        </div>
+        <div className="w-full max-w-3xl flex flex-col py-20 relative">
           <div className="size-24 rounded-full bg-neutral-200 overflow-hidden">
             {influencer.twitterAccount.profileImageUrl ? (
               <img
@@ -113,7 +117,7 @@ export default function InfluencerProfilePublicPage() {
               : influencer.twitterAccount.description}
           </p>
 
-          <div className="mt-12 flex flex-col md:flex-row w-full gap-6">
+          <div className="mt-12 flex flex-col md:flex-row w-full gap-6 relative">
             {influencer.packages.map((pkg) => {
               return (
                 <div
@@ -458,7 +462,13 @@ function PackageModal({
       >
         Get this package
       </Button>
-      <Modal size={"xl"} isOpen={isOpen} onClose={onClose} hideCloseButton>
+      <Modal
+        size={"xl"}
+        isOpen={isOpen}
+        onClose={onClose}
+        hideCloseButton
+        isDismissable={!isLoading}
+      >
         <ModalContent>
           {(onClose) => (
             <>
