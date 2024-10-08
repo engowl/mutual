@@ -184,6 +184,8 @@ function TelegramPackageModal({ solTotal, influencer }) {
   const handleTelegramSubmit = async (formData) => {
     try {
       setIsLoading(true);
+      const chain = CHAINS.find((chain) => chain.id === "devnet");
+
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
         bearerToken: sessionKey,
@@ -196,7 +198,7 @@ function TelegramPackageModal({ solTotal, influencer }) {
         influencerId: influencer.id,
         vestingType: "NONE",
         vestingCondition: {},
-        mintAddress: NATIVE_MINT.toBase58(),
+        mintAddress: chain.directPaymentToken.mintAddress,
         tokenAmount: parseFloat(solTotal),
         campaignChannel: "TELEGRAM",
         promotionalPostText: formData.promotionalText,
@@ -206,15 +208,16 @@ function TelegramPackageModal({ solTotal, influencer }) {
       await escrowSDK.verifyOffer(DATA);
       console.log("Offer verified successfully");
 
-      const createDealTx = await escrowSDK.prepareNativeCreateDealTransaction({
+      const createDealTx = await escrowSDK.prepareCreateDealTransaction({
         orderId: DATA.orderId,
+        mintAddress: chain.directPaymentToken.mintAddress,
         kolAddress: influencer.user.wallet.address,
         userAddress:
           walletType === "MPC"
             ? mpcAddress
             : wallet.adapter.publicKey.toBase58(),
         vestingType: "NONE",
-        amount: DATA.tokenAmount * LAMPORTS_PER_SOL,
+        amount: DATA.tokenAmount * 10 ** chain.directPaymentToken.decimals,
       });
       console.log("Create deal transaction prepared:", createDealTx);
 
@@ -278,9 +281,6 @@ function TweetPackageModal({ solTotal, influencer }) {
       // Submit logic for Twitter Package
       setIsLoading(true);
       console.log("Submitting Twitter Package:", formData);
-
-      console.log(sessionKey);
-
       const chain = CHAINS.find((chain) => chain.id === "devnet");
 
       const escrowSDK = new MutualEscrowSDK({
