@@ -258,7 +258,7 @@ function MessageChat({ sendMessage, messages, isLoading, userId }) {
                 <AnimatePresence mode="popLayout">
                   {dayMessages.map((msg) => (
                     <motion.div
-                      key={msg.sentAt}
+                      key={msg.timestamp}
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       className={cnm(

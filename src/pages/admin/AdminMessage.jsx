@@ -3,102 +3,77 @@ import { io } from "socket.io-client";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import useSWR from "swr";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Button, Spinner } from "@nextui-org/react";
 import { Menu, Search, Send, X } from "lucide-react";
-import { mutualAPI, mutualPublicAPI } from "../../api/mutual";
+import { mutualPublicAPI } from "../../api/mutual";
 import { BACKEND_URL } from "../../config";
 import { cnm } from "../../utils/style";
 import RandomAvatar from "../../components/ui/RandomAvatar";
 
-export default function AdminMessagePage() {
-  const [newMessage, setNewMessage] = useState("");
+export default function MessagePage() {
   const [socket, setSocket] = useState(null);
-  const [selectedMessageUserId, setSelectedMessageUserId] = useState(null);
-  const [selectedMessageConversationId, setSelectedMessageConversationId] =
-    useState(null);
+  const [otherUserId, setOtherUserId] = useState(null);
   const [messages, setMessages] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [socketError, setSocketError] = useState(null);
 
   const {
     data: messagesHistory,
-    isLoading,
-    mutate: mutateMessagesHistory,
+    isLoading: isMessageHistoryLoading,
+    mutate: mutateMessageHistory,
   } = useSWR(
-    selectedMessageUserId
-      ? `/messages/conversation-admin/${selectedMessageUserId}?timezone=UTC`
-      : null,
+    otherUserId && `/messaging/admin-history/admin/${otherUserId}`,
     async (url) => {
-      const { data } = await mutualPublicAPI.get(url);
-      return data;
-    }
-  );
-
-  console.log("MESSAGE TEST", {
-    messagesHistory,
-  });
-
-  useEffect(() => {
-    if (!messagesHistory) return;
-
-    setMessages((prev) => ({
-      ...prev,
-      ...messagesHistory,
-    }));
-  }, [messagesHistory]);
-
-  const { data: conversations, mutate: mutateConversations } = useSWR(
-    `/messages/conversations-admin`,
-    async (url) => {
-      const { data } = await mutualPublicAPI.get(url);
-      return data;
-    }
-  );
-
-  const { data: conversationDetail } = useSWR(
-    selectedMessageConversationId
-      ? `/messages/conversation-detail-admin/${selectedMessageConversationId}`
-      : null,
-    async (url) => {
-      console.log({ url });
-      const { data } = await mutualPublicAPI.get(url);
-      return data;
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      return mutualPublicAPI
+        .get(`${url}?timezone=${timezone}`)
+        .then((res) => res.data);
     }
   );
 
   const {
-    data: otherUserDetail,
-    isLoading: otherUserDetailLoading,
+    data: receiverDetail,
+    isLoading: isReceiverDetailLoading,
     mutate: mutateOtherUserDetails,
   } = useSWR(
-    selectedMessageUserId
-      ? `/messages/other-user-details-admin/${selectedMessageUserId}`
-      : null,
+    otherUserId && `/messaging/user-details/${otherUserId}`,
     async (url) => {
-      console.log({ url });
-      const { data } = await mutualPublicAPI.get(url);
-      return data;
+      return mutualPublicAPI.get(url).then((res) => res.data);
     }
   );
 
+  const {
+    data: conversations,
+    isLoading: isConversationsLoading,
+    mutate: mutateConversations,
+  } = useSWR(`/messaging/admin-conversations/admin`, async (url) => {
+    return mutualPublicAPI.get(url).then((res) => res.data);
+  });
+
+  console.log("MESSAGE HISTORY", {
+    messagesHistory,
+    conversations,
+  });
+
   useEffect(() => {
-    const socket = io(`${BACKEND_URL}`);
-    console.log("socket", socket);
+    if (!messagesHistory) return;
+    setMessages(messagesHistory);
+  }, [messagesHistory]);
+
+  useEffect(() => {
+    const socket = io(`${BACKEND_URL}/admin`);
     setSocket(socket);
     return () => {
       socket.disconnect();
     };
-  }, [selectedMessageUserId]);
+  }, [otherUserId]);
 
   useEffect(() => {
     if (!socket) return;
 
-    console.log("socket exitsst");
-
     socket.on("connect", () => {
-      toast.success("Connected to message service");
-      socket.emit("admin-join", {});
+      socket.emit("register", "admin");
       setSocketConnected(true);
     });
 
@@ -107,53 +82,39 @@ export default function AdminMessagePage() {
     });
 
     socket.on("userStatusChange", () => {
-      console.log("userStatusChange");
       mutateOtherUserDetails();
     });
 
-    // TODO switch to admin-message
-    socket.on("admin-message", (data) => {
-      console.log("admin-message", data);
-      // toast(JSON.stringify(data));
-      setMessages((currentMessages) => {
-        const currentDate = dayjs().format("YYYY-MM-DD");
-        return {
-          ...currentMessages,
-          [currentDate]: [
-            ...(currentMessages?.[currentDate] || []),
-            {
-              id: Date.now(),
-              content: data.content,
-              senderId: data.senderId,
-              receiverId: data.receiverId,
-              role: data.senderId === "__admin" ? "admin" : "other",
-              sentAt: new Date().toISOString(),
-            },
-          ],
-        };
-      });
-      mutateMessagesHistory();
-      mutateConversations();
+    socket.on("admin-message", (message) => {
+      if (otherUserId === message.senderId || message.senderId === "admin") {
+        setMessages((prevMessages) => {
+          const day = dayjs(message.timestamp).format("YYYY-MM-DD");
+          const updatedMessages = [...prevMessages];
+          const existingDayIndex = updatedMessages.findIndex(
+            ([date]) => date === day
+          );
+          if (existingDayIndex !== -1) {
+            updatedMessages[existingDayIndex][1].push(message);
+          } else {
+            updatedMessages.push([day, [message]]);
+          }
+          return updatedMessages;
+        });
+      }
     });
 
     return () => {
       socket.disconnect();
     };
-  }, [socket, selectedMessageUserId]);
+  }, [socket, otherUserId]);
 
   function selectConversation(conversation) {
-    setSelectedMessageUserId(conversation.userId);
-    setSelectedMessageConversationId(conversation.id);
-    if (conversation.id !== selectedMessageConversationId) {
-      setMessages([]);
-    }
-    mutateMessagesHistory();
+    setOtherUserId(conversation.userId);
+    mutateMessageHistory();
   }
 
-  function sendMessage() {
-    console.log({ newMessage });
-
-    if (!selectedMessageUserId) {
+  function sendMessage(newMessage) {
+    if (!otherUserId) {
       return toast.error("Select a user");
     }
 
@@ -162,22 +123,21 @@ export default function AdminMessagePage() {
     }
 
     socket.emit("admin-message", {
-      senderId: "__admin",
-      receiverId: selectedMessageUserId,
-      content: newMessage,
-      role: "admin",
+      senderId: "admin",
+      receiverId: otherUserId,
+      userId: otherUserId,
+      text: newMessage,
     });
-    setNewMessage("");
+
     mutateConversations();
   }
 
-  console.log({
-    selectedMessageConversationId,
-    selectedMessageUserId,
-    socketConnected,
-  });
-
-  if (!socketConnected) {
+  if (
+    !socketConnected ||
+    isConversationsLoading ||
+    isReceiverDetailLoading ||
+    isMessageHistoryLoading
+  ) {
     return (
       <div className="h-full overflow-y-auto w-full flex items-center justify-center">
         <Spinner size="md" color="primary" />
@@ -205,13 +165,13 @@ export default function AdminMessagePage() {
           <SidebarSlideMobile
             conversations={conversations}
             selectConversation={selectConversation}
-            selectedMessageConversationId={selectedMessageConversationId}
+            otherUserId={otherUserId}
           />
-          <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6 h-full">
+          <div className="w-full flex flex-col md:flex-row items-center justify-center h-full">
             {/* Sidebar */}
             <div
               className={cnm(
-                "p-6 border rounded-2xl bg-white w-full max-w-[200px] xl:max-w-sm hidden lg:flex h-[500px] overflow-y-auto"
+                "p-6 border rounded-2xl bg-white w-full max-w-[200px] xl:max-w-sm hidden lg:flex h-[550px] overflow-y-auto"
               )}
             >
               {!conversations || conversations.length === 0 ? (
@@ -230,7 +190,7 @@ export default function AdminMessagePage() {
                         key={conversation.id}
                         className={cnm(
                           "p-4 rounded-xl cursor-pointer w-full",
-                          selectedMessageConversationId === conversation.id
+                          conversation.userId === otherUserId
                             ? "bg-neutral-100"
                             : "hover:bg-neutral-100"
                         )}
@@ -258,29 +218,28 @@ export default function AdminMessagePage() {
             </div>
 
             {/* Message Box */}
-            <div className="p-6 border rounded-2xl bg-white w-full lg:w-auto lg:flex-1 lg:ml-6">
-              {isLoading || otherUserDetailLoading ? (
+            <div className="p-6 border rounded-2xl bg-white w-full lg:w-auto lg:flex-1 lg:ml-6 h-[550px]">
+              {isMessageHistoryLoading || isReceiverDetailLoading ? (
                 <div className="w-full h-[450px] flex items-center justify-center">
                   <Spinner size="md" color="primary" />
                 </div>
               ) : (
                 <>
-                  {otherUserDetail || conversationDetail ? (
-                    <div className="w-full">
+                  {receiverDetail ? (
+                    <div className="w-full h-full flex flex-col">
                       <div className="w-full flex items-center justify-between">
                         <div className="flex gap-4">
                           <div className="size-10 bg-neutral-200 rounded-full">
                             <RandomAvatar
-                              seed={otherUserDetail?.data.name || ""}
+                              seed={receiverDetail?.name || ""}
                               className="w-full h-full"
                             />
                           </div>
                           <div>
                             <p className="font-medium">
-                              {otherUserDetail?.data.name || ""}
+                              {receiverDetail?.name || ""}
                             </p>
-                            {otherUserDetail.data?.messagesSent.status ===
-                            "ONLINE" ? (
+                            {receiverDetail?.messaging.status === "ONLINE" ? (
                               <div className="flex items-center gap-1 text-sm text-neutral-400">
                                 <span className="size-2 bg-green-700 rounded-full"></span>
                                 <p>Active Now</p>
@@ -307,15 +266,13 @@ export default function AdminMessagePage() {
                       {/* Message chat */}
                       <MessageChat
                         messages={messages}
-                        newMessage={newMessage}
-                        setNewMessage={setNewMessage}
                         sendMessage={sendMessage}
-                        isLoading={isLoading}
-                        selectedMessageUserId={selectedMessageUserId}
-                      />
+                        isLoading={isMessageHistoryLoading}
+                        // userId={user.id}
+                      />{" "}
                     </div>
                   ) : (
-                    <div className="w-full h-[450px] flex items-center justify-center">
+                    <div className="w-full h-full flex items-center justify-center">
                       <p className="text-center text-neutral-500">
                         Select a message to view
                       </p>
@@ -334,7 +291,7 @@ export default function AdminMessagePage() {
 function SidebarSlideMobile({
   conversations,
   selectConversation,
-  selectedMessageConversationId,
+  otherUserId,
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -376,7 +333,7 @@ function SidebarSlideMobile({
                   key={conversation.id}
                   className={cnm(
                     "p-4 rounded-xl cursor-pointer",
-                    selectedMessageConversationId === conversation.id
+                    otherUserId === conversation.userId
                       ? "bg-neutral-100"
                       : "hover:bg-neutral-200"
                   )}
@@ -409,13 +366,7 @@ function SidebarSlideMobile({
   );
 }
 
-function MessageChat({
-  sendMessage,
-  messages,
-  setNewMessage,
-  newMessage,
-  isLoading,
-}) {
+function MessageChat({ sendMessage, messages, isLoading, userId }) {
   const chatEndRef = useRef(null); // Reference to the bottom of the chat container
 
   useEffect(() => {
@@ -424,72 +375,78 @@ function MessageChat({
     }
   }, [messages]);
 
-  const handleSend = () => {
-    console.log("send");
-    sendMessage();
-  };
-
   return (
-    <div className="mt-4 rounded-2xl bg-creamy-300 h-[412px] relative overflow-hidden">
+    <div className="mt-4 rounded-2xl bg-creamy-300 grow relative overflow-hidden">
       {isLoading || typeof messages === "undefined" ? (
         <div className="absolute inset-0 flex items-center justify-center">
           <Spinner size="md" color="primary" />
         </div>
-      ) : Object.keys(messages).length === 0 ? (
+      ) : !messages || messages.length === 0 ? (
         <div className="w-full h-full flex items-center justify-center">
           <p className="text-center text-neutral-500">No messages yet</p>
         </div>
       ) : (
         <div
           ref={chatEndRef}
-          className="flex flex-col p-4 overflow-y-auto size-full max-h-[412px]"
+          className="flex flex-col p-4 overflow-y-auto size-full"
         >
           <div className="pb-14 w-full flex flex-col">
             {/* Loop through the messages grouped by date */}
-            {Object.entries(messages).map(([date, dayMessages]) => (
+            {messages.map(([date, dayMessages]) => (
               <motion.div
                 key={date}
-                initial={{ opacity: 0, translateY: 50 }}
-                animate={{ opacity: 1, translateY: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
               >
                 <p className="text-center text-sm text-neutral-500 mb-4">
                   {dayjs(date).format("YYYY-MM-DD")}
                 </p>
-                {dayMessages.map((msg) => (
-                  <div key={msg.sentAt} className="py-2 w-full flex">
-                    <div
+                <AnimatePresence mode="popLayout">
+                  {dayMessages.map((msg) => (
+                    <motion.div
+                      key={msg.sentAt}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
                       className={cnm(
-                        "flex items-end gap-2",
-                        msg.role === "admin"
-                          ? "ml-auto flex-row-reverse"
-                          : "mr-auto"
+                        "py-2 w-full flex",
+                        msg.role === "you"
+                          ? "origin-bottom-right"
+                          : "origin-bottom-left"
                       )}
                     >
-                      <div className="size-6 rounded-full overflow-hidden">
-                        <RandomAvatar
-                          seed={
-                            msg.role === "admin" ? "admin" : msg.senderId || ""
-                          }
-                          className="w-full h-full"
-                        />
-                      </div>
                       <div
                         className={cnm(
-                          "chat-bubble px-4 py-2 rounded-lg text-sm",
-                          msg.role === "admin"
-                            ? " border border-orangy/50 text-neutral-600"
-                            : "bg-neutral-200"
+                          "flex items-end gap-2",
+                          msg.role === "you"
+                            ? "ml-auto flex-row-reverse"
+                            : "mr-auto"
                         )}
                       >
-                        {msg.content}
+                        <div className="size-6 rounded-full overflow-hidden">
+                          <RandomAvatar
+                            seed={msg.role === "you" ? userId : msg.senderId}
+                            className="w-full h-full"
+                          />
+                        </div>
+                        <div
+                          className={cnm(
+                            "chat-bubble px-4 py-2 rounded-lg text-sm",
+                            msg.role === "you"
+                              ? " border border-orangy/50 text-neutral-600"
+                              : "bg-neutral-200"
+                          )}
+                        >
+                          {msg.text}
+                        </div>
+                        <p className="text-xs text-neutral-400">
+                          {dayjs(msg.timestamp).format("HH:mm")}{" "}
+                          {/* Message time */}
+                        </p>
                       </div>
-                      <p className="text-xs text-neutral-400">
-                        {dayjs(msg.sentAt).format("HH:mm")} {/* Message time */}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </motion.div>
             ))}
             <div ref={chatEndRef} />
@@ -500,20 +457,33 @@ function MessageChat({
       <div className="absolute w-[calc(100%-10px)] bottom-0 left-0 h-24 bg-gradient-to-t from-creamy-300 to-transparent"></div>
 
       {/* Input box for sending new messages */}
-      <div className="absolute bottom-0 left-0 right-0 p-4">
-        <div className="flex gap-4 bg-white border rounded-xl items-center pr-4 h-12 focus-within:border-orangy/50">
-          <input
-            type="text"
-            placeholder="Enter your message here"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            className="flex-1 py-2 bg-transparent placeholder:text-sm outline-none px-4"
-          />
-          <button onClick={handleSend}>
-            <Send className="size-6 text-orangy" />
-          </button>
-        </div>
+      <MessageInput sendMessage={sendMessage} />
+    </div>
+  );
+}
+
+function MessageInput({ sendMessage }) {
+  const [newMessage, setNewMessage] = useState("");
+
+  const handleSend = () => {
+    sendMessage(newMessage);
+    setNewMessage("");
+  };
+
+  return (
+    <div className="absolute bottom-0 left-0 right-0 p-4">
+      <div className="flex gap-4 bg-white border rounded-xl items-center pr-4 h-12 focus-within:border-orangy/50">
+        <input
+          type="text"
+          placeholder="Enter your message here"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          className="flex-1 py-2 bg-transparent placeholder:text-sm outline-none px-4"
+        />
+        <button onClick={handleSend}>
+          <Send className="size-6 text-orangy" />
+        </button>
       </div>
     </div>
   );
