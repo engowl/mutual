@@ -165,11 +165,11 @@ export default function MessagePage() {
             selectConversation={selectConversation}
             otherUserId={otherUserId}
           />
-          <div className="w-full flex flex-col md:flex-row items-center justify-center gap-6 h-full">
+          <div className="w-full flex flex-col md:flex-row items-center justify-center h-full">
             {/* Sidebar */}
             <div
               className={cnm(
-                "p-6 border rounded-2xl bg-white w-full max-w-[200px] xl:max-w-sm hidden lg:flex h-[500px] overflow-y-auto"
+                "p-6 border rounded-2xl bg-white w-full max-w-[200px] xl:max-w-sm hidden lg:flex h-[550px] overflow-y-auto"
               )}
             >
               {!conversations || conversations.length === 0 ? (
@@ -216,7 +216,7 @@ export default function MessagePage() {
             </div>
 
             {/* Message Box */}
-            <div className="p-6 border rounded-2xl bg-white w-full lg:w-auto lg:flex-1 lg:ml-6">
+            <div className="p-6 border rounded-2xl bg-white w-full lg:w-auto lg:flex-1 lg:ml-6 h-[550px]">
               {isMessageHistoryLoading || isReceiverDetailLoading ? (
                 <div className="w-full h-[450px] flex items-center justify-center">
                   <Spinner size="md" color="primary" />
@@ -224,7 +224,7 @@ export default function MessagePage() {
               ) : (
                 <>
                   {receiverDetail ? (
-                    <div className="w-full">
+                    <div className="w-full h-full flex flex-col">
                       <div className="w-full flex items-center justify-between">
                         <div className="flex gap-4">
                           <div className="size-10 bg-neutral-200 rounded-full">
@@ -270,7 +270,7 @@ export default function MessagePage() {
                       />{" "}
                     </div>
                   ) : (
-                    <div className="w-full h-[450px] flex items-center justify-center">
+                    <div className="w-full h-full flex items-center justify-center">
                       <p className="text-center text-neutral-500">
                         Select a message to view
                       </p>
@@ -374,7 +374,7 @@ function MessageChat({ sendMessage, messages, isLoading, userId }) {
   }, [messages]);
 
   return (
-    <div className="mt-4 rounded-2xl bg-creamy-300 h-[412px] relative overflow-hidden">
+    <div className="mt-4 rounded-2xl bg-creamy-300 grow relative overflow-hidden">
       {isLoading || typeof messages === "undefined" ? (
         <div className="absolute inset-0 flex items-center justify-center">
           <Spinner size="md" color="primary" />

@@ -10,6 +10,7 @@ import {
   TwitterIcon,
 } from "../../../components/icons/icons";
 import ProjectOwnerOfferStatusBadgePill from "../../../components/offers/ProjectOwnerStatusBadgePill";
+import NoResultIcon from "../../../assets/no-result.svg?react";
 
 export default function ProjectOwnerOffersPage() {
   return (
@@ -102,7 +103,10 @@ function OffersList() {
           <>
             {filteredOrders.length === 0 ? (
               <div className="w-full h-full flex items-center justify-center">
-                No offers available
+                <div className="flex flex-col gap-2">
+                  <NoResultIcon />
+                  <p>No offers available</p>
+                </div>
               </div>
             ) : (
               <div className="w-full flex flex-col gap-2">
