@@ -206,6 +206,6 @@ export const fetchTokenHolderCount = async ({
   }
 }
 
-fetchTokenHolderCount({
-  tokenId: 'cm1y7e4ub0000kckskbdrthnx'
-})
+// fetchTokenHolderCount({
+//   tokenId: 'cm1y7e4ub0000kckskbdrthnx'
+// })
