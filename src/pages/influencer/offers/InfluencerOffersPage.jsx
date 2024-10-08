@@ -32,6 +32,8 @@ function getStatus(status) {
       return "CREATED";
     case "active":
       return "ACCEPTED";
+    case "partiallyCompleted":
+      return "PARTIALCOMPLETED";
     case "completed":
       return "COMPLETED";
     case "rejected":
@@ -50,6 +52,10 @@ const statusFilter = [
     label: "Active",
     value: "active",
   },
+  // {
+  //   label: "Partially Completed",
+  //   value: "partiallyCompleted",
+  // },
   {
     label: "Completed",
     value: "completed",
