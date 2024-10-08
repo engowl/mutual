@@ -303,12 +303,14 @@ model EscrowEventLog {
 
   campaignOrderId String
   eventName       String
-  signature       String @unique
+  signature       String 
   data            Json
   slot            Int    @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([eventName, signature])
 }
 
 enum ProjectOwnerStatus {
