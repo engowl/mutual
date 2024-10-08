@@ -30,8 +30,35 @@ import { Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
 import { formatNumberToKMB } from "../../../utils/number.js";
 import { useLocalStorage } from "@uidotdev/usehooks";
+import { handleNumericChange } from "../../../lib/mconnect/utils/formattingUtils.js";
+import { token } from "@coral-xyz/anchor/dist/cjs/utils/index.js";
+import DexScreenerLogo from "../../../assets/dexscreener.svg?react";
 
 dayjs.extend(utc);
+
+const combineDateAndTime = (dateISO, timeObject) => {
+  console.log("date:", dateISO);
+  console.log("time:", timeObject);
+
+  if (!dateISO || !timeObject) return null;
+
+  const date = new Date(dateISO);
+
+  date.setHours(timeObject.hour);
+  date.setMinutes(timeObject.minute);
+  date.setSeconds(timeObject.second);
+  date.setMilliseconds(timeObject.millisecond || 0);
+
+  return date;
+};
+function getISONowDate() {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = String(currentDate.getMonth() + 1).padStart(2, "0");
+  const currentDay = String(currentDate.getDate()).padStart(2, "0");
+
+  return `${currentYear}-${currentMonth}-${currentDay}`;
+}
 
 const marketCapVestingFormAtom = atom({
   key: "marketCapVestingFormAtom",
@@ -41,7 +68,7 @@ const marketCapVestingFormAtom = atom({
   telegramAdminUsername: "",
   marketingChannel: "",
   promotionalPostText: "",
-  postDateAndTime: "",
+  postDateAndTime: combineDateAndTime(getISONowDate(), parseTime("12:00:00")),
 });
 
 export default function ProjectOwnerMarketCapVestingPage() {
@@ -57,7 +84,7 @@ export default function ProjectOwnerMarketCapVestingPage() {
 function MarketCapVestingConfirmation({ setStep }) {
   const { wallet } = useWallet();
   const [sessionKey, saveSessionKey] = useLocalStorage("session_key", null);
-  
+
   const params = useParams();
   const influencerId = params.influencerId;
   const navigate = useNavigate();
@@ -77,17 +104,6 @@ function MarketCapVestingConfirmation({ setStep }) {
   console.log({ influencerData });
 
   const { user } = useMCAuth();
-  // TODO change network to dynamic
-  const { data } = useSWR(
-    user
-      ? `/wallet/info?walletAddress=${user.wallet.address}&network=devnet`
-      : null,
-    async (url) => {
-      const { data } = await mutualAPI.get(url);
-      console.log({ data });
-      return data.data;
-    }
-  );
 
   const { data: tokenInfo } = useSWR(
     `/token/info?tokenAddress=${user?.projectOwner?.projectDetails[0]?.contractAddress}`,
@@ -96,13 +112,6 @@ function MarketCapVestingConfirmation({ setStep }) {
       return data;
     }
   );
-
-  const userTokenInfo =
-    data && user
-      ? data.find(
-          (d) => d.mint === user.projectOwner.projectDetails[0].contractAddress
-        )
-      : null;
 
   console.log({ tokenInfo });
 
@@ -226,12 +235,23 @@ function MarketCapVestingConfirmation({ setStep }) {
         </div>
         <div className="mt-4 p-4 rounded-xl bg-white border">
           <div className="w-full flex items-center justify-between">
-            <p className="text-xl lg:text-2xl font-medium">MICHI ($MICHI)</p>
-            <div className="font-medium">DexScreener</div>
+            <p className="text-xl lg:text-2xl font-medium">
+              {tokenInfo?.name} (${tokenInfo?.symbol})
+            </p>
+            <a
+              href={tokenInfo?.pair.url}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium"
+            >
+              <DexScreenerLogo />
+            </a>
           </div>
           <div className="flex gap-7 mt-3 text-sm md:text-base">
             <div>
-              <p className="text-orangy font-medium">$150M</p>
+              <p className="text-orangy font-medium">
+                ${formatNumberToKMB(tokenInfo?.pair.marketCap)}
+              </p>
               <p className="text-xs md:text-sm text-neutral-500">Market Cap</p>
             </div>
             <div>
@@ -261,7 +281,9 @@ function MarketCapVestingConfirmation({ setStep }) {
               </div> */}
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Total Payment</p>
-                <p className="font-medium">{formData.tokenOfferAmount} MICHI</p>
+                <p className="font-medium">
+                  {formData.tokenOfferAmount} {tokenInfo?.symbol}
+                </p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Payment Terms</p>
@@ -270,17 +292,17 @@ function MarketCapVestingConfirmation({ setStep }) {
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">First Unlock</p>
                 <p className="font-medium">
-                  {formData.tokenOfferAmount *
+                  {parseInt(formData.tokenOfferAmount.replaceAll(",", "")) *
                     OFFER_CONFIG.firstUnlockPercentage}{" "}
-                  MICHI
+                  {tokenInfo?.symbol}
                 </p>
               </div>
               <div className="flex items-center">
                 <p className="w-48 text-neutral-400">Second Unlock</p>
                 <p className="font-medium">
-                  {formData.tokenOfferAmount *
+                  {parseInt(formData.tokenOfferAmount.replaceAll(",", "")) *
                     OFFER_CONFIG.secondUnlockPercentage}
-                  MICHI
+                  {tokenInfo?.symbol}
                 </p>
               </div>
               <div className="flex items-center">
@@ -288,7 +310,7 @@ function MarketCapVestingConfirmation({ setStep }) {
                   Second Unlock to Trigger
                 </p>
                 <p className="font-medium">
-                  $MICHI reached $
+                  ${tokenInfo?.symbol} reached $
                   {formatNumberToKMB(formData.marketCapMilestone)} Marketcap
                 </p>
               </div>
@@ -344,14 +366,7 @@ function MarketCapVestingConfirmation({ setStep }) {
 function MarketCapVestingForm({ setStep }) {
   const [formValues, setFormValues] = useAtom(marketCapVestingFormAtom);
 
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = String(currentDate.getMonth() + 1).padStart(2, "0");
-  const currentDay = String(currentDate.getDate()).padStart(2, "0");
-
-  const [selectedDate, setSelectedDate] = useState(
-    parseDate(`${currentYear}-${currentMonth}-${currentDay}`)
-  );
+  const [selectedDate, setSelectedDate] = useState(parseDate(getISONowDate()));
   const [selectedTime, setSelectedTime] = useState(parseTime("12:00:00"));
 
   const handleInputChange = (field, value) => {
@@ -359,22 +374,6 @@ function MarketCapVestingForm({ setStep }) {
       ...prev,
       [field]: value,
     }));
-  };
-
-  const combineDateAndTime = (dateISO, timeObject) => {
-    console.log("date:", dateISO);
-    console.log("time:", timeObject);
-
-    if (!dateISO || !timeObject) return null;
-
-    const date = new Date(dateISO);
-
-    date.setHours(timeObject.hour);
-    date.setMinutes(timeObject.minute);
-    date.setSeconds(timeObject.second);
-    date.setMilliseconds(timeObject.millisecond || 0); // Set milliseconds, default to 0 if not provided
-
-    return date;
   };
 
   console.log({ selectedDate, selectedTime });
@@ -436,18 +435,20 @@ function MarketCapVestingForm({ setStep }) {
               <p className="text-xl lg:text-2xl font-medium">
                 {tokenInfo?.name} (${tokenInfo?.symbol} )
               </p>
-              <Link
-                className="font-medium"
-                to={tokenInfo?.pair?.url || "#"}
+              <a
+                href={tokenInfo?.pair.url}
                 target="_blank"
                 rel="noreferrer"
+                className="font-medium"
               >
-                DexScreener
-              </Link>
+                <DexScreenerLogo />
+              </a>
             </div>
             <div className="flex gap-7 mt-3">
               <div>
-                <p className="text-orangy font-medium">$150M</p>
+                <p className="text-orangy font-medium">
+                  ${formatNumberToKMB(tokenInfo?.pair.marketCap || 0)}
+                </p>
                 <p className="text-sm text-neutral-500">Market Cap</p>
               </div>
               <div>
@@ -472,11 +473,13 @@ function MarketCapVestingForm({ setStep }) {
               <div className="bg-white rounded-xl border mt-1">
                 <div className="px-5 py-5">
                   <input
-                    className="outline-none text-2xl"
+                    className="outline-none text-2xl w-full"
                     placeholder="1.000.000"
                     value={formValues.tokenOfferAmount}
                     onChange={(e) =>
-                      handleInputChange("tokenOfferAmount", e.target.value)
+                      handleNumericChange((val) => {
+                        handleInputChange("tokenOfferAmount", val);
+                      })(e)
                     }
                   />
                 </div>
