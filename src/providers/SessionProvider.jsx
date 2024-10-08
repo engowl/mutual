@@ -10,7 +10,6 @@ import { sessionContext } from "../contexts/SessionContext";
 import { useLocalStorage } from "@uidotdev/usehooks";
 
 export default function SessionProvider({ children }) {
-  // const [cookies, setCookie, removeCookie] = useCookies(["session_key"]);
   const [sessionKey, saveSessionKey] = useLocalStorage("session_key", null);
   const [session, setSession] = useState(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
