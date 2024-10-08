@@ -14,6 +14,7 @@ import {
 } from "../../../components/icons/icons";
 import SubmitProofModal from "../../../components/influencer/offers/SubmitWorkModal";
 import InfluencerOfferStatusBadgePill from "../../../components/offers/InfluencerOfferStatusBadgePill";
+import NoResultIcon from "../../../assets/no-result.svg?react";
 
 export default function InfluencerOffersPage() {
   return (
@@ -114,7 +115,10 @@ function OffersList() {
           <>
             {filteredOrders.length === 0 ? (
               <div className="w-full h-full flex items-center justify-center">
-                No offers available
+                <div className="flex flex-col gap-2">
+                  <NoResultIcon />
+                  <p>No offers available</p>
+                </div>
               </div>
             ) : (
               <div className="w-full flex flex-col gap-2">
