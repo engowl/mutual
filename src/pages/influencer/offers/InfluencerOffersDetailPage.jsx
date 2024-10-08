@@ -276,7 +276,7 @@ export default function InfluencerOffersDetailPage() {
             </div>
             <div>
               <p className="text-orangy font-medium">
-                {offer?.token.totalSupply}
+                {offer?.token.totalSupply?.toLocaleString()}
               </p>
               <p className="text-xs md:text-sm text-neutral-500">
                 Total Supply
