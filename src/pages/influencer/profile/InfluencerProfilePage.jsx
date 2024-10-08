@@ -16,6 +16,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { mutualAPI } from "../../../api/mutual.js";
 import AsciiFlame from "../../../lib/mconnect/components/AsciiFlame.jsx";
+import { DIRECT_PAYMENT_TOKEN } from "../../../config.js";
 
 export default function InfluencerProfilePage() {
   const { user, getUser } = useMCAuth();
@@ -90,7 +91,9 @@ export default function InfluencerProfilePage() {
                 </p>
                 <div className="flex items-baseline gap-2 mt-7">
                   <p className="text-4xl font-medium">{pkg.price}</p>
-                  <p className="text-xl font-medium">SOL</p>
+                  <p className="text-xl font-medium">
+                    {DIRECT_PAYMENT_TOKEN.symbol}
+                  </p>
                 </div>
               </div>
             );
@@ -158,7 +161,7 @@ function EditPackageModal({ pkg, getUser }) {
                       className="text-4xl font-medium outline-none placeholder:text-neutral-300 max-w-64 text-orangy"
                       placeholder="0.00"
                     />
-                    <p className="text-3xl font-medium">SOL</p>
+                    <p className="text-3xl font-medium">{DIRECT_PAYMENT_TOKEN.symbol}</p>
                   </div>
                   <div className="mt-6">
                     <p>Description</p>

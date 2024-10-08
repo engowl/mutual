@@ -21,7 +21,7 @@ import { useCookies } from "react-cookie";
 import { useParams } from "react-router-dom";
 import { mutualAPI } from "../../../api/mutual.js";
 import RandomAvatar from "../../../components/ui/RandomAvatar.jsx";
-import { CHAINS } from "../../../config.js";
+import { CHAINS, DIRECT_PAYMENT_TOKEN } from "../../../config.js";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK.js";
 import { getAlphanumericId } from "../../../utils/misc.js";
 import { parseDate, parseTime } from "@internationalized/date";
@@ -131,7 +131,16 @@ export default function InfluencerProfilePublicPage() {
                   </p>
                   <div className="flex items-baseline gap-2 mt-7">
                     <p className="text-4xl font-medium">{pkg.price}</p>
-                    <p className="text-xl font-medium">SOL</p>
+                    <div className="flex flex-row items-center gap-1">
+                      <img
+                        src={DIRECT_PAYMENT_TOKEN.imageUrl}
+                        alt="ic"
+                        className="w-6 h-6 rounded-full"
+                      />
+                      <p className="text-xl font-medium">
+                        {DIRECT_PAYMENT_TOKEN.symbol}
+                      </p>
+                    </div>
                   </div>
 
                   {pkg.type === "TWITTER" ? (
@@ -274,7 +283,7 @@ function TelegramPackageModal({ solTotal, influencer }) {
 
 function TweetPackageModal({ solTotal, influencer }) {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [sessionKey, _] = useLocalStorage("session_key", null);
+  const [sessionKey, saveSessionKey] = useLocalStorage("session_key", null);
   const [isLoading, setIsLoading] = useState(false);
 
   const { signSolanaTxWithPortal, address: mpcAddress } = useMCWallet();
@@ -290,6 +299,8 @@ function TweetPackageModal({ solTotal, influencer }) {
 
       console.log(sessionKey);
 
+      const chain = CHAINS.find((chain) => chain.id === "devnet");
+
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
         bearerToken: sessionKey,
@@ -302,7 +313,7 @@ function TweetPackageModal({ solTotal, influencer }) {
         influencerId: influencer.id,
         vestingType: "NONE",
         vestingCondition: {},
-        mintAddress: NATIVE_MINT.toBase58(),
+        mintAddress: chain.USDC.mintAddress,
         tokenAmount: parseFloat(solTotal),
         campaignChannel: "TWITTER",
         promotionalPostText: formData.promotionalText,
@@ -312,15 +323,16 @@ function TweetPackageModal({ solTotal, influencer }) {
       await escrowSDK.verifyOffer(DATA);
       console.log("Offer verified successfully");
 
-      const createDealTx = await escrowSDK.prepareNativeCreateDealTransaction({
+      const createDealTx = await escrowSDK.prepareCreateDealTransaction({
         orderId: DATA.orderId,
+        mintAddress: chain.USDC.mintAddress,
         kolAddress: influencer.user.wallet.address,
         userAddress:
           walletType === "MPC"
             ? mpcAddress
             : wallet.adapter.publicKey.toBase58(),
         vestingType: "NONE",
-        amount: DATA.tokenAmount * LAMPORTS_PER_SOL,
+        amount: DATA.tokenAmount * 10 ** chain.USDC.decimals
       });
       console.log("Create deal transaction prepared:", createDealTx);
 
@@ -559,7 +571,7 @@ function PackageModal({
                 </div>
                 <div className="bg-creamy-300 px-4 py-3 mt-4 w-full flex items-center justify-between text-xl font-medium rounded-xl">
                   <p>Total</p>
-                  <p>{total} SOL</p>
+                  <p>{total} {DIRECT_PAYMENT_TOKEN.symbol}</p>
                 </div>
               </ModalBody>
               <ModalFooter>

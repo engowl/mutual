@@ -11,6 +11,7 @@ import { mutualAPI } from "../../api/mutual.js";
 import IconicButton from "../../components/ui/IconicButton.jsx";
 import { useMCAuth } from "../../lib/mconnect/hooks/useMCAuth.jsx";
 import { handleNumericChange } from "../../lib/mconnect/utils/formattingUtils.js";
+import { DIRECT_PAYMENT_TOKEN } from "../../config.js";
 
 export default function InfluencerRegisterPage() {
   const [step, setStep] = useAtom(influencerRegisterStepAtom);
@@ -292,9 +293,8 @@ function ProjectCriteria() {
                 <div
                   key={risk.id}
                   onClick={() => setSelectedRisk(risk)}
-                  className={`cursor-pointer flex-1 flex justify-center py-1.5 rounded-full ${
-                    selectedRisk.id == risk.id ? "bg-orangy/20" : ""
-                  } transition-colors duration-200`}
+                  className={`cursor-pointer flex-1 flex justify-center py-1.5 rounded-full ${selectedRisk.id == risk.id ? "bg-orangy/20" : ""
+                    } transition-colors duration-200`}
                 >
                   {risk.label}
                 </div>
@@ -480,7 +480,7 @@ function PackageAndPricing() {
                   className="text-4xl font-medium outline-none placeholder:text-neutral-300 max-w-64 text-orangy"
                   placeholder="0.00"
                 />
-                <p className="text-3xl font-medium">SOL</p>
+                <p className="text-3xl font-medium">{DIRECT_PAYMENT_TOKEN.symbol}</p>
               </div>
               <div className="mt-6">
                 <p>Description</p>
