@@ -5,12 +5,10 @@ import InfluencerRegisterPage from "./pages/register/InfluencerRegisterPage";
 import ProjectOwnerRegisterPage from "./pages/register/ProjectOwnerRegisterPage";
 import InfluencerProfilePage from "./pages/influencer/profile/InfluencerProfilePage";
 import InfluencerProfilePublicPage from "./pages/influencer/profile/InfluencerProfilePublicPage";
-import InfluencerMessagePage from "./pages/influencer/InfluencerMessagePage";
 import InfluencerOffersPage from "./pages/influencer/offers/InfluencerOffersPage";
 import InfluencerOffersDetailPage from "./pages/influencer/offers/InfluencerOffersDetailPage";
 import ProjectOwnerBrowsePage from "./pages/project-owner/ProjectOwnerBrowsePage";
 import ProjectOwnerOffersPage from "./pages/project-owner/offers/ProjectOwnerOffersPage";
-import ProjectOwnerMessagePage from "./pages/project-owner/ProjectOwnerMessagePage";
 import OfferSubmittedSuccessPage from "./pages/success/OfferSubmittedSuccessPage";
 import ProjectOwnerMarketCapVestingPage from "./pages/project-owner/vesting/ProjectOwnerMarketCapVestingPage";
 import ProjectOwnerTimeVestingPage from "./pages/project-owner/vesting/ProjectOwnerTimeVesting";
@@ -19,14 +17,14 @@ import RolesAuthRouteGuard from "./components/guard/RolesAuthRouteGuard";
 import ProjectOwnerRegisterRouteGuard from "./components/guard/register/ProjectOwnerRegisterRouteGuard";
 import AdminLayout from "./layouts/AdminLayout.jsx";
 import AdminPage from "./pages/admin/AdminPage.jsx";
-import KolPage from "./pages/admin/kol/KolPage.jsx";
 import ProjectsPage from "./pages/admin/projects/ProjectsPage.jsx";
-import ProjectOwnerSingleMessagePage from "./pages/project-owner/ProjectOwnerSingleMessagePage.jsx";
 import MessagePage from "./pages/MessagePage.jsx";
 import SingleMessagePage from "./pages/SingleMessagePage.jsx";
 import ErrorPage from "./pages/error/ErrorPage.jsx";
 import AdminMessagePage from "./pages/admin/AdminMessage.jsx";
 import ContactAdminMessagePage from "./pages/contact/ContactAdminMessage.jsx";
+import InfluencersPage from "./pages/admin/influencers/InfluencersPage.jsx";
+import InfluencerDetailPage from "./pages/admin/influencers/detail/InfluencerDetailPage.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -187,15 +185,24 @@ export const router = createBrowserRouter([
     children: [
       {
         path: "/__admin",
-        element: <AdminPage />,
-      },
-      {
-        path: "/__admin/projects",
-        element: <ProjectsPage />,
-      },
-      {
-        path: "/__admin/kol",
-        element: <KolPage />,
+        children: [
+          {
+            path: "dashboard",
+            element: <AdminPage />,
+          },
+          {
+            path: "projects",
+            element: <ProjectsPage />,
+          },
+          {
+            path: "influencers",
+            element: <InfluencersPage />,
+          },
+          {
+            path: "influencers/:id",
+            element: <InfluencerDetailPage />,
+          },
+        ],
       },
       {
         path: "/__admin/message",
