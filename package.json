@@ -48,7 +48,8 @@
     "react-router-dom": "^6.26.2",
     "socket.io-client": "^4.8.0",
     "swr": "^2.2.5",
-    "tailwind-merge": "^2.5.3"
+    "tailwind-merge": "^2.5.3",
+    "vite-plugin-node-polyfills": "^0.22.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
