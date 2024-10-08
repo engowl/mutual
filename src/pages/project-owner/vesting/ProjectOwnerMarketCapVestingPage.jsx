@@ -29,6 +29,7 @@ import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
 import { Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
 import { formatNumberToKMB } from "../../../utils/number.js";
+import { useLocalStorage } from "@uidotdev/usehooks";
 import { handleNumericChange } from "../../../lib/mconnect/utils/formattingUtils.js";
 import { token } from "@coral-xyz/anchor/dist/cjs/utils/index.js";
 import DexScreenerLogo from "../../../assets/dexscreener.svg?react";
@@ -82,7 +83,8 @@ export default function ProjectOwnerMarketCapVestingPage() {
 
 function MarketCapVestingConfirmation({ setStep }) {
   const { wallet } = useWallet();
-  const [cookies] = useCookies(["session_token"]);
+  const [sessionKey, saveSessionKey] = useLocalStorage("session_key", null);
+
   const params = useParams();
   const influencerId = params.influencerId;
   const navigate = useNavigate();
@@ -129,12 +131,10 @@ function MarketCapVestingConfirmation({ setStep }) {
 
       console.log("formData:", formData);
 
-      console.log("cookies:", cookies);
-
       // TODO switch to mainnet later
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
-        bearerToken: cookies.session_token,
+        bearerToken: sessionKey,
         chainId: "devnet",
         chains: CHAINS,
       });

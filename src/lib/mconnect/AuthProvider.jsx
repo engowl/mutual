@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { googleLogout, useGoogleLogin } from "@react-oauth/google";
 import Portal from "@portal-hq/web";
 import axios from "axios";
-import { useCookies } from "react-cookie";
 import { jwtDecode } from "jwt-decode";
 import { useWallet } from "@solana/wallet-adapter-react";
 import base58 from "bs58";
@@ -13,6 +12,7 @@ import { AuthContext } from "../../contexts/AuthContext.js";
 import { useNavigate } from "react-router-dom";
 import { mutualAPI } from "../../api/mutual.js";
 import { CHAINS } from "../../config.js";
+import { useLocalStorage } from "@uidotdev/usehooks";
 
 const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -22,7 +22,10 @@ export const AuthProvider = ({ chainId = "devnet", children }) => {
   const [portal, setPortal] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [cookies, setCookie, removeCookie] = useCookies(["session_token"]);
+
+  const [sessionKey, saveSessionKey] = useLocalStorage("session_key", null);
+  const [session, setSession] = useState(null);
+
   const [isUserLoading, setUserLoading] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(false);
@@ -44,7 +47,6 @@ export const AuthProvider = ({ chainId = "devnet", children }) => {
 
   const [isWalletLoading, setIsWalletLoading] = useState(false);
 
-  const token = cookies.session_token;
   const mainnetConfig = CHAINS.find((c) => c.id === "mainnet-beta");
   const devnetConfig = CHAINS.find((c) => c.id === "devnet");
 
@@ -54,6 +56,9 @@ export const AuthProvider = ({ chainId = "devnet", children }) => {
   // Get User
   const getUser = useCallback(
     async (props) => {
+      console.log("get user called");
+      console.log("token on user call: ", sessionKey);
+
       const { silentLoad } = props || { silentLoad: false };
       if (!silentLoad) {
         setUserLoading(true);
@@ -90,7 +95,13 @@ export const AuthProvider = ({ chainId = "devnet", children }) => {
         }
       }
     },
-    [token]
+    [
+      devnetConfig.portalChainId,
+      devnetConfig.rpcUrl,
+      mainnetConfig.portalChainId,
+      mainnetConfig.rpcUrl,
+      sessionKey,
+    ]
   );
 
   // Google login handler
@@ -158,11 +169,14 @@ export const AuthProvider = ({ chainId = "devnet", children }) => {
       await new Promise((resolve, reject) => {
         portalInstance.onReady(async () => {
           try {
-            setCookie("session_token", res.data.data.session_token);
+            saveSessionKey(res.data.data.session_token);
 
             // Set state
             setPortal(portalInstance);
             setIsLoggedIn(true);
+            setWalletType("MPC");
+
+            await getUser();
 
             resolve();
           } catch (error) {
@@ -215,10 +229,7 @@ export const AuthProvider = ({ chainId = "devnet", children }) => {
               }
             );
 
-            setCookie(
-              "session_token",
-              registerResponse.data.data.session_token
-            );
+            saveSessionKey(registerResponse.data.data.session_token);
 
             // Set state
             setPortal(portalInstance);
@@ -238,11 +249,12 @@ export const AuthProvider = ({ chainId = "devnet", children }) => {
   };
 
   // login with wallet setup
-
   const loginWithWallet = useCallback(async () => {
     console.log("sign in with wallet called");
+    if (isWalletLoading) return;
 
     setIsWalletLoading(true);
+    setWalletType("EOA");
 
     try {
       const walletSignInData = {
@@ -297,12 +309,12 @@ export const AuthProvider = ({ chainId = "devnet", children }) => {
         type: _type,
       });
 
-      setCookie("session_token", res.data.data.session_token, {
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-      });
+      saveSessionKey(res.data.data.session_token);
 
       // Set state
       setIsLoggedIn(true);
+
+      await getUser();
     } catch (error) {
       disconnect();
       if (error instanceof WalletSignInError) {
@@ -315,82 +327,87 @@ export const AuthProvider = ({ chainId = "devnet", children }) => {
     } finally {
       setIsWalletLoading(false);
     }
-  }, [wallet, walletSignIn, setCookie, signMessage, disconnect]);
+  }, [walletSignIn, saveSessionKey, getUser, signMessage, disconnect]);
 
   // Logout and clear the session
   const logout = useCallback(() => {
     console.log("logout called");
     disconnect();
-    removeCookie("session_token");
+    googleLogout();
+
+    localStorage.removeItem("session_key");
     setUser(null);
     setPortal(null);
     setIsLoggedIn(false);
+    setSession(null);
+    setWalletType(null);
+
     navigate("/");
-    googleLogout();
-  }, [disconnect, removeCookie]);
+  }, [disconnect, navigate]);
 
   useEffect(() => {
     if (walletType === "EOA") {
       if (connecting || disconnecting || autoConnect) return;
-      if (!connected && token) {
+      if (!connected && sessionKey) {
         logout();
       }
     }
   }, [
     connected,
     connecting,
-    disconnecting,
-    isLoggedIn,
-    token,
     logout,
+    disconnecting,
+    sessionKey,
     autoConnect,
     walletType,
   ]);
 
   useEffect(() => {
-    if (isLoggedIn || connecting || disconnecting) return;
-    if (connected && !token) {
-      setWalletType("EOA");
+    console.log({ isLoggedIn, connecting, disconnecting });
+    console.log({ connected, wallet, session });
+    if (isLoggedIn || connecting || disconnecting) {
+      return;
+    }
+
+    if (connected && wallet && !sessionKey) {
+      console.log("wallet called");
       loginWithWallet();
     }
   }, [
     connected,
     connecting,
+    wallet,
     isLoggedIn,
     loginWithWallet,
     disconnecting,
-    token,
+    sessionKey,
+    isLoggingIn,
+    logout,
   ]);
 
   // Handle Session
   useEffect(() => {
     async function checkSession() {
-      if (token) {
+      console.log("check session called...");
+
+      if (sessionKey) {
         setIsCheckingSession(true);
         try {
-          const decodedToken = jwtDecode(token);
+          const decodedToken = jwtDecode(sessionKey);
           const exp = decodedToken.exp;
           const currentTime = Math.floor(Date.now() / 1000);
 
           if (exp > currentTime) {
-            // const tokenRemainingTime = exp - currentTime;
             await getUser();
-            console.log("get user called");
             setIsLoggedIn(true);
-
-            // if (tokenRemainingTime > 5 * 60) {
-            //   setIsLoggedIn(true);
-            // } else {
-            //   const expires = new Date(exp * 1000);
-            //   setCookie("session_token", token, { expires });
-            //   setIsLoggedIn(true);
-            // }
+            setSession(decodedToken);
           } else {
             logout();
           }
         } catch (error) {
           console.error("Invalid token", error);
-          removeCookie("session_token");
+          localStorage.remove("session_key");
+          setSession(null);
           logout();
         } finally {
           setIsCheckingSession(false);
@@ -401,20 +418,12 @@ export const AuthProvider = ({ chainId = "devnet", children }) => {
     }
 
     checkSession();
-  }, [
-    cookies.session_token,
-    setCookie,
-    removeCookie,
-    isLoggedIn,
-    token,
-    walletType,
-    getUser,
-    logout,
-  ]);
+  }, [getUser, logout, saveSessionKey, sessionKey]);
 
   return (
     <AuthContext.Provider
       value={{
+        session,
         user,
         getUser,
         portal,

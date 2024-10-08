@@ -27,6 +27,7 @@ import { BN } from "bn.js";
 import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
 import bs58 from "bs58";
 import { Transaction } from "@solana/web3.js";
+import { useLocalStorage } from "@uidotdev/usehooks";
 import { formatNumberToKMB } from "../../../utils/number.js";
 import DexScreenerLogo from "../../../assets/dexscreener.svg?react";
 import { handleNumericChange } from "../../../lib/mconnect/utils/formattingUtils.js";
@@ -109,7 +110,8 @@ export default function ProjectOwnerTimeVestingPage() {
 
 function TimeVestingConfirmation({ setStep }) {
   const { wallet } = useWallet();
-  const [cookies] = useCookies(["session_token"]);
+  const [sessionKey, _] = useLocalStorage("session_key", null);
+
   const params = useParams();
   const influencerId = params.influencerId;
   const navigate = useNavigate();
@@ -166,10 +168,9 @@ function TimeVestingConfirmation({ setStep }) {
 
       console.log("formData:", formData);
 
-      console.log("cookies:", cookies);
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
-        bearerToken: cookies.session_token,
+        bearerToken: sessionKey,
         chainId: "devnet",
         chains: CHAINS,
       });
