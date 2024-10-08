@@ -277,11 +277,24 @@ export default function InfluencerOffersDetailPage() {
         {projectDetail &&
           <div className="mt-4 p-4 rounded-xl bg-white border">
             <div className="w-full flex items-center justify-between">
-              <p className="text-xl lg:text-2xl font-medium">
-                {projectDetail.token.name} (${projectDetail.token.name})
-              </p>
+              <div className="flex flex-row items-center gap-2">
+                <img
+                  src={projectDetail.token.imageUrl}
+                  alt="logo"
+                  className="w-12 h-12 rounded-full"
+                />
+                <div>
+                  <div className="text-xl lg:text-2xl font-medium">
+                    ${projectDetail.token.symbol}
+                  </div>
+                  <p className="text-md">
+                    {projectDetail.token.name}
+                  </p>
+                </div>
+
+              </div>
               <a
-                href={""}
+                href={projectDetail.token.pair.url}
                 target="_blank"
                 rel="noreferrer"
                 className="font-medium"
@@ -304,7 +317,7 @@ export default function InfluencerOffersDetailPage() {
               </div>
               <div>
                 <p className="text-orangy font-medium">
-                  {projectDetail.token.name.toLocaleString()}
+                  {projectDetail.token.totalSupply.toLocaleString()}
                 </p>
                 <p className="text-xs md:text-sm text-neutral-500">
                   Total Supply
