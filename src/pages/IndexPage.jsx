@@ -6,6 +6,7 @@ import influencerSvg from "../assets/register-page/influencer.svg";
 import projectOwnerSvg from "../assets/register-page/project-owner.svg";
 import { mutualAPI } from "../api/mutual.js";
 import { Spinner } from "@nextui-org/react";
+import AsciiFlame from "../lib/mconnect/components/AsciiFlame.jsx";
 
 export default function IndexPage() {
   const {
@@ -56,6 +57,10 @@ export default function IndexPage() {
 
   return (
     <div className="w-full flex items-center justify-center min-h-full bg-creamy px-5 md:px-10 py-12">
+      <div className="fixed pointer-events-none bottom-0 w-full h-[20vh]">
+        <AsciiFlame />
+      </div>
+      
       <>
         {isLoggedIn && user ? (
           <ChooseRole user={user} getUser={getUser} />

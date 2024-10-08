@@ -22,9 +22,9 @@ export default function InfluencerProfilePage() {
 
   return (
     <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
-      {/* <div className="fixed bottom-0 w-full h-[20vh]">
+      <div className="fixed pointer-events-none bottom-0 w-full h-[20vh]">
         <AsciiFlame />
-      </div> */}
+      </div>
 
       <div className="w-full max-w-3xl flex flex-col py-20">
         <div className="size-24 rounded-full bg-neutral-200 overflow-hidden">

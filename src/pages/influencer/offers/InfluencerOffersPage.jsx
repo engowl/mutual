@@ -90,11 +90,10 @@ function OffersList() {
           <button
             key={filter.value}
             onClick={() => setSearchParams({ status: filter.value })}
-            className={`py-2 flex justify-center rounded-lg ${
-              searchParams.get("status") === filter.value
+            className={`py-2 flex justify-center rounded-lg ${searchParams.get("status") === filter.value
                 ? "text-black"
                 : "text-neutral-500"
-            }`}
+              }`}
           >
             {filter.label}
           </button>
@@ -208,8 +207,8 @@ function OfferCard({ order, mutate }) {
               {order.vestingType === "MARKETCAP"
                 ? "Market Cap Vesting"
                 : order.vestingType === "TIME"
-                ? "Time Vesting"
-                : "Direct Payment"}
+                  ? "Time Vesting"
+                  : "Direct Payment"}
             </p>
           </div>
           <div className="flex items-center gap-1">
@@ -251,13 +250,15 @@ function OfferCard({ order, mutate }) {
               </Button>
             )}
           </div>
-          <p className="text-[10px] text-center md:text-sm mt-3 text-neutral-500">
-            Respond in{" "}
-            <Countdown
-              date={new Date(order.expiredAtUnix * 1000)}
-              daysInHours
-            />
-          </p>
+          {order.status === "CREATED" &&
+            <p className="text-[10px] text-center md:text-sm mt-3 text-neutral-500">
+              Respond in{" "}
+              <Countdown
+                date={new Date(order.expiredAtUnix * 1000)}
+                daysInHours
+              />
+            </p>
+          }
         </div>
       )}
     </Link>

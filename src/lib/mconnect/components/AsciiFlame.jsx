@@ -11,7 +11,7 @@ const AsciiFlame = () => {
   
   const width = 500;
   const height = 30;
-  const flameChars = [' ', '.', ':', '*', 'o', 'O', '#'];
+  const flameChars = [' ', '.', ':', '*', 'o', 'B', '#'];
 
   const updateFire = useCallback(() => {
     setFirePixels(prevPixels => {
@@ -57,7 +57,7 @@ const AsciiFlame = () => {
   }, [frameCount]);
 
   useEffect(() => {
-    if (frameCount % 10 === 0) {
+    if (frameCount % 8 === 0) {
       updateFire();
     }
   }, [frameCount, updateFire]);
@@ -67,8 +67,8 @@ const AsciiFlame = () => {
   }, [firePixels, renderFire]);
 
   return (
-    <div className="absolute bottom-0 w-full flex justify-center items-center m-0 opacity-20" style={{ fontFamily: 'monospace' }}>
-      <div ref={flameRef} style={{ color: '#FF4500', fontSize: '12px', whiteSpace: 'pre' }} />
+    <div className="absolute text-primary pointer-events-none -bottom-[1rem] w-full flex justify-center items-center m-0 opacity-40" style={{ fontFamily: 'monospace' }}>
+      <div ref={flameRef} style={{ fontSize: '14px', whiteSpace: 'pre' }} />
     </div>
   );
 };
