@@ -17,7 +17,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { mutualAPI } from "../../../api/mutual.js";
 import RandomAvatar from "../../../components/ui/RandomAvatar.jsx";
 import { CHAINS, DIRECT_PAYMENT_TOKEN } from "../../../config.js";
@@ -269,6 +269,7 @@ function TelegramPackageModal({ solTotal, influencer }) {
 
 function TweetPackageModal({ solTotal, influencer }) {
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const navigate = useNavigate();
   const [sessionKey, _] = useLocalStorage("session_key", null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -340,6 +341,7 @@ function TweetPackageModal({ solTotal, influencer }) {
       console.log("Offer created successfully:", created);
 
       toast.success("Offer sent successfully");
+      navigate(`/project-owner/offers/${created.id}`);
     } catch (error) {
       console.error(
         "Error submitting Twitter Package:",
