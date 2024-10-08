@@ -38,7 +38,7 @@ export default function ProjectOwnerOffersDetailPage() {
       return data;
     },
     {
-      refreshInterval: 5000,
+      refreshInterval: 3000,
     }
   );
 
@@ -47,6 +47,9 @@ export default function ProjectOwnerOffersDetailPage() {
     async (url) => {
       const { data } = await mutualAPI.get(url);
       return data;
+    },
+    {
+      refreshInterval: 3000
     }
   );
 

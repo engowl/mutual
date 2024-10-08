@@ -74,6 +74,8 @@ export default function InfluencerOffersDetailPage() {
   } = useSWR(offerId ? `/campaign/${offerId}/logs` : null, async (url) => {
     const { data } = await mutualAPI.get(url);
     return data;
+  }, {
+    refreshInterval: 3000
   });
 
   console.log({ events }, "events");

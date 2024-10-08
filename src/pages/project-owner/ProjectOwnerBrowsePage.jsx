@@ -304,13 +304,18 @@ function OffersTokenDealsModal({ influencerData }) {
               <ModalHeader className="pt-6">
                 <div>
                   <div className="shrink-0 size-16 rounded-full bg-neutral-200 overflow-hidden">
-                    <img
-                      className="w-full h-full object-cover"
-                      alt="demo"
-                      src="/assets/demo/angga.png"
-                      width={80}
-                      height={80}
-                    />
+                    {influencerData.twitterAccount.profileImageUrl ? (
+                      <img
+                        src={influencerData.twitterAccount.profileImageUrl}
+                        alt="profile"
+                        className="w-full h-full"
+                      />
+                    ) : (
+                      <RandomAvatar
+                        seed={influencerData.twitterAccount.username ?? "1"}
+                        className="w-full h-full"
+                      />
+                    )}
                   </div>
                   <p className="text-xl font-medium mt-2">
                     Offer Token Deals to @

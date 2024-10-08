@@ -72,6 +72,9 @@ function OffersList() {
     async (url) => {
       const { data } = await mutualAPI.get(url);
       return data;
+    },
+    {
+      refreshInterval: 3000
     }
   );
 
