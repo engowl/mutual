@@ -59,6 +59,7 @@ export default function useMCWallet() {
   async function signSolanaTxWithPortal({ messageToSign }) {
     if (portal && address) {
       console.log("chain :", chain);
+      console.log("portal: ", portal);
 
       try {
         const transactionHash = await portal.request({

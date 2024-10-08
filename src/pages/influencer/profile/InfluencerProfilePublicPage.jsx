@@ -29,7 +29,7 @@ import toast from "react-hot-toast";
 import useMCWallet from "../../../lib/mconnect/hooks/useMCWallet.jsx";
 import bs58 from "bs58";
 import { useMCAuth } from "../../../lib/mconnect/hooks/useMCAuth.jsx";
-import AsciiFlame from "../../../lib/mconnect/components/AsciiFlame.jsx";
+import { useLocalStorage } from "@uidotdev/usehooks";
 
 export default function InfluencerProfilePublicPage() {
   const params = useParams();
@@ -68,10 +68,7 @@ export default function InfluencerProfilePublicPage() {
   if (!isLoading && influencer) {
     return (
       <div className="h-full overflow-y-auto w-full flex flex-col items-center px-5">
-        <div className="fixed pointer-events-none bottom-0 w-full h-[20vh]">
-          <AsciiFlame />
-        </div>
-        <div className="w-full max-w-3xl flex flex-col py-20 relative">
+        <div className="w-full max-w-3xl flex flex-col py-20">
           <div className="size-24 rounded-full bg-neutral-200 overflow-hidden">
             {influencer.twitterAccount.profileImageUrl ? (
               <img
@@ -99,7 +96,7 @@ export default function InfluencerProfilePublicPage() {
             <div className="flex items-center gap-8">
               <div>
                 <p className="font-medium">
-                  {influencer.twitterAccount.followersCount?.toLocaleString() || 0}
+                  {influencer.twitterAccount.followersCount}
                 </p>
                 <p className="text-sm">Followers</p>
               </div>
@@ -117,7 +114,7 @@ export default function InfluencerProfilePublicPage() {
               : influencer.twitterAccount.description}
           </p>
 
-          <div className="mt-12 flex flex-col md:flex-row w-full gap-6 relative">
+          <div className="mt-12 flex flex-col md:flex-row w-full gap-6">
             {influencer.packages.map((pkg) => {
               return (
                 <div
@@ -168,7 +165,8 @@ export default function InfluencerProfilePublicPage() {
 
 function TelegramPackageModal({ solTotal, influencer }) {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [cookies] = useCookies(["session_token"]);
+  const [sessionKey, _] = useLocalStorage("session_key", null);
+
   const [isLoading, setIsLoading] = useState(false);
 
   const { signSolanaTxWithPortal, address: mpcAddress } = useMCWallet();
@@ -181,7 +179,7 @@ function TelegramPackageModal({ solTotal, influencer }) {
       setIsLoading(true);
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
-        bearerToken: cookies.session_token,
+        bearerToken: sessionKey,
         chainId: "devnet",
         chains: CHAINS,
       });
@@ -276,7 +274,7 @@ function TelegramPackageModal({ solTotal, influencer }) {
 
 function TweetPackageModal({ solTotal, influencer }) {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [cookies] = useCookies(["session_token"]);
+  const [sessionKey, _] = useLocalStorage("session_key", null);
   const [isLoading, setIsLoading] = useState(false);
 
   const { signSolanaTxWithPortal, address: mpcAddress } = useMCWallet();
@@ -290,9 +288,11 @@ function TweetPackageModal({ solTotal, influencer }) {
       setIsLoading(true);
       console.log("Submitting Twitter Package:", formData);
 
+      console.log(sessionKey);
+
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
-        bearerToken: cookies.session_token,
+        bearerToken: sessionKey,
         chainId: "devnet",
         chains: CHAINS,
       });
@@ -462,13 +462,7 @@ function PackageModal({
       >
         Get this package
       </Button>
-      <Modal
-        size={"xl"}
-        isOpen={isOpen}
-        onClose={onClose}
-        hideCloseButton
-        isDismissable={!isLoading}
-      >
+      <Modal size={"xl"} isOpen={isOpen} onClose={onClose} hideCloseButton>
         <ModalContent>
           {(onClose) => (
             <>

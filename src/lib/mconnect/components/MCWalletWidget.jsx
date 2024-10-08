@@ -83,7 +83,7 @@ export default function MCWalletWidget() {
               </div>
 
               <div className="flex flex-col items-start">
-                {user.email && <h1 className="font-medium">{user.email}</h1>}
+                {user?.email && <h1 className="font-medium">{user?.email}</h1>}
                 <p>{shortenAddress(address)}</p>
               </div>
 

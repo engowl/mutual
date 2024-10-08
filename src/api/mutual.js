@@ -1,5 +1,4 @@
 import axios from "axios";
-import Cookies from "js-cookie";
 
 export const apiWithToken = () => {
   const instance = axios.create({
@@ -8,7 +7,14 @@ export const apiWithToken = () => {
 
   instance.interceptors.request.use(
     (config) => {
-      const token = Cookies.get("session_token");
+      let token = localStorage.getItem("session_key");
+
+      if (token && token.startsWith('"') && token.endsWith('"')) {
+        token = token.slice(1, -1);
+      }
+
+      console.log("token from mutual: ", token);
+
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       } else {

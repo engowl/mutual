@@ -156,22 +156,24 @@ export default function ProjectOwnerBrowsePage() {
           </div>
 
           {/* Influencer list */}
-          <div className="flex-1">
-            {filteredInfluencers.length === 0 ? (
-              <div className="w-full flex items-center justify-center h-96">
-                <p>No influencers found</p>
-              </div>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-3">
-                {filteredInfluencers.map((influencer) => (
-                  <InfluencerCard
-                    key={influencer.id}
-                    influencerData={influencer}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          {filteredInfluencers && (
+            <div className="flex-1">
+              {filteredInfluencers.length === 0 ? (
+                <div className="w-full flex items-center justify-center h-96">
+                  <p>No influencers found</p>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-3">
+                  {filteredInfluencers.map((influencer) => (
+                    <InfluencerCard
+                      key={influencer.id}
+                      influencerData={influencer}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
