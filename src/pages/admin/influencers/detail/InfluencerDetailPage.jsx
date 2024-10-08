@@ -16,6 +16,7 @@ import { X } from "lucide-react";
 import toast from "react-hot-toast";
 import twitterSvg from "../../../../assets/twitter.svg";
 import telegramSvg from "../../../../assets/admin/ic-telegram.svg";
+import { DIRECT_PAYMENT_TOKEN } from "../../../../config.js";
 
 export default function InfluencerDetailPage() {
   const params = useParams();
@@ -151,7 +152,16 @@ export default function InfluencerDetailPage() {
                     </p>
                     <div className="flex items-baseline gap-2 mt-7">
                       <p className="text-4xl font-medium">{pkg.price}</p>
-                      <p className="text-xl font-medium">SOL</p>
+                      <div className="flex flex-row items-center gap-1">
+                        <img
+                          src={DIRECT_PAYMENT_TOKEN.imageUrl}
+                          alt="ic"
+                          className="w-6 h-6 rounded-full"
+                        />
+                        <p className="text-xl font-medium">
+                          {DIRECT_PAYMENT_TOKEN.symbol}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 );

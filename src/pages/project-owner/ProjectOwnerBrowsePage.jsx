@@ -21,6 +21,7 @@ import useSWR from "swr";
 import { mutualAPI } from "../../api/mutual";
 import RandomAvatar from "../../components/ui/RandomAvatar";
 import { useMCAuth } from "../../lib/mconnect/hooks/useMCAuth.jsx";
+import { DIRECT_PAYMENT_TOKEN } from "../../config.js";
 
 export default function ProjectOwnerBrowsePage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -268,7 +269,7 @@ function InfluencerCard({ influencerData }) {
             <img src={PriceIconSvg} alt="icon" className="size-4" />
           </div>
           <p className="font-medium text-sm leading-none mt-2">
-            {influencerData?.packages?.price} SOL
+            {influencerData?.packages?.price} {DIRECT_PAYMENT_TOKEN.symbol}
           </p>
           <p className="text-xs mt-1">Min. Price</p>
         </div>

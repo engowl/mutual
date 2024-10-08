@@ -1,5 +1,17 @@
 export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
+const USDC_MINT = {
+  name: "USDC",
+  symbol: "USDC",
+  decimals: 6,
+  isNative: false,
+  imageUrl: "https://res.coinpaper.com/coinpaper/usd_coin_usdc_logo_3e68fafa38.png"
+}
+
+export const DIRECT_PAYMENT_TOKEN = {
+  ...USDC_MINT
+}
+
 export const CHAINS = [
   {
     id: "mainnet-beta",
@@ -10,6 +22,10 @@ export const CHAINS = [
       import.meta.env.VITE_MAINNET_RPC_URL ||
       "https://api.mainnet-beta.solana.com",
     escrowProgramId: import.meta.env.VITE_ESCROW_PROGRAM_ID,
+    USDC: {
+      ...USDC_MINT,
+      mintAddress: ""
+    }
   },
   {
     id: "devnet",
@@ -19,6 +35,10 @@ export const CHAINS = [
     rpcUrl:
       import.meta.env.VITE_DEVNET_RPC_URL || "https://api.devnet.solana.com",
     escrowProgramId: import.meta.env.VITE_ESCROW_PROGRAM_ID,
+    USDC: {
+      ...USDC_MINT,
+      mintAddress: "7B85SqobCqr5mBMBz9QeCpgxcAnhThFu2anpkoUdAdfb"
+    }
   },
   {
     id: "localnet",
@@ -26,6 +46,10 @@ export const CHAINS = [
     name: "Localnet",
     rpcUrl: import.meta.env.VITE_LOCALNET_RPC_URL || "http://localhost:8899",
     escrowProgramId: import.meta.env.VITE_ESCROW_PROGRAM_ID,
+    USDC: {
+      ...USDC_MINT,
+      mintAddress: "7B85SqobCqr5mBMBz9QeCpgxcAnhThFu2anpkoUdAdfb"
+    }
   },
 ];
 
