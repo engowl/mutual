@@ -9,7 +9,6 @@ import { authRoutes } from "./app/routes/authRoutes.js";
 import { userRoutes } from "./app/routes/userRoutes.js";
 import { campaignRoutes } from "./app/routes/campaignRoutes.js";
 import { tokenRoutes } from "./app/routes/tokenRoutes.js";
-import { messagesRoutes } from "./app/routes/messagesRoutes.js";
 import { campaignWorkers } from "./app/workers/campaignWorkers.js";
 import { influencerRoutes } from "./app/routes/influencerRoutes.js";
 import { adminRoutes } from "./app/routes/adminRoutes.js";
@@ -18,6 +17,7 @@ import { twitterWorkers } from "./app/workers/twitterWorkers.js";
 import { walletRoutes } from "./app/routes/walletRoutes.js";
 import { tokenWorkers } from "./app/workers/tokenWorkers.js";
 import { escrowRoutes } from "./app/routes/escrowRoutes.js";
+import { newMessagesRoutes } from "./app/routes/newMessagesRoutes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,8 +27,9 @@ const fastify = Fastify({
 });
 
 fastify.register(fastifyRedis, {
-  url: process.env.REDIS_URL
+  url: process.env.REDIS_URL,
 });
+
 fastify.register(FastifyCors, {
   origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -55,8 +56,8 @@ fastify.register(authRoutes, { prefix: "/auth" });
 fastify.register(userRoutes, { prefix: "/users" });
 fastify.register(campaignRoutes, { prefix: "/campaign" });
 fastify.register(tokenRoutes, { prefix: "/token" });
-fastify.register(messagesRoutes, {
-  prefix: "/messages",
+fastify.register(newMessagesRoutes, {
+  prefix: "/messaging",
 });
 fastify.register(influencerRoutes, {
   prefix: "/influencer",

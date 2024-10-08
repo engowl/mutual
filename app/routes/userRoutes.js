@@ -63,7 +63,7 @@ export const userRoutes = (app, _, done) => {
           },
         });
 
-        console.log({ userData });
+        // console.log({ userData });
         return reply.send({
           message: "User found",
           error: null,
