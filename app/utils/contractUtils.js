@@ -104,7 +104,7 @@ function isEmptyObject(obj) {
 }
 
 // Helper function to handle client amount with decimals
-const calculateClientAmount = (tokenAmount, decimals) => {
+export const calculateClientAmount = (tokenAmount, decimals) => {
   const [wholePart, fractionalPart] = tokenAmount.toString().split('.');
 
   // Handle the whole part as a BN
@@ -123,6 +123,37 @@ const calculateClientAmount = (tokenAmount, decimals) => {
   const clientAmount = wholePartBN.mul(new BN(10).pow(new BN(decimals))).add(fractionalPartBN);
 
   return clientAmount;
+};
+
+export const formatTokenAmount = (tokenAmount, tokenDecimals) => {
+  // Create a BN instance from the tokenAmount
+  const tokenAmountBN = new BN(tokenAmount);
+
+  // Create the divisor as 10^tokenDecimals
+  const divisor = new BN(10).pow(new BN(tokenDecimals));
+
+  // Calculate the whole part by dividing the tokenAmount by the divisor
+  const wholePartBN = tokenAmountBN.div(divisor);
+
+  // Calculate the fractional part as the remainder of the division
+  const fractionalPartBN = tokenAmountBN.mod(divisor);
+
+  // Convert the whole part to a string
+  const wholePartStr = wholePartBN.toString();
+
+  // If there's no fractional part, return just the whole part
+  if (fractionalPartBN.isZero()) {
+    return wholePartStr;
+  }
+
+  // If there's a fractional part, format it correctly
+  const fractionalPartStr = fractionalPartBN.toString().padStart(tokenDecimals, '0');
+
+  // Remove any trailing zeros in the fractional part
+  const trimmedFractionalPartStr = fractionalPartStr.replace(/0+$/, '');
+
+  // Return the formatted string with both whole and fractional parts
+  return `${wholePartStr}.${trimmedFractionalPartStr}`;
 };
 
 // Modified validateTokenAmount function
