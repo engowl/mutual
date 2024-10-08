@@ -8,9 +8,9 @@ export default function AdminNavbar({ handleLogout }) {
       <div className="flex h-full items-center">
         <Link to={"__admin/dashboard"} className="text-xl font-medium">
           <img
-            src="/assets/mutual_text_logo.svg"
+            src="/assets/mutual_admin_logo.png"
             alt="mutaal_logo"
-            className="w-20"
+            className="w-32"
           />
         </Link>
 
