@@ -41,13 +41,13 @@ async function main() {
           {
             id: 'testing-joji-package-twitter',
             type: "TWITTER",
-            price: 0.0123,
+            price: 0.5,
             description: "Promote your project on Twitter",
           },
           {
             id: 'testing-joji-package-telegram',
             type: "TELEGRAM_GROUP",
-            price: 0.0123,
+            price: 0.5,
             description: "Promote your project on Telegram",
           }
         ]
@@ -90,18 +90,165 @@ async function main() {
           {
             id: 'testing-murad-package-twitter',
             type: "TWITTER",
-            price: 0.0321,
+            price: 0.1,
             description: "Promote your project on Twitter",
           },
           {
             id: 'testing-murad-package-telegram',
             type: "TELEGRAM_GROUP",
-            price: 0.0321,
+            price: 0.1,
             description: "Promote your project on Telegram",
           }
         ]
       }
     },
+    {
+      id: 'testing-ansem',
+      email: 'ansem@testing.com',
+      name: 'Ansem 🐂🀄️',
+      role: 'INFLUENCER',
+      wallet: {
+        id: 'testing-ansem-wallet',
+        type: 'EOA',
+        address: 'BjGP2h9uw5JBQKqf9qLDN1vNh4LHXb97BKZFUQLBwooF',
+        amount: 123
+      },
+      influencer: {
+        id: 'testing-ansem-influencer',
+        telegramLink: 'https://t.me/AnsemBull',
+        twitterAccountId: '973261472',
+        twitterAccount: {
+          id: 'testing-ansem-twitter',
+          name: 'Ansem 🐂🀄️',
+          username: 'blknoiz06',
+          profileImageUrl: 'https://pbs.twimg.com/profile_images/1840493083827269634/JRfUV2fw.jpg'
+        },
+        projectCriterias: [
+          {
+            id: 'testing-ansem-project-criteria',
+            riskPreference: 'LOW',
+            tokenAge: 'LESS_THAN_SEVEN_WEEKS',
+            minMarketCap: 1000000,
+            maxMarketCap: 10000000,
+            min24hVolume: 1000000,
+            tokenHolder: 1000,
+            liquiditySize: 100000
+          }
+        ],
+        packages: [
+          {
+            id: 'testing-ansem-package-twitter',
+            type: 'TWITTER',
+            price: 2,
+            description: 'Promote your project on Twitter'
+          },
+          {
+            id: 'testing-ansem-package-telegram',
+            type: 'TELEGRAM_GROUP',
+            price: 2,
+            description: 'Promote your project on Telegram'
+          }
+        ]
+      }
+    },
+    {
+      id: 'testing-mitch',
+      email: 'mitch@testing.com',
+      name: 'mitch (rtrd/acc)',
+      role: 'INFLUENCER',
+      wallet: {
+        id: 'testing-mitch-wallet',
+        type: 'EOA',
+        address: 'oqypwv5GLFEfgQ2r2wAw8WAVWACUrzX7WF2e55sQa96',
+        amount: 123
+      },
+      influencer: {
+        id: 'testing-mitch-influencer',
+        telegramLink: 'https://t.me/mitchrtrd',
+        twitterAccountId: '1749286265583722496',
+        twitterAccount: {
+          id: 'testing-mitch-twitter',
+          name: 'mitch (rtrd/acc)',
+          username: 'idrawline',
+          profileImageUrl: 'https://pbs.twimg.com/profile_images/1774942228630134784/tzr1yvLR.jpg'
+        },
+        projectCriterias: [
+          {
+            id: 'testing-mitch-project-criteria',
+            riskPreference: 'LOW',
+            tokenAge: 'LESS_THAN_SEVEN_WEEKS',
+            minMarketCap: 1000000,
+            maxMarketCap: 10000000,
+            min24hVolume: 1000000,
+            tokenHolder: 1000,
+            liquiditySize: 100000
+          }
+        ],
+        packages: [
+          {
+            id: 'testing-mitch-package-twitter',
+            type: 'TWITTER',
+            price: 0.05,
+            description: 'Promote your project on Twitter'
+          },
+          {
+            id: 'testing-mitch-package-telegram',
+            type: 'TELEGRAM_GROUP',
+            price: 0.05,
+            description: 'Promote your project on Telegram'
+          }
+        ]
+      }
+    }
+    // {
+    //   id: '',
+    //   email: '',
+    //   name: '',
+    //   role: '',
+    //   wallet: {
+    //     id: '',
+    //     type: '',
+    //     address: '',
+    //     amount: 123
+    //   },
+    //   influencer: {
+    //     id: '',
+    //     telegramLink: '',
+    //     twitterAccountId: '',
+    //     twitterAccount: {
+    //       id: '',
+    //       name: '',
+    //       username: '',
+    //       profileImageUrl: ''
+    //     },
+    //     projectCriterias: [
+    //       {
+    //         id: '',
+    //         riskPreference: '',
+    //         tokenAge: '',
+    //         minMarketCap: 1000000,
+    //         maxMarketCap: 10000000,
+    //         min24hVolume: 1000000,
+    //         tokenHolder: 1000,
+    //         liquiditySize: 100000
+    //       }
+    //     ],
+    //     packages: [
+    //       {
+    //         id: '',
+    //         type: '',
+    //         price: 0.0321,
+    //         description: ''
+    //       },
+    //       {
+    //         id: '',
+    //         type: '',
+    //         price: 0.0321,
+    //         description: ''
+    //       }
+    //     ]
+    //   }
+    // }
   ];
 
   for (let user of USERS) {

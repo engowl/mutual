@@ -26,7 +26,9 @@ const fastify = Fastify({
   logger: false,
 });
 
-fastify.register(fastifyRedis, { host: "127.0.0.1", port: 6379 });
+fastify.register(fastifyRedis, {
+  url: process.env.REDIS_URL
+});
 fastify.register(FastifyCors, {
   origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
