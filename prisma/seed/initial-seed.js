@@ -110,7 +110,7 @@ async function main() {
       wallet: {
         id: 'testing-ansem-wallet',
         type: 'EOA',
-        address: 'BjGP2h9uw5JBQKqf9qLDN1vNh4LHXb97BKZFUQLBwooF',
+        address: '8fTxDswpEMfSpLqhtdr7AgUeqzM6iXYNSLt7HLMbnVya',
         amount: 123
       },
       influencer: {

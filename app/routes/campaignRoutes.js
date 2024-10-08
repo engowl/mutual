@@ -13,6 +13,7 @@ import {
 } from "../utils/campaignUtils.js";
 import { getCreateDealTxDetails } from "../lib/contract/mutualEscrowContract.js";
 import {
+  formatTokenAmount,
   parseAccountData,
   prepareOrderId,
   validateTokenAmount,
@@ -1019,6 +1020,7 @@ export const campaignRoutes = (app, _, done) => {
             commitment: "confirmed",
           });
 
+
         console.log("Claimable amount:", claimableAmount.toString());
 
         // Format it into the token { mintAddress: ..., amount: claimableAmount/10^decimals, ...}
@@ -1029,6 +1031,12 @@ export const campaignRoutes = (app, _, done) => {
         // parsedDealData.eligibilityStatus = "fullyEligible"; // Fully Eligible
 
         let claimInfo = {};
+
+        let claimed = {
+          amount: formatTokenAmount(parsedDealData.releasedAmount, order.token.decimals),
+          name: order.token.name,
+          symbol: order.token.symbol,
+        }
 
         const isNotEligible =
           parsedDealData.eligibilityStatus === "notEligible";
@@ -1055,124 +1063,144 @@ export const campaignRoutes = (app, _, done) => {
           mediaLabel = "Telegram Post";
         }
 
-        if (order.vestingType === "NONE") {
-          // NONE-based vesting logic
-          if (isPartiallyEligible || isNotEligible) {
-            // Can claim all tokens in one phase
-            claimInfo = {
-              phases: [
-                {
-                  phaseName: "Final Unlock",
-                  amount: totalAmount,
-                  amountLabel: `${totalAmount} $${order.token.symbol}`,
-                  conditionLabel: `Claimable ${MINIMUM_POST_LIVE_IN_MINUTES / 60
-                    } hours after the ${mediaLabel} is posted`,
-                  isClaimable: false,
-                },
-              ],
-            };
-          } else if (isFullyEligible) {
-            // Can claim all tokens in one phase
-            claimInfo = {
-              phases: [
-                {
-                  phaseName: "Final Unlock",
-                  amount: totalAmount,
-                  amountLabel: `${totalAmount} $${order.token.symbol}`,
-                  conditionLabel: `You can claim the full amount of ${totalAmount} tokens now.`,
-                  isClaimable: canClaimFull,
-                },
-              ],
-            };
-          } else {
-            console.log(
-              "Invalid eligibility status:",
-              parsedDealData.eligibilityStatus
-            );
-          }
-        } else if (order.vestingType === "MARKETCAP") {
-          // Market Cap-based vesting logic
-          if (isPartiallyEligible || isNotEligible) {
-            // TODO: Marketcap label
-            claimInfo = {
-              phases: [
-                {
-                  phaseName: "First Unlock",
-                  amount: partialUnlockAmount,
-                  amountLabel: `${partialUnlockAmount} $${order.token.symbol}`,
-                  conditionLabel: `Claim after the ${mediaLabel} is posted`,
-                  isClaimable: canClaimPartial,
-                },
-                {
-                  phaseName: "Final Unlock",
-                  amount: totalAmount - partialUnlockAmount,
-                  amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol
-                    }`,
-                  conditionLabel: `Claim after $${order.token.symbol} reaches the target ... market cap`,
-                  isClaimable: false,
-                },
-              ],
-            };
-          } else if (isFullyEligible) {
-            // Can claim all tokens in one phase
-            claimInfo = {
-              phases: [
-                {
-                  phaseName: "Final Unlock",
-                  amount: totalAmount,
-                  amountLabel: `${totalAmount} $${order.token.symbol}`,
-                  conditionLabel: `You can claim the full amount of ${totalAmount} tokens now.`,
-                  isClaimable: canClaimFull,
-                },
-              ],
-            };
-          } else {
-            console.log(
-              "Invalid eligibility status:",
-              parsedDealData.eligibilityStatus
-            );
-          }
-        } else if (order.vestingType === "TIME") {
-          // Time-based vesting logic
-          if (isPartiallyEligible || isNotEligible) {
-            claimInfo = {
-              phases: [
-                {
-                  phaseName: "First Unlock",
-                  amount: partialUnlockAmount,
-                  amountLabel: `${partialUnlockAmount} $${order.token.symbol}`,
-                  conditionLabel: `Claim after the ${mediaLabel} is posted`,
-                  isClaimable: canClaimPartial,
-                },
-                {
-                  phaseName: "Final Unlock",
-                  amount: totalAmount - partialUnlockAmount,
-                  amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol
-                    } `,
-                  conditionLabel: `Claim after the vesting period ends`,
-                  isClaimable: false,
-                },
-              ],
-            };
-          } else if (isFullyEligible) {
-            // Can claim all tokens in one phase
-            // TODO: Dynamic labelling because the time-based vesting can have different claimable amounts
-            claimInfo = {
-              phases: [
-                {
-                  phaseName: "Final Unlock",
-                  amount: totalAmount,
-                  amountLabel: `${formattedAmount} $${order.token.symbol} `,
-                  conditionLabel: `You can claim ${formattedAmount} tokens now.`,
-                  isClaimable: canClaimFull,
-                },
-              ],
-            };
-          } else {
-            console.log(
-              "Invalid eligibility status:",
-              parsedDealData.eligibilityStatus
-            );
+        if (parsedDealData.amount === parsedDealData.releasedAmount) {
+          claimInfo = {
+            phases: [],
+            isClaimedAll: true,
+            claimed: claimed
+          };
+        } else {
+          if (order.vestingType === "NONE") {
+            // NONE-based vesting logic
+            if (isPartiallyEligible || isNotEligible) {
+              // Can claim all tokens in one phase
+              claimInfo = {
+                phases: [
+                  {
+                    phaseName: "Final Unlock",
+                    amount: totalAmount,
+                    amountLabel: `${totalAmount} $${order.token.symbol}`,
+                    conditionLabel: `Claimable ${MINIMUM_POST_LIVE_IN_MINUTES / 60
+                      } hours after the ${mediaLabel} is posted`,
+                    isClaimable: false,
+                  },
+                ],
+                isClaimedAll: false,
+                claimed: claimed
+              };
+            } else if (isFullyEligible) {
+              // Can claim all tokens in one phase
+              claimInfo = {
+                phases: [
+                  {
+                    phaseName: "Final Unlock",
+                    amount: totalAmount,
+                    amountLabel: `${totalAmount} $${order.token.symbol}`,
+                    conditionLabel: `You can claim the full amount of ${totalAmount} tokens now.`,
+                    isClaimable: canClaimFull,
+                  },
+                ],
+                isClaimedAll: false,
+                claimed: claimed
+              };
+            } else {
+              console.log(
+                "Invalid eligibility status:",
+                parsedDealData.eligibilityStatus
+              );
+            }
+          } else if (order.vestingType === "MARKETCAP") {
+            // Market Cap-based vesting logic
+            if (isPartiallyEligible || isNotEligible) {
+              // TODO: Marketcap label
+              claimInfo = {
+                phases: [
+                  {
+                    phaseName: "First Unlock",
+                    amount: partialUnlockAmount,
+                    amountLabel: `${partialUnlockAmount} $${order.token.symbol}`,
+                    conditionLabel: `Claim after the ${mediaLabel} is posted`,
+                    isClaimable: canClaimPartial,
+                  },
+                  {
+                    phaseName: "Final Unlock",
+                    amount: totalAmount - partialUnlockAmount,
+                    amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol
+                      }`,
+                    conditionLabel: `Claim after $${order.token.symbol} reaches the target ... market cap`,
+                    isClaimable: false,
+                  },
+                ],
+                isClaimedAll: false,
+                claimed: claimed
+              };
+            } else if (isFullyEligible) {
+              // Can claim all tokens in one phase
+              claimInfo = {
+                phases: [
+                  {
+                    phaseName: "Final Unlock",
+                    amount: totalAmount,
+                    amountLabel: `${totalAmount} $${order.token.symbol}`,
+                    conditionLabel: `You can claim the full amount of ${totalAmount} tokens now.`,
+                    isClaimable: canClaimFull,
+                  },
+                ],
+                isClaimedAll: false,
+                claimed: claimed
+              };
+            } else {
+              console.log(
+                "Invalid eligibility status:",
+                parsedDealData.eligibilityStatus
+              );
+            }
+          } else if (order.vestingType === "TIME") {
+            // Time-based vesting logic
+            if (isPartiallyEligible || isNotEligible) {
+              claimInfo = {
+                phases: [
+                  {
+                    phaseName: "First Unlock",
+                    amount: partialUnlockAmount,
+                    amountLabel: `${partialUnlockAmount} $${order.token.symbol}`,
+                    conditionLabel: `Claim after the ${mediaLabel} is posted`,
+                    isClaimable: canClaimPartial,
+                  },
+                  {
+                    phaseName: "Final Unlock",
+                    amount: totalAmount - partialUnlockAmount,
+                    amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol
+                      } `,
+                    conditionLabel: `Claim after the vesting period ends`,
+                    isClaimable: false,
+                  },
+                ],
+                isClaimedAll: false,
+                claimed: claimed
+              };
+            } else if (isFullyEligible) {
+              // Can claim all tokens in one phase
+              // TODO: Dynamic labelling because the time-based vesting can have different claimable amounts
+              claimInfo = {
+                phases: [
+                  {
+                    phaseName: "Final Unlock",
+                    amount: totalAmount,
+                    amountLabel: `${formattedAmount} $${order.token.symbol} `,
+                    conditionLabel: `You can claim ${formattedAmount} tokens now.`,
+                    isClaimable: canClaimFull,
+                  },
+                ],
+                isClaimedAll: false,
+                claimed: claimed
+              };
+            } else {
+              console.log(
+                "Invalid eligibility status:",
+                parsedDealData.eligibilityStatus
+              );
+            }
           }
         }
 
