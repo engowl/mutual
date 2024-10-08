@@ -2,7 +2,6 @@ import { Button, Spinner } from "@nextui-org/react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK";
-import { useCookies } from "react-cookie";
 import { mutualAPI } from "../../../api/mutual";
 import useSWR from "swr";
 import Countdown from "react-countdown";
@@ -15,6 +14,7 @@ import {
 import SubmitProofModal from "../../../components/influencer/offers/SubmitWorkModal";
 import InfluencerOfferStatusBadgePill from "../../../components/offers/InfluencerOfferStatusBadgePill";
 import NoResultIcon from "../../../assets/no-result.svg?react";
+import { useLocalStorage } from "@solana/wallet-adapter-react";
 
 export default function InfluencerOffersPage() {
   return (
@@ -142,7 +142,7 @@ function OfferCard({ order, mutate }) {
   console.log({ order }, "order");
   const navigate = useNavigate();
 
-  const [cookie] = useCookies(["session_token"]);
+  const [sessionKey, _] = useLocalStorage("session_key", null);
   const [isRejectLoading, setIsRejectLoading] = useState(false);
   const [isAcceptLoading, setIsAcceptLoading] = useState(false);
   const handleAcceptOffer = async (e) => {
@@ -150,12 +150,10 @@ function OfferCard({ order, mutate }) {
     try {
       setIsAcceptLoading(true);
 
-      console.log("cookie.session_token", cookie.session_token);
-
       // Accept offer logic here
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
-        bearerToken: cookie.session_token,
+        bearerToken: sessionKey
       });
 
       await escrowSDK.acceptOffer(order.id);
@@ -175,12 +173,10 @@ function OfferCard({ order, mutate }) {
     try {
       setIsRejectLoading(true);
 
-      console.log("cookie.session_token", cookie.session_token);
-
       // Reject offer logic here
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
-        bearerToken: cookie.session_token,
+        bearerToken: sessionKey
       });
 
       await escrowSDK.rejectOffer(order.id);

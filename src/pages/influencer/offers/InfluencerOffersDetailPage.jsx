@@ -10,13 +10,12 @@ import dayjs from "dayjs";
 import useSWR from "swr";
 import { mutualAPI } from "../../../api/mutual";
 import MutualEscrowSDK from "../../../lib/escrow-contract/MutualEscrowSDK.js";
-import { useCookies } from "react-cookie";
 import { useEffect, useState } from "react";
 import Countdown from "react-countdown";
 import { sleep } from "../../../utils/misc.js";
 import SubmitProofModal from "../../../components/influencer/offers/SubmitWorkModal.jsx";
 import { CHAINS } from "../../../config.js";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useLocalStorage, useWallet } from "@solana/wallet-adapter-react";
 import { NATIVE_MINT } from "@solana/spl-token";
 import InfluencerOfferStatusBadgePill from "../../../components/offers/InfluencerOfferStatusBadgePill.jsx";
 import DexScreenerLogo from "../../../assets/dexscreener.svg?react";
@@ -95,7 +94,7 @@ export default function InfluencerOffersDetailPage() {
 
   console.log({ events, offer }, "events");
 
-  const [cookie] = useCookies(["session_token"]);
+  const [sessionKey] = useLocalStorage("session_key", null);
   const [isRejectLoading, setIsRejectLoading] = useState(false);
   const [isAcceptLoading, setIsAcceptLoading] = useState(false);
 
@@ -109,12 +108,10 @@ export default function InfluencerOffersDetailPage() {
     try {
       setIsAcceptLoading(true);
 
-      console.log("cookie.session_token", cookie.session_token);
-
       // Accept offer logic here
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
-        bearerToken: cookie.session_token,
+        bearerToken: sessionKey,
       });
 
       await escrowSDK.acceptOffer(offer.id);
@@ -132,12 +129,10 @@ export default function InfluencerOffersDetailPage() {
     try {
       setIsRejectLoading(true);
 
-      console.log("cookie.session_token", cookie.session_token);
-
       // Reject offer logic here
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
-        bearerToken: cookie.session_token,
+        bearerToken: sessionKey,
       });
 
       await escrowSDK.rejectOffer(offer.id);
@@ -166,7 +161,7 @@ export default function InfluencerOffersDetailPage() {
       // Claim logic here
       const escrowSDK = new MutualEscrowSDK({
         backendEndpoint: import.meta.env.VITE_BACKEND_URL,
-        bearerToken: cookie.session_token,
+        bearerToken: sessionKey,
         chainId: "devnet",
         chains: CHAINS,
       });
