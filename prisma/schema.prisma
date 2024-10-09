@@ -344,10 +344,12 @@ model UserMessaging {
 
   conversations      UserConversation[] @relation("UserConversations")
   otherConversations UserConversation[] @relation("OtherUserConversations")
+  adminConversations AdminConversation[] @relation("AdminConversations")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 
 enum UserOnlineStatus {
   ONLINE
@@ -371,4 +373,54 @@ enum TokenAgeEnum {
 enum PostTypeEnum {
   TWITTER
   TELEGRAM_GROUP
+}
+
+
+// ADMIN MODELS
+
+
+model Admin {
+  id String @id @default(cuid())
+
+  name String?
+  pw  String?
+
+  messaging AdminMessaging?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdminMessaging {
+  id String @id @default(cuid())
+
+  status AdminOnlineStatus @default(OFFLINE)
+
+  adminId String @unique
+  admin   Admin  @relation(fields: [adminId], references: [id])
+
+  userConversations AdminConversation[] @relation("UserConversations")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdminConversation {
+  id          String @id @default(cuid())
+  lastMessage String
+
+  adminId      String
+  admin        AdminMessaging @relation("UserConversations", fields: [adminId], references: [adminId])
+  userId String
+  user         UserMessaging @relation("AdminConversations", fields: [userId], references: [userId])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([adminId, userId])
+}
+
+enum AdminOnlineStatus {
+  ONLINE
+  OFFLINE
 }
