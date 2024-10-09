@@ -44,7 +44,5 @@ export const tokenWorkers = (app, _, done) => {
     // handleUpdateTokenHolders();
   });
 
-  handleUpdateTokenHolders();
-
   done();
 }

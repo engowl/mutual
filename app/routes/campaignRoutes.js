@@ -799,7 +799,7 @@ export const campaignRoutes = (app, _, done) => {
         console.log("Order:", order);
 
         let isPartial = false;
-        if(order.vestingType === 'MARKETCAP'){
+        if (order.vestingType === 'MARKETCAP') {
           isPartial = true;
         }
 
@@ -1023,14 +1023,14 @@ export const campaignRoutes = (app, _, done) => {
           .view({
             commitment: "confirmed",
           });
-
-
-        console.log("Claimable amount:", claimableAmount.toString());
+          // .simulate({
+          //   skipPreflight: true,
+          // })
 
         // Format it into the token { mintAddress: ..., amount: claimableAmount/10^decimals, ...}
         const formattedAmount = new BN(claimableAmount).div(
           new BN(10).pow(new BN(order.token.decimals))
-        );
+        ) || claimableAmount * 10 ** order.token.decimals;
 
         // parsedDealData.eligibilityStatus = "fullyEligible"; // Fully Eligible
 
@@ -1189,11 +1189,11 @@ export const campaignRoutes = (app, _, done) => {
               claimInfo = {
                 phases: [
                   {
-                    phaseName: "Final Unlock",
-                    amount: totalAmount,
+                    phaseName: "Time-vested unlock",
+                    amount: formattedAmount,
                     amountLabel: `${formattedAmount} $${order.token.symbol} `,
-                    conditionLabel: `You can claim ${formattedAmount} tokens now.`,
-                    isClaimable: canClaimFull,
+                    conditionLabel: `You can claim ${formattedAmount} tokens now. The remaining tokens will be claimable after the vesting period ends.`,
+                    isClaimable: true
                   },
                 ],
                 isClaimedAll: false,

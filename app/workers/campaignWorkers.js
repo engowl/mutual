@@ -184,7 +184,7 @@ export const campaignWorkers = (app, _, done) => {
   }
 
   // Run every 15 minutes
-  cron.schedule(`*/1 * * * *`, async () => {
+  cron.schedule(`*/15 * * * *`, async () => {
     console.log("Checking for MC threshold...");
     await handleCheckTokenMC();
   });
