@@ -312,26 +312,6 @@ pub mod mutual_escrow {
     }
 
     // To check how much KOL can claim
-    // pub fn check_claimable_amount(ctx: Context<CheckClaimableAmount>) -> Result<u64> {
-    //     let deal = &ctx.accounts.deal;
-    //     let current_time = Clock::get()?.unix_timestamp;
-
-    //     // Calculate how much the KOL can claim
-    //     let vested_amount = calculate_vested_amount(
-    //         deal,
-    //         current_time,
-    //         ctx.accounts.escrow.max_claimable_after_obligation,
-    //     )?;
-
-    //     // Return the claimable amount
-    //     let claimable_amount = vested_amount
-    //         .checked_sub(deal.released_amount)
-    //         .ok_or(ErrorCode::ExceedsVestedAmount)?;
-
-    //     Ok(claimable_amount)
-    // }
-
-    // To check how much KOL can claim
     pub fn check_claimable_amount(ctx: Context<CheckClaimableAmount>) -> Result<u64> {
         let deal = &ctx.accounts.deal;
         let current_time = Clock::get()?.unix_timestamp;
@@ -344,25 +324,12 @@ pub mod mutual_escrow {
         msg!("Deal order_id: {:?}", deal.order_id);
 
         // Calculate how much the KOL can claim
-        let vested_amount = calculate_vested_amount(
+        let claimable_amount = calculate_vested_amount(
             deal,
             current_time,
             ctx.accounts.escrow.max_claimable_after_obligation,
         )?;
 
-        // Log the vested amount calculated
-        msg!(
-            "Vested amount based on vesting conditions: {}",
-            vested_amount
-        );
-
-        // Calculate the claimable amount by subtracting the released amount from the vested amount
-        let claimable_amount = vested_amount.checked_sub(deal.released_amount).unwrap_or(0); // Instead of throwing an error, it will just return 0
-
-        // Log the final claimable amount that will be returned
-        msg!("Final claimable amount for the KOL: {}", claimable_amount);
-
-        // Return the claimable amount, ensuring no errors when it's zero
         Ok(claimable_amount)
     }
 }
