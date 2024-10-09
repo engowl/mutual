@@ -236,7 +236,7 @@ function OfferCard({ order, mutate }) {
           <div className="flex items-center gap-1">
             <CoinsIcon className="mb-0.5" />
             <p>
-              {order.tokenAmount} ${order.token.symbol}
+              {order.tokenAmount.toLocaleString()} ${order.token.symbol}
             </p>
           </div>
           <div className="flex items-center gap-1">

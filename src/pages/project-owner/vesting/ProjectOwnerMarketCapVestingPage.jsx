@@ -143,7 +143,7 @@ function MarketCapVestingConfirmation({ setStep }) {
         },
         chainId: "devnet",
         mintAddress: tokenInfo?.mintAddress,
-        tokenAmount: parseFloat(formData.tokenOfferAmount),
+        tokenAmount: parseFloat(formData.tokenOfferAmount.replaceAll(",", "")),
         campaignChannel: formData.marketingChannel,
         promotionalPostText: formData.promotionalPostText,
         postDateAndTime: new Date(formData.postDateAndTime),
@@ -282,7 +282,7 @@ function MarketCapVestingConfirmation({ setStep }) {
                 <p className="w-48 text-neutral-400">Second Unlock</p>
                 <p className="font-medium">
                   {parseInt(formData.tokenOfferAmount.replaceAll(",", "")) *
-                    OFFER_CONFIG.secondUnlockPercentage}
+                    OFFER_CONFIG.secondUnlockPercentage}{" "}
                   {tokenInfo?.symbol}
                 </p>
               </div>

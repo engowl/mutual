@@ -172,6 +172,11 @@ function TimeVestingConfirmation({ setStep }) {
         chains: CHAINS,
       });
 
+      const secondDuration = vestingPeriods.find(
+        (period) => period.seconds === formData.timeMilestone
+      ).seconds;
+      console.log("secondDuration:", secondDuration);
+
       const DATA = {
         orderId: getAlphanumericId(16), // Random orderId, must be 16 characters alphanumeric
         influencerId: influencerId,
@@ -180,16 +185,14 @@ function TimeVestingConfirmation({ setStep }) {
           vestingDuration: formData.timeMilestoneValue,
         },
         chainId: "devnet",
-        mintAddress: "6EXeGq2NuPUyB9UFWhbs35DBieQjhLrSfY2FU3o9gtr7",
-        tokenAmount: parseFloat(formData.tokenOfferAmount),
+        mintAddress: tokenInfo?.mintAddress,
+        tokenAmount: parseFloat(formData.tokenOfferAmount.replaceAll(",", "")),
         campaignChannel: formData.marketingChannel,
         promotionalPostText: formData.promotionalPostText,
         postDateAndTime: new Date(formData.postDateAndTime),
       };
 
       console.log("DATA:", DATA);
-
-      // return;
 
       // Step 1: Verify the offer
       await escrowSDK.verifyOffer(DATA);
@@ -208,6 +211,7 @@ function TimeVestingConfirmation({ setStep }) {
         amount: new BN(DATA.tokenAmount).mul(
           new BN(10).pow(new BN(tokenInfo?.decimals))
         ),
+        vestingDuration: secondDuration,
       });
       console.log("createDealTx:", createDealTx);
 
@@ -529,7 +533,7 @@ function TimeVestingForm({ setStep }) {
                 </div>
                 <div className="mt-2 w-full flex items-center justify-between">
                   <p className="text-sm text-neutral-400 px-4 py-2">
-                    Balance: {userTokenInfo?.amount.toLocaleString("en-US")} $
+                    Balance: {parseFloat(userTokenInfo?.amount).toLocaleString("en-US")} $
                     {tokenInfo?.symbol}
                   </p>
                   <div className="p-2">
@@ -649,8 +653,9 @@ function TimeVestingForm({ setStep }) {
                     marketingChannel: "telegram", // Update marketing channel
                   }))
                 }
+                isDisabled={true}
               >
-                Telegram Channel Post
+                Telegram Channel Post (Coming Soon)
               </Button>
             </div>
           </div>
@@ -661,7 +666,7 @@ function TimeVestingForm({ setStep }) {
             <div className="w-full flex flex-wrap gap-1">
               <Textarea
                 variant="bordered"
-                placeholder="Enter admin username"
+                placeholder="Enter promotional post text"
                 classNames={{
                   inputWrapper: "bg-white shadow-none border p-4",
                 }}
