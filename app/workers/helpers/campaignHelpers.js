@@ -15,6 +15,9 @@ import { BN } from "bn.js";
 import { nanoid } from "nanoid";
 import { unTwitterApiGetTweet } from "../../api/unTwitterApi/unTwitterApi.js";
 import { manyMinutesFromNowUnix, sleep } from "../../utils/miscUtils.js";
+import axios from "axios";
+import { dexscreenerGetTokens } from "../../lib/api/dexscreener.js";
+import { fetchDexscreenerMarketCap, fetchDextoolsMarketCap, fetchGeckoTerminalMarketCap } from "./tokenHelpers.js";
 
 export const handleExpiredOffer = async (offerId) => {
   try {
@@ -134,7 +137,7 @@ export const handleExpiredOffer = async (offerId) => {
 };
 
 export const generateEventLogs = async (orderId) => {
-  console.log("Generating event logs for order:", orderId);
+  // console.log("Generating event logs for order:", orderId);
 
   const order = await prismaClient.campaignOrder.findUnique({
     where: {
@@ -207,8 +210,6 @@ export const generateEventLogs = async (orderId) => {
   logs.push(createdOfferLog);
 
   for (const event of events) {
-    console.log("Event:", event);
-
     if (event.eventName === "DealStatusChanged") {
       if (event.data.status === "accepted") {
         const log = {
@@ -398,7 +399,12 @@ export const handleCheckCampaignPost = async (campaignId) => {
 
         // If the post is now approved, update the database to reflect the new status
         if (isApproved) {
-          await approveOrder(campaign.id);
+          let isPartial = false;
+          if (campaign.vestingType === 'MARKETCAP') {
+            isPartial = true;
+          }
+
+          await approveOrder(campaign.id, isPartial);
         }
       }
 
@@ -428,7 +434,70 @@ export const handleCheckCampaignPost = async (campaignId) => {
   }
 };
 
-export async function approveOrder(orderId) {
+export const handleCheckReachedMC = async (orderId) => {
+  try {
+    console.log(`Checking market cap for order: ${orderId}`);
+
+    // Fetch the order and token details
+    const order = await prismaClient.campaignOrder.findUnique({
+      where: { id: orderId },
+      include: {
+        token: {
+          include: { pair: true }
+        }
+      }
+    });
+
+    if (!order) {
+      throw new Error(`Order with ID ${orderId} not found`);
+    }
+
+    const token = order.token;
+    // const tokenAddress = token.mintAddress;
+    const tokenAddress = '5mbK36SZ7J19An8jFochhQS4of8g6BwUjbeCSxBSoWdp'
+
+
+    if (order.chainId === 'MAINNET_BETA') {
+      console.log('Token details:', token);
+
+      // Fetch market cap data from different sources
+      const [dextoolsMcUsd, dexscreenerMcUsd, geckoterminalMcUsd] = await Promise.all([
+        fetchDextoolsMarketCap(tokenAddress),
+        fetchDexscreenerMarketCap(tokenAddress),
+        fetchGeckoTerminalMarketCap(tokenAddress),
+      ]);
+
+      if (dextoolsMcUsd === null || dexscreenerMcUsd === null || geckoterminalMcUsd === null) {
+        console.warn('One or more market cap sources returned null values');
+      }
+
+      // Calculate the average market cap, ignoring null values
+      const marketCaps = [dextoolsMcUsd, dexscreenerMcUsd, geckoterminalMcUsd].filter(Boolean);
+      const mcAverage = marketCaps.length > 0
+        ? Math.round(marketCaps.reduce((sum, mc) => sum + mc, 0) / marketCaps.length)
+        : null;
+
+      // console.log("Market Cap values:", { dextoolsMcUsd, dexscreenerMcUsd, geckoterminalMcUsd });
+      console.log("Average Market Cap:", mcAverage);
+
+      const marketcapThreshold = order.vestingCondition.marketcapThreshold;
+      console.log("Market cap threshold:", marketcapThreshold);
+
+      // Check if the market cap has reached the threshold
+      if (mcAverage >= marketcapThreshold) {
+        // Approve the order
+        await approveOrder(orderId, false)
+      }
+    } else {
+      // If testnet, just approve the order right away
+      await approveOrder(orderId, false);
+    }
+  } catch (error) {
+    console.error("Error checking market cap:", error);
+  }
+};
+
+export async function approveOrder(orderId, partial = false) {
   // Find the order in your system (replace this with your logic for fetching an order by ID)
   const order = await prismaClient.campaignOrder.findUnique({
     where: { id: orderId },
@@ -456,6 +525,17 @@ export async function approveOrder(orderId) {
     },
   });
 
+  let eligibility;
+  if (partial) {
+    eligibility = {
+      partiallyEligible: {},
+    }
+  } else {
+    eligibility = {
+      fullyEligible: {},
+    }
+  }
+
   const chain = CHAINS.find((c) => c.dbChainId === order.chainId);
   const program = MUTUAL_ESCROW_PROGRAM(chain.id);
 
@@ -478,7 +558,7 @@ export async function approveOrder(orderId) {
   if (order.vestingType === "NONE" || order.vestingType === "TIME") {
     // Fully eligible
     const txHash = await program.methods
-      .setEligibilityStatus({ fullyEligible: {} })
+      .setEligibilityStatus(eligibility)
       .accounts({
         deal: dealPda,
         escrow: escrowPda,
@@ -500,7 +580,7 @@ export async function approveOrder(orderId) {
   } else {
     // Partially eligible (adjust this logic as needed for your specific partial eligibility flow)
     const txHash = await program.methods
-      .setEligibilityStatus({ fullyEligible: {} }) // Change to partiallyEligible if needed
+      .setEligibilityStatus(eligibility)
       .accounts({
         deal: dealPda,
         escrow: escrowPda,

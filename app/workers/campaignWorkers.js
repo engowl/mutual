@@ -4,13 +4,13 @@ import cron from "node-cron";
 import { CHAINS, OFFER_EXPIRY_IN_MINUTES } from "../../config.js";
 import { MUTUAL_ESCROW_PROGRAM } from "../lib/contract/contracts.js";
 import {
-  getAlphanumericId,
   manyMinutesFromNowUnix,
 } from "../utils/miscUtils.js";
 import { parseEventData } from "../utils/contractUtils.js";
 import { prismaClient } from "../db/prisma.js";
 import {
   handleCheckCampaignPost,
+  handleCheckReachedMC,
   handleExpiredOffer,
 } from "./helpers/campaignHelpers.js";
 
@@ -159,6 +159,35 @@ export const campaignWorkers = (app, _, done) => {
   };
 
   // TODO: Scans for MC Threshold reached or not. For the devnet, just make it reached after 1 minute
+  const handleCheckTokenMC = async () => {
+    console.log('Checking token MC...');
+
+    try {
+      const orders = await prismaClient.campaignOrder.findMany({
+        where: {
+          vestingType: 'MARKETCAP',
+          eligibility: {
+            in: ['NOTELIGIBLE', 'PARTIALLYELIGIBLE']
+          },
+          status: {
+            in: ['ACCEPTED', 'PARTIALCOMPLETED', 'COMPLETED']
+          }
+        }
+      })
+
+      for(const order of orders){
+        await handleCheckReachedMC(order.id);
+      }
+    } catch (error) {
+      console.error("Error checking token MC:", error.stack || error);
+    }
+  }
+
+  // Run every 15 minutes
+  cron.schedule(`*/1 * * * *`, async () => {
+    console.log("Checking for MC threshold...");
+    await handleCheckTokenMC();
+  });
 
   // TODO: Scans for Token price updates. For the devnet, just make everything $1 for the price
 
@@ -192,7 +221,7 @@ export const campaignWorkers = (app, _, done) => {
   // Check every 1 minute
   cron.schedule(`*/1 * * * *`, async () => {
     console.log("Checking for expired offers...");
-    // await handleCheckExpiredOffer();
+    await handleCheckExpiredOffer();
   });
   // handleCheckExpiredOffer();
 
@@ -232,7 +261,7 @@ export const campaignWorkers = (app, _, done) => {
   // Every 1 min
   cron.schedule(`*/1 * * * *`, async () => {
     console.log("Checking for campaign posts...");
-    // await checkCampaignPost();
+    await checkCampaignPost();
   });
 
   // Graceful Shutdown: Ensure proper cleanup on exit

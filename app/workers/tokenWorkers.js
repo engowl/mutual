@@ -41,7 +41,7 @@ export const tokenWorkers = (app, _, done) => {
   // Every 5 minutes
   cron.schedule("*/5 * * * *", async () => {
     console.log("Running token holders update...");
-    handleUpdateTokenHolders();
+    // handleUpdateTokenHolders();
   });
 
   handleUpdateTokenHolders();

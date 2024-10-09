@@ -4,6 +4,7 @@ import { CHAINS } from "../../../config.js";
 import { prismaClient } from "../../db/prisma.js";
 import { getTokenInfo } from "../../utils/solanaUtils.js";
 import { dexscreenerGetTokens } from "../../lib/api/dexscreener.js";
+import axios from "axios";
 
 export const fetchTokenData = async ({
   mintAddress,
@@ -188,7 +189,7 @@ export const fetchTokenHolderCount = async ({
         ],
         commitment: 'confirmed',
         encoding: 'base64' // Avoid fetching full account data, only necessary metadata
-      }
+      },
     );
 
     await prismaClient.token.update({
@@ -209,3 +210,42 @@ export const fetchTokenHolderCount = async ({
 // fetchTokenHolderCount({
 //   tokenId: 'cm1y7e4ub0000kckskbdrthnx'
 // })
+
+// Helper function to fetch Dextools market cap
+export const fetchDextoolsMarketCap = async (tokenAddress) => {
+  try {
+    const response = await axios.get(
+      `https://public-api.dextools.io/standard/v2/token/solana/${tokenAddress}/info`,
+      { headers: { 'X-API-KEY': process.env.DEXTOOLS_API_KEY } }
+    );
+    return parseInt(response.data.data.mcap) || null;
+  } catch (error) {
+    console.error('Error fetching Dextools data:', error);
+    return null;
+  }
+};
+
+// Helper function to fetch Dexscreener market cap
+export const fetchDexscreenerMarketCap = async (tokenAddress) => {
+  try {
+    const response = await dexscreenerGetTokens({ tokenAddresses: [tokenAddress] });
+    const pair = response.pairs[0];
+    return parseInt(pair.marketCap) || null;
+  } catch (error) {
+    console.error('Error fetching Dexscreener data:', error);
+    return null;
+  }
+};
+
+// Helper function to fetch GeckoTerminal market cap
+export const fetchGeckoTerminalMarketCap = async (tokenAddress) => {
+  try {
+    const response = await axios.get(
+      `https://api.geckoterminal.com/api/v2/networks/solana/tokens/${tokenAddress}`
+    );
+    return parseInt(response.data.data.attributes.market_cap_usd) || null;
+  } catch (error) {
+    console.error('Error fetching GeckoTerminal data:', error);
+    return null;
+  }
+};

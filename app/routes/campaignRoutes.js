@@ -644,7 +644,6 @@ export const campaignRoutes = (app, _, done) => {
     }
   });
 
-  // TODO: Submit work, for KOL to submit the work done (tweet, post, etc.)
   app.post(
     "/submit-work",
     {
@@ -799,7 +798,12 @@ export const campaignRoutes = (app, _, done) => {
 
         console.log("Order:", order);
 
-        await approveOrder(order.id);
+        let isPartial = false;
+        if(order.vestingType === 'MARKETCAP'){
+          isPartial = true;
+        }
+
+        await approveOrder(order.id, isPartial);
 
         return reply.send({ message: "Work approved" });
       } catch (error) {
@@ -1127,7 +1131,7 @@ export const campaignRoutes = (app, _, done) => {
                     amount: totalAmount - partialUnlockAmount,
                     amountLabel: `${totalAmount - partialUnlockAmount} $${order.token.symbol
                       }`,
-                    conditionLabel: `Claim after $${order.token.symbol} reaches the target ... market cap`,
+                    conditionLabel: `Claim after $${order.token.symbol} reaches the target market cap`,
                     isClaimable: false,
                   },
                 ],
