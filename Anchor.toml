@@ -3,7 +3,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-mutual_escrow = "3XxsgvX6n4D1FPo2dLnek7TUnYpt31rBFeWhQGMvN2fJ"
+mutual_escrow = "mutvCELMcCmXrHetrFYpDTydeBcowm9gneVVgUQ179f"
 
 [registry]
 url = "https://api.apr.dev"

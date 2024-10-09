@@ -34,7 +34,9 @@ describe("mutual_escrow", () => {
   let kolKp: Keypair;
 
   // Token mint and accounts
-  let mint: PublicKey;
+  // let mint: PublicKey;
+  let mint = new PublicKey("6EXeGq2NuPUyB9UFWhbs35DBieQjhLrSfY2FU3o9gtr7");
+  const decimals = 6;
   let mintKeypair: Keypair;
   let projectOwnerTokenAccount: splToken.Account;
 
@@ -45,11 +47,63 @@ describe("mutual_escrow", () => {
   let vaultAuthorityPda: PublicKey;
 
   // Other variables
-  const decimals = 9;
-  const orderId = "your-unique-order-id";
+  const orderId = "abcd1234abcd1234abcd1234";
   let orderIdBuffer: Buffer;
 
   const max_claimable_after_obligation = 25;
+
+  async function createTransferTransaction(
+    connection,
+    adminKp,
+    projectOwnerKp,
+    walletPublicKey
+  ) {
+    // Create Associated Token Account for the project owner
+    const projectOwnerTokenAccount =
+      await splToken.getOrCreateAssociatedTokenAccount(
+        connection,
+        adminKp,
+        mint,
+        projectOwnerKp.publicKey
+      );
+
+    console.log(
+      `Project Owner's Token Account: ${projectOwnerTokenAccount.address.toBase58()}`
+    );
+
+    // Get the token account of the wallet we're transferring from
+    const fromWalletTokenAccount =
+      await splToken.getOrCreateAssociatedTokenAccount(
+        connection,
+        adminKp,
+        mint,
+        walletPublicKey
+      );
+
+    console.log(
+      `Wallet's Token Account: ${fromWalletTokenAccount.address.toBase58()}`
+    );
+
+    // Transfer 10,000 MUTUAL tokens to project owner
+    const transferAmount = BigInt(10000 * 10 ** decimals);
+
+    // Create a new transaction
+    const transaction = new web3.Transaction().add(
+      splToken.createTransferInstruction(
+        fromWalletTokenAccount.address, // Source token account
+        projectOwnerTokenAccount.address, // Destination token account
+        walletPublicKey, // Owner of the source account
+        transferAmount
+      )
+    );
+
+    // Get the latest blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = walletPublicKey;
+
+    return transaction;
+  }
 
   before(async () => {
     // Initialize keypairs
@@ -58,7 +112,7 @@ describe("mutual_escrow", () => {
 
     // Give a bit of SOL to each wallet:
     // Define the smaller SOL amount (0.05 SOL)
-    const smallAmount = 0.05 * LAMPORTS_PER_SOL;
+    const smallAmount = 0.015 * LAMPORTS_PER_SOL;
 
     // Prepare the transaction to send SOL from 'wallet' to projectOwnerKp and kolKp
     const transaction = new web3.Transaction();
@@ -114,18 +168,18 @@ describe("mutual_escrow", () => {
     // );
 
     // Create an SPL Token Mint
-    mintKeypair = Keypair.generate();
-    mint = await splToken.createMint(
-      connection,
-      adminKp,
-      adminKp.publicKey,
-      null,
-      decimals,
-      mintKeypair,
-      { commitment: "confirmed" }
-    );
+    // mintKeypair = Keypair.generate();
+    // mint = await splToken.createMint(
+    //   connection,
+    //   adminKp,
+    //   adminKp.publicKey,
+    //   null,
+    //   decimals,
+    //   mintKeypair,
+    //   { commitment: "confirmed" }
+    // );
 
-    console.log(`Mint created: ${mint.toBase58()}`);
+    // console.log(`Mint created: ${mint.toBase58()}`);
 
     // Create Associated Token Account for the project owner
     projectOwnerTokenAccount = await splToken.getOrCreateAssociatedTokenAccount(
@@ -140,17 +194,38 @@ describe("mutual_escrow", () => {
     );
 
     // Mint tokens to the project owner's token account
-    const mintAmount = BigInt(10000 * 10 ** decimals);
-    await splToken.mintTo(
+    // const mintAmount = BigInt(10000 * 10 ** decimals);
+    // await splToken.mintTo(
+    //   connection,
+    //   adminKp,
+    //   mint,
+    //   projectOwnerTokenAccount.address,
+    //   adminKp,
+    //   Number(mintAmount)
+    // );
+
+    // console.log(`Minted ${mintAmount} tokens to project owner's account`);
+
+    // Transfer 10,000 MUTUAL token to project owner
+    const testingTrfTx = await createTransferTransaction(
       connection,
       adminKp,
-      mint,
-      projectOwnerTokenAccount.address,
-      adminKp,
-      Number(mintAmount)
+      projectOwnerKp,
+      wallet.publicKey
     );
-
-    console.log(`Minted ${mintAmount} tokens to project owner's account`);
+    const testingTrfSignedTx = await wallet.signTransaction(testingTrfTx);
+    const latestBlockhash = await connection.getLatestBlockhash();
+    testingTrfSignedTx.recentBlockhash = latestBlockhash.blockhash;
+    testingTrfSignedTx.feePayer = wallet.publicKey;
+    const testingTrfSent = await connection.sendRawTransaction(
+      testingTrfSignedTx.serialize(),
+      {
+        preflightCommitment: "confirmed",
+        skipPreflight: true,
+      }
+    );
+    await connection.confirmTransaction(testingTrfSent, "confirmed");
+    console.log("testing token transferred", testingTrfSent);
 
     // Prepare order ID buffer
     orderIdBuffer = prepareOrderId(orderId);
@@ -449,7 +524,7 @@ describe("mutual_escrow", () => {
   // Add more tests here, e.g., for releasing tokens, handling disputes, etc.
   it("Should create a market cap vesting deal, KOL claim partially and fully", async () => {
     const amount = new anchor.BN(1000 * 10 ** decimals); // 1000 tokens
-    orderIdBuffer = prepareOrderId("marketcap-order-id");
+    orderIdBuffer = prepareOrderId("marketcaporderz");
 
     const vestingDuration = new anchor.BN(0); // 0 minute
 
